@@ -1,0 +1,96 @@
+@model PagedList<CareTask>
+@{
+    ViewData["Title"] ??= "Công việc chăm sóc";
+}
+<div class="page-heading">
+    <div>
+        <p class="eyebrow"><i class="bi bi-clipboard2-check-fill"></i> NURSING HOME · ĐIỀU DƯỠNG & CHĂM SÓC</p>
+        <h1>Công việc chăm sóc</h1>
+        <p class="text-secondary mb-0">Quản lý phân công ca trực, tiến độ thực hiện và lưu vết nhật ký chăm sóc cư dân.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        @if (User.IsInRole(Roles.Admin))
+        {
+            <a asp-controller="CareTasks" asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i> + Phân công
+            </a>
+        }
+    </div>
+</div>
+<form method="get" class="filter-bar">
+    <input type="date" name="date" value="@Context.Request.Query["date"]" class="form-control" aria-label="Ngày" />
+    <select name="status" class="form-select" aria-label="Trạng thái">
+        <option value="">Tất cả trạng thái</option>
+        @foreach (var status in Enum.GetValues<CareTaskStatus>())
+        {
+            <option value="@status" selected="@(Context.Request.Query["status"] == status.ToString())">@status</option>
+        }
+    </select>
+    @foreach (var key in new[] { "residentId", "id" })
+    {
+        if (Context.Request.Query.ContainsKey(key))
+        {
+            <input type="hidden" name="@key" value="@Context.Request.Query[key]" />
+        }
+    }
+    <button class="btn btn-primary" type="submit"><i class="bi bi-funnel-fill me-1"></i> Lọc</button>
+</form>
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Cư dân</th>
+                    <th>Công việc</th>
+                    <th>Đến hạn</th>
+                    <th>Người chăm sóc</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    string badgeTone = item.Status switch
+                    {
+                        CareTaskStatus.Completed => "status-completed",
+                        CareTaskStatus.InProgress => "status-inprogress",
+                        CareTaskStatus.Cancelled => "status-cancelled",
+                        _ => "status-pending"
+                    };
+                    <tr>
+                        <td class="fw-semibold">@item.Resident.FullName</td>
+                        <td>
+                            <div class="fw-semibold">@item.Title</div>
+                            @if (!string.IsNullOrWhiteSpace(item.Instructions))
+                            {
+                                <div class="small text-secondary">@item.Instructions</div>
+                            }
+                        </td>
+                        <td>@item.DueAt.ToOffset(FacilityClock.Offset).ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@item.AssignedTo.FullName</td>
+                        <td>
+                            <span class="status-badge @badgeTone">@item.Status</span>
+                        </td>
+                        <td>
+                            <div class="row-actions">
+                                <a asp-controller="CareTasks" asp-action="History" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Lịch sử</a>
+                                @if (item.Status is CareTaskStatus.Pending or CareTaskStatus.InProgress)
+                                {
+                                    <a asp-controller="CareTasks" asp-action="Update" asp-route-id="@item.Id" class="btn btn-sm btn-primary">Cập nhật</a>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-secondary py-5">Chưa có dữ liệu phù hợp.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+<partial name="_Pagination" model="@((Model.Page, Model.TotalPages, Model.TotalCount))" />

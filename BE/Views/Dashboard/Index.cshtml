@@ -1,0 +1,153 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Tổng quan điều hành";
+
+    var metrics = new (string Label, string Value, string Icon, string Tone, string Subtext)[]
+    {
+        ("Cư dân đang lưu trú", Model.Residents.ToString(), "bi-people-fill", "blue", "Hồ sơ đang hoạt động"),
+        ("Tổng số phòng", Model.Rooms.ToString(), "bi-door-open-fill", "gold", "Khu lưu trú tiêu chuẩn"),
+        ("Tổng số giường", Model.Beds.ToString(), "bi-hospital-fill", "blue", "Toàn bộ cơ sở"),
+        ("Giường còn trống", Model.AvailableBeds.ToString(), "bi-check2-circle", "teal", "Sẵn sàng tiếp nhận"),
+        ("Tỷ lệ sử dụng giường", Model.Occupancy + "%", "bi-pie-chart-fill", "gold", $"{Model.OccupiedBeds}/{Model.Beds} giường đang có cư dân"),
+        ("Công việc hôm nay", Model.TasksToday.ToString(), "bi-calendar2-check-fill", "blue", "Theo lịch ca trực trong ngày"),
+        ("Công việc chưa hoàn thành", Model.UnfinishedTasks.ToString(), "bi-hourglass-split", "crimson", "Pending / InProgress cần xử lý"),
+        ("Tiền đã thanh toán", Model.Paid.ToString("N0") + " đ", "bi-cash-stack", "teal", "Tổng thực thu đã ghi nhận"),
+        ("Công nợ đã phát hành", Model.Debt.ToString("N0") + " đ", "bi-receipt-cutoff", "gold", "Hóa đơn đã phát hành chưa thu")
+    };
+}
+
+<section class="hero-luxury">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-8">
+            <span class="eyebrow"><i class="bi bi-stars"></i> NURSING HOME · TRUNG TÂM ĐIỀU HÀNH</span>
+            <h1 class="mt-3 mb-2">Mỗi ngày chăm sóc tốt hơn</h1>
+            <p class="text-light opacity-75 mb-4">
+                Bảng tổng hợp số liệu vận hành, lưu trú, chăm sóc điều dưỡng và tài chính thời gian thực từ cơ sở dữ liệu.
+            </p>
+            <div class="d-flex flex-wrap gap-2">
+                <a asp-controller="Residents" asp-action="Create" class="btn btn-gold">
+                    <i class="bi bi-person-plus-fill me-1"></i> + Tiếp nhận cư dân
+                </a>
+                <a asp-controller="Beds" asp-action="Assign" class="btn btn-outline-light">
+                    <i class="bi bi-arrow-left-right me-1"></i> Phân / chuyển giường
+                </a>
+                <a asp-controller="Billing" asp-action="Create" class="btn btn-outline-light">
+                    <i class="bi bi-file-earmark-plus me-1"></i> Lập hóa đơn tháng
+                </a>
+                <a asp-controller="Home" asp-action="Welcome" class="btn btn-outline-light">
+                    <i class="bi bi-globe2 me-1"></i> Xem Trang chủ người dùng
+                </a>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="hero-stat-pill mb-3">
+                <small>Công suất phòng & giường hiện tại</small>
+                <div class="d-flex align-items-baseline justify-content-between mt-1">
+                    <strong>@Model.Occupancy%</strong>
+                    <span class="text-light small">@Model.OccupiedBeds / @Model.Beds giường đang sử dụng</span>
+                </div>
+                <div class="progress mt-2" style="height: 8px; background: rgba(255,255,255,0.18);" role="progressbar" aria-label="Tỷ lệ sử dụng giường" aria-valuenow="@Model.Occupancy" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar" style="width: @Model.Occupancy.ToString(System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                </div>
+            </div>
+            <div class="hero-stat-pill">
+                <small>Trạng thái ca trực điều dưỡng</small>
+                <div class="d-flex align-items-baseline justify-content-between mt-1">
+                    <strong>@Model.TasksToday ca hôm nay</strong>
+                    <span class="text-light small">@Model.UnfinishedTasks việc đang mở</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="row g-4 mb-4">
+    @foreach (var metric in metrics)
+    {
+        <div class="col-md-6 col-xl-4">
+            <div class="card metric-card">
+                <div class="metric-card-top">
+                    <div>
+                        <p class="mb-1">@metric.Label</p>
+                        <strong>@metric.Value</strong>
+                    </div>
+                    <span class="metric-icon @metric.Tone">
+                        <i class="bi @metric.Icon" aria-hidden="true"></i>
+                    </span>
+                </div>
+                <div class="text-secondary small border-top pt-2 mt-2">
+                    <i class="bi bi-info-circle me-1"></i> @metric.Subtext
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <p class="eyebrow mb-1">CÔNG SUẤT LƯU TRÚ</p>
+                    <h2 class="h5 fw-bold mb-0">Sử dụng giường & phòng</h2>
+                </div>
+                <a asp-controller="Rooms" asp-action="Index" class="btn btn-sm btn-outline-primary">Quản lý phòng & giường</a>
+            </div>
+            <p class="text-secondary mb-2">@Model.OccupiedBeds / @Model.Beds giường đang sử dụng (@Model.AvailableBeds giường trống sẵn sàng)</p>
+            <div class="progress mb-4" role="progressbar" aria-label="Tỷ lệ sử dụng giường" aria-valuenow="@Model.Occupancy" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: @Model.Occupancy.ToString(System.Globalization.CultureInfo.InvariantCulture)%"></div>
+            </div>
+            <div class="row g-3">
+                <div class="col-sm-4">
+                    <div class="p-3 rounded-3 bg-light border">
+                        <span class="text-secondary small d-block">Đang có cư dân</span>
+                        <strong class="fs-5 text-primary">@Model.OccupiedBeds giường</strong>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="p-3 rounded-3 bg-light border">
+                        <span class="text-secondary small d-block">Trống khả dụng</span>
+                        <strong class="fs-5 text-success">@Model.AvailableBeds giường</strong>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="p-3 rounded-3 bg-light border">
+                        <span class="text-secondary small d-block">Tổng số phòng</span>
+                        <strong class="fs-5 text-dark">@Model.Rooms phòng</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card p-4 h-100">
+            <p class="eyebrow mb-1">LỐI TẮT NGHIỆP VỤ</p>
+            <h2 class="h5 fw-bold mb-3">Thao tác nhanh theo phân quyền</h2>
+            <div class="d-grid gap-2">
+                <a asp-controller="Residents" asp-action="Index" class="btn btn-outline-primary text-start d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-person-vcard me-2"></i>Danh sách & Hồ sơ cư dân</span>
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+                <a asp-controller="Billing" asp-action="Index" class="btn btn-outline-primary text-start d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-receipt me-2"></i>Quản lý Hóa đơn & Thanh toán</span>
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+                @if (User.IsInRole(Roles.Admin))
+                {
+                    <a asp-controller="CareTasks" asp-action="Create" class="btn btn-outline-primary text-start d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-clipboard2-plus me-2"></i>Phân công công việc chăm sóc</span>
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                    <a asp-controller="Medication" asp-action="Create" class="btn btn-outline-primary text-start d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-capsule me-2"></i>Nhập lịch thuốc đã phê duyệt</span>
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                    <a asp-controller="Users" asp-action="Index" class="btn btn-outline-primary text-start d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-shield-lock me-2"></i>Quản lý Tài khoản & Vai trò</span>
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

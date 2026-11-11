@@ -1,0 +1,73 @@
+@model PagedList<ServicePackage>
+@{
+    ViewData["Title"] = "Gói dịch vụ";
+}
+<div class="page-heading">
+    <div>
+        <p class="eyebrow"><i class="bi bi-gem"></i> NURSING HOME · DANH MỤC GÓI CHĂM SÓC</p>
+        <h1>Gói dịch vụ</h1>
+        <p class="text-secondary mb-0">Thiết lập các gói lưu trú & chăm sóc tiêu chuẩn. Thay đổi giá danh mục không ảnh hưởng đến hợp đồng đã chốt.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        @if (User.IsInRole(Roles.Admin))
+        {
+            <a asp-action="Package" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> + Thêm gói</a>
+        }
+    </div>
+</div>
+<form method="get" class="filter-bar">
+    <input name="search" value="@Context.Request.Query["search"]" class="form-control" placeholder="Tìm theo tên gói hoặc mô tả…" aria-label="Tìm kiếm" />
+    @foreach (var key in new[] { "residentId", "id" })
+    {
+        if (Context.Request.Query.ContainsKey(key))
+        {
+            <input type="hidden" name="@key" value="@Context.Request.Query[key]" />
+        }
+    }
+    <button class="btn btn-primary" type="submit"><i class="bi bi-funnel-fill me-1"></i> Lọc</button>
+</form>
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Tên gói</th>
+                    <th>Giá hàng tháng</th>
+                    <th>Mô tả</th>
+                    <th>Đang cung cấp</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td class="fw-bold text-primary">@item.Name</td>
+                        <td class="fw-semibold">@item.MonthlyPrice.ToString("N0") đ</td>
+                        <td>@item.Description</td>
+                        <td>
+                            <span class="status-badge @(item.IsActive ? "status-active" : "status-discharged")">
+                                @(item.IsActive ? "Có" : "Không")
+                            </span>
+                        </td>
+                        <td>
+                            <div class="row-actions">
+                                @if (User.IsInRole(Roles.Admin))
+                                {
+                                    <a asp-controller="Billing" asp-action="Package" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Sửa</a>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="text-center text-secondary py-5">Chưa có dữ liệu phù hợp.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+<partial name="_Pagination" model="@((Model.Page, Model.TotalPages, Model.TotalCount))" />

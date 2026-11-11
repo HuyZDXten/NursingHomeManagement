@@ -1,0 +1,29 @@
+@model ResidentForm
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <label asp-for="Code" class="form-label"></label>
+        <input asp-for="Code" class="form-control" placeholder="VD: RES-2026-001" />
+        <span asp-validation-for="Code" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="FullName" class="form-label"></label>
+        <input asp-for="FullName" class="form-control" placeholder="Nhập họ và tên đầy đủ" />
+        <span asp-validation-for="FullName" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="DateOfBirth" class="form-label"></label>
+        <input asp-for="DateOfBirth" class="form-control" />
+        <span asp-validation-for="DateOfBirth" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Gender" class="form-label"></label>
+        <input asp-for="Gender" class="form-control" placeholder="Nam / Nữ / Khác" />
+        <span asp-validation-for="Gender" class="text-danger small"></span>
+    </div>
+    <div class="col-12">
+        <label asp-for="Notes" class="form-label"></label>
+        <textarea asp-for="Notes" class="form-control" rows="3" placeholder="Tình trạng sức khỏe ban đầu, thói quen sinh hoạt hoặc lưu ý đặc biệt…"></textarea>
+        <span asp-validation-for="Notes" class="text-danger small"></span>
+    </div>
+</div>

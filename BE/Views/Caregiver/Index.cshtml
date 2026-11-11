@@ -1,0 +1,60 @@
+@model PagedList<CareTask>
+@{
+    ViewData["Title"] = "Không gian Ca trực Điều dưỡng";
+    int pendingCount = Model.Items.Count(t => t.Status == CareTaskStatus.Pending);
+    int inProgressCount = Model.Items.Count(t => t.Status == CareTaskStatus.InProgress);
+    int completedCount = Model.Items.Count(t => t.Status == CareTaskStatus.Completed);
+}
+
+<section class="hero-luxury">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-8">
+            <span class="eyebrow"><i class="bi bi-heart-pulse-fill"></i> KHÔNG GIAN ĐIỀU DƯỠNG · CAREGIVER WORKSPACE</span>
+            <h1 class="mt-3 mb-2">Ca trực chăm sóc & theo dõi cư dân hôm nay</h1>
+            <p class="text-light opacity-75 mb-4">
+                Thực hiện công việc chăm sóc được phân công, ghi nhận sinh hiệu chính xác và đối chiếu lịch dùng thuốc hàng ngày cho từng cư dân.
+            </p>
+            <div class="d-flex flex-wrap gap-2">
+                <a asp-controller="Medication" asp-action="Today" class="btn btn-gold">
+                    <i class="bi bi-capsule-pill me-1"></i> Thuốc cần cho uống hôm nay
+                </a>
+                <a asp-controller="Residents" asp-action="Index" class="btn btn-outline-light">
+                    <i class="bi bi-person-vcard me-1"></i> Hồ sơ cư dân được giao
+                </a>
+                <a asp-controller="CareTasks" asp-action="Index" class="btn btn-outline-light">
+                    <i class="bi bi-clipboard2-check me-1"></i> Tất cả công việc chăm sóc
+                </a>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="row g-3">
+                <div class="col-6">
+                    <div class="hero-stat-pill">
+                        <small>Tổng việc trong trang</small>
+                        <strong>@Model.TotalCount</strong>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="hero-stat-pill">
+                        <small>Chờ thực hiện</small>
+                        <strong>@pendingCount</strong>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="hero-stat-pill">
+                        <small>Đang thực hiện</small>
+                        <strong>@inProgressCount</strong>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="hero-stat-pill">
+                        <small>Đã hoàn thành</small>
+                        <strong>@completedCount</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<partial name="~/Views/CareTasks/Index.cshtml" model="Model" />

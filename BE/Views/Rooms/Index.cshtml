@@ -1,0 +1,81 @@
+@model PagedList<Room>
+@{
+    ViewData["Title"] = "Phòng & giường";
+}
+<div class="page-heading">
+    <div>
+        <p class="eyebrow"><i class="bi bi-door-open-fill"></i> NURSING HOME · CƠ SỞ VẬT CHẤT</p>
+        <h1>Phòng & giường</h1>
+        <p class="text-secondary mb-0">Quản lý danh mục phòng lưu trú, tình trạng giường trống/bảo trì và điều phối phân giường.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> + Thêm phòng</a>
+        <a asp-controller="Beds" asp-action="Assign" class="btn btn-gold"><i class="bi bi-arrow-left-right me-1"></i> Phân / chuyển giường</a>
+        <a asp-controller="Beds" asp-action="History" class="btn btn-outline-primary"><i class="bi bi-clock-history me-1"></i> Lịch sử phân giường</a>
+    </div>
+</div>
+<form method="get" class="filter-bar">
+    <input name="search" value="@Context.Request.Query["search"]" class="form-control" placeholder="Tìm theo số phòng hoặc mô tả…" aria-label="Tìm kiếm" />
+    @foreach (var key in new[] { "residentId", "id" })
+    {
+        if (Context.Request.Query.ContainsKey(key))
+        {
+            <input type="hidden" name="@key" value="@Context.Request.Query[key]" />
+        }
+    }
+    <button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i> Lọc</button>
+</form>
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Phòng</th>
+                    <th>Mô tả</th>
+                    <th>Giường trống / tổng</th>
+                    <th>Đang sử dụng</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    int avail = item.Beds.Count(bed => bed.Status == BedStatus.Available);
+                    int total = item.Beds.Count;
+                    <tr>
+                        <td>
+                            <span class="fw-bold text-primary"><i class="bi bi-door-closed me-1"></i>Phòng @item.Number</span>
+                        </td>
+                        <td>@(string.IsNullOrWhiteSpace(item.Description) ? "Phòng lưu trú tiêu chuẩn" : item.Description)</td>
+                        <td>
+                            <span class="status-badge @(avail > 0 ? "status-available" : "status-occupied")">
+                                @avail / @total giường trống
+                            </span>
+                        </td>
+                        <td>
+                            <span class="status-badge @(item.IsActive ? "status-active" : "status-discharged")">
+                                @(item.IsActive ? "Có" : "Không")
+                            </span>
+                        </td>
+                        <td>
+                            <div class="row-actions">
+                                <a asp-controller="Rooms" asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+                                <a asp-controller="Rooms" asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Sửa</a>
+                                <form asp-controller="Rooms" asp-action="Delete" asp-route-id="@item.Id" method="post" data-confirm="Xác nhận xóa?">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="text-center text-secondary py-5">Chưa có dữ liệu phù hợp.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+<partial name="_Pagination" model="@((Model.Page, Model.TotalPages, Model.TotalCount))" />

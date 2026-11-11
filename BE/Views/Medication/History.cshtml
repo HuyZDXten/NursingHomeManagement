@@ -1,0 +1,50 @@
+@model PagedList<MedicationLog>
+@{
+    ViewData["Title"] = "Lịch sử dùng thuốc";
+}
+<div class="page-heading">
+    <div>
+        <p class="eyebrow"><i class="bi bi-clock-history"></i> NURSING HOME · NHẬT KÝ CẤP PHÁT THUỐC</p>
+        <h1>Lịch sử dùng thuốc</h1>
+        <p class="text-secondary mb-0">Lưu vết chi tiết từng lần sử dụng, từ chối hoặc bỏ lỡ thuốc của cư dân.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Lịch dùng thuốc</a>
+    </div>
+</div>
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Thuốc</th>
+                    <th>Giờ dự kiến</th>
+                    <th>Trạng thái</th>
+                    <th>Ghi nhận lúc</th>
+                    <th>Người ghi</th>
+                    <th>Ghi chú</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td class="fw-bold text-primary">@item.MedicationSchedule.MedicationName</td>
+                        <td>@item.ScheduledAt.ToOffset(FacilityClock.Offset).ToString("dd/MM/yyyy HH:mm")</td>
+                        <td><span class="status-badge status-@item.Status.ToString().ToLowerInvariant()">@item.Status</span></td>
+                        <td>@item.RecordedAt?.ToOffset(FacilityClock.Offset).ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@item.RecordedBy?.FullName</td>
+                        <td>@item.Notes</td>
+                    </tr>
+                }
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="text-center text-secondary py-5">Chưa có dữ liệu phù hợp.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+<partial name="_Pagination" model="@((Model.Page, Model.TotalPages, Model.TotalCount))" />

@@ -1,0 +1,64 @@
+# File được tạo trong Phase 1
+
+Hai thư mục FE/BE ban đầu trống. Danh sách dưới đây không bao gồm thư viện tĩnh có sẵn từ MVC template.
+
+- `.gitignore`
+- `BE/Controllers/AccountController.cs`
+- `BE/Controllers/CaregiverController.cs`
+- `BE/Controllers/FamilyController.cs`
+- `BE/Controllers/HomeController.cs`
+- `BE/Data/ApplicationDbContext.cs`
+- `BE/Data/DbInitializer.cs`
+- `BE/Migrations/20261110161615_InitialCreate.Designer.cs`
+- `BE/Migrations/20261110161615_InitialCreate.cs`
+- `BE/Migrations/ApplicationDbContextModelSnapshot.cs`
+- `BE/Models/ApplicationUser.cs`
+- `BE/Models/BaseEntity.cs`
+- `BE/Models/Bed.cs`
+- `BE/Models/BedAssignment.cs`
+- `BE/Models/CareRecord.cs`
+- `BE/Models/CareTask.cs`
+- `BE/Models/Enums.cs`
+- `BE/Models/ErrorViewModel.cs`
+- `BE/Models/FamilyContact.cs`
+- `BE/Models/Invoice.cs`
+- `BE/Models/InvoiceItem.cs`
+- `BE/Models/MedicationLog.cs`
+- `BE/Models/MedicationSchedule.cs`
+- `BE/Models/Payment.cs`
+- `BE/Models/Resident.cs`
+- `BE/Models/ResidentFamilyLink.cs`
+- `BE/Models/ResidentSubscription.cs`
+- `BE/Models/Room.cs`
+- `BE/Models/ServicePackage.cs`
+- `BE/Models/VitalSign.cs`
+- `BE/NursingHomeManagement.csproj`
+- `BE/Program.cs`
+- `BE/Properties/launchSettings.json`
+- `BE/Services/ResidentAccessService.cs`
+- `BE/ViewModels/LoginViewModel.cs`
+- `BE/Views/Account/AccessDenied.cshtml`
+- `BE/Views/Account/Login.cshtml`
+- `BE/Views/Caregiver/Index.cshtml`
+- `BE/Views/Family/Index.cshtml`
+- `BE/Views/Home/Index.cshtml`
+- `BE/Views/Home/Privacy.cshtml`
+- `BE/Views/Shared/Error.cshtml`
+- `BE/Views/Shared/_Layout.cshtml`
+- `BE/Views/Shared/_Layout.cshtml.css`
+- `BE/Views/Shared/_ValidationScriptsPartial.cshtml`
+- `BE/Views/_ViewImports.cshtml`
+- `BE/Views/_ViewStart.cshtml`
+- `BE/appsettings.Development.json`
+- `BE/appsettings.json`
+- `BE/wwwroot/css/site.css`
+- `BE/wwwroot/favicon.ico`
+- `BE/wwwroot/js/site.js`
+- `FE/README.md`
+- `NursingHomeManagement.slnx`
+- `README.md`
+- `Start-Local.ps1`
+- `Tests/NursingHomeManagement.Tests.csproj`
+- `Tests/UnitTest1.cs`
+- `dotnet-tools.json`
+- `BE/wwwroot/lib/`: Bootstrap, jQuery, jQuery Validation từ template.

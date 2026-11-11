@@ -1,0 +1,48 @@
+@model FamilyLinkForm
+
+<div class="row g-4">
+    <input asp-for="ResidentId" type="hidden" />
+    <div class="col-12">
+        <label asp-for="FamilyUserId" class="form-label"></label>
+        <select asp-for="FamilyUserId" asp-items='ViewBag.FamilyUserIdOptions' class="form-select">
+            <option value="">— Chọn tài khoản Family —</option>
+        </select>
+        <span asp-validation-for="FamilyUserId" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <div class="p-3 rounded-3 bg-light border h-100">
+            <div class="form-check m-0">
+                <input asp-for="CanViewHealth" class="form-check-input" />
+                <label asp-for="CanViewHealth" class="form-check-label fw-semibold"></label>
+                <div class="small text-secondary">Cho phép xem các bản ghi sinh hiệu được đánh dấu chia sẻ.</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="p-3 rounded-3 bg-light border h-100">
+            <div class="form-check m-0">
+                <input asp-for="CanViewCare" class="form-check-input" />
+                <label asp-for="CanViewCare" class="form-check-label fw-semibold"></label>
+                <div class="small text-secondary">Cho phép xem nhật ký thực hiện chăm sóc được chia sẻ.</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="p-3 rounded-3 bg-light border h-100">
+            <div class="form-check m-0">
+                <input asp-for="CanViewMedication" class="form-check-input" />
+                <label asp-for="CanViewMedication" class="form-check-label fw-semibold"></label>
+                <div class="small text-secondary">Cho phép xem lịch dùng thuốc (chế độ chỉ đọc).</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="p-3 rounded-3 bg-light border h-100">
+            <div class="form-check m-0">
+                <input asp-for="CanViewBilling" class="form-check-input" />
+                <label asp-for="CanViewBilling" class="form-check-label fw-semibold"></label>
+                <div class="small text-secondary">Cho phép tra cứu hóa đơn đã phát hành và lịch sử thanh toán.</div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,19 @@
+@model InvoiceItemForm
+
+<div class="row g-4">
+    <div class="col-12">
+        <label asp-for="Description" class="form-label"></label>
+        <textarea asp-for="Description" class="form-control" rows="3" placeholder="Nội dung khoản phí bổ sung…"></textarea>
+        <span asp-validation-for="Description" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Quantity" class="form-label"></label>
+        <input asp-for="Quantity" class="form-control" step="0.01" />
+        <span asp-validation-for="Quantity" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="UnitPrice" class="form-label"></label>
+        <input asp-for="UnitPrice" class="form-control" step="0.01" />
+        <span asp-validation-for="UnitPrice" class="text-danger small"></span>
+    </div>
+</div>

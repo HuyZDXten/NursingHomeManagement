@@ -1,0 +1,28 @@
+@model SubscriptionForm
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <label asp-for="ResidentId" class="form-label"></label>
+        <select asp-for="ResidentId" asp-items='ViewBag.ResidentIdOptions' class="form-select">
+            <option value="">— Chọn cư dân —</option>
+        </select>
+        <span asp-validation-for="ResidentId" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="ServicePackageId" class="form-label"></label>
+        <select asp-for="ServicePackageId" asp-items='ViewBag.ServicePackageIdOptions' class="form-select">
+            <option value="">— Chọn gói dịch vụ —</option>
+        </select>
+        <span asp-validation-for="ServicePackageId" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="StartDate" class="form-label"></label>
+        <input asp-for="StartDate" class="form-control" />
+        <span asp-validation-for="StartDate" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="EndDate" class="form-label"></label>
+        <input asp-for="EndDate" class="form-control" />
+        <span asp-validation-for="EndDate" class="text-danger small"></span>
+    </div>
+</div>

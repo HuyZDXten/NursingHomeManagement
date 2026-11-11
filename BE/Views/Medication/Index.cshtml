@@ -1,0 +1,75 @@
+@model PagedList<MedicationSchedule>
+@{
+    ViewData["Title"] = "Lịch dùng thuốc";
+}
+<div class="page-heading">
+    <div>
+        <p class="eyebrow"><i class="bi bi-calendar2-check-fill"></i> NURSING HOME · QUẢN LÝ DƯỢC LÂM SÀNG</p>
+        <h1>Lịch dùng thuốc</h1>
+        <p class="text-secondary mb-0">Danh mục phác đồ và lịch uống thuốc hàng ngày đã có tham chiếu phê duyệt chuyên môn.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-action="Today" class="btn btn-outline-primary"><i class="bi bi-capsule-pill me-1"></i> Thuốc hôm nay</a>
+        @if (User.IsInRole(Roles.Admin))
+        {
+            <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> + Nhập lịch đã phê duyệt</a>
+        }
+    </div>
+</div>
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Cư dân</th>
+                    <th>Thuốc / liều</th>
+                    <th>Đường dùng</th>
+                    <th>Giờ</th>
+                    <th>Thời hạn</th>
+                    <th>Phê duyệt</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td class="fw-semibold">@item.Resident.FullName</td>
+                        <td>
+                            <div class="fw-bold text-primary">@item.MedicationName</div>
+                            <div class="small text-secondary">Liều: @item.Dose</div>
+                        </td>
+                        <td><span class="badge text-bg-light border">@item.Route</span></td>
+                        <td class="fw-semibold">@item.ScheduledTime</td>
+                        <td>@item.StartDate – @(item.EndDate?.ToString() ?? "Đang tiếp tục")</td>
+                        <td><span class="badge text-bg-light border">@item.ApprovalReference</span></td>
+                        <td>
+                            <span class="status-badge @(item.IsActive ? "status-active" : "status-discharged")">
+                                @(item.IsActive ? "Đang áp dụng" : "Đã dừng")
+                            </span>
+                        </td>
+                        <td>
+                            <div class="row-actions">
+                                <a asp-controller="Medication" asp-action="History" asp-route-residentId="@item.ResidentId" class="btn btn-sm btn-outline-primary">Lịch sử</a>
+                                @if (User.IsInRole(Roles.Admin) && item.IsActive)
+                                {
+                                    <form asp-controller="Medication" asp-action="Stop" asp-route-id="@item.Id" method="post" data-confirm="Xác nhận dừng lịch?">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Dừng lịch</button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center text-secondary py-5">Chưa có dữ liệu phù hợp.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+<partial name="_Pagination" model="@((Model.Page, Model.TotalPages, Model.TotalCount))" />

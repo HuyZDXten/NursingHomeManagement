@@ -1,0 +1,24 @@
+@model UserForm
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <label asp-for="FullName" class="form-label"></label>
+        <input asp-for="FullName" class="form-control" placeholder="Họ và tên người dùng" />
+        <span asp-validation-for="FullName" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Email" class="form-label"></label>
+        <input asp-for="Email" class="form-control" placeholder="email@nursinghome.test" />
+        <span asp-validation-for="Email" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Role" class="form-label"></label>
+        <select asp-for="Role" asp-items="@(new SelectList(Roles.All))" class="form-select"></select>
+        <span asp-validation-for="Role" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Password" class="form-label"></label>
+        <input asp-for="Password" class="form-control" autocomplete="new-password" placeholder="Tối thiểu 12 ký tự (Hoa, thường, số, ký hiệu)" />
+        <span asp-validation-for="Password" class="text-danger small"></span>
+    </div>
+</div>

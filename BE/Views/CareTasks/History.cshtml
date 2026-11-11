@@ -1,0 +1,51 @@
+@model List<CareRecord>
+@{
+    ViewData["Title"] = "Lịch sử chăm sóc";
+}
+<div class="page-heading">
+    <div>
+        <p class="eyebrow"><i class="bi bi-journal-medical"></i> NURSING HOME · NHẬT KÝ CHĂM SÓC</p>
+        <h1>Lịch sử chăm sóc</h1>
+        <p class="text-secondary mb-0">Bản ghi chi tiết các lần cập nhật trạng thái và kết quả thực hiện công việc.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Danh sách công việc</a>
+    </div>
+</div>
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Thực hiện</th>
+                    <th>Trạng thái</th>
+                    <th>Kết quả</th>
+                    <th>Người ghi</th>
+                    <th>Chia sẻ</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>@item.PerformedAt.ToOffset(FacilityClock.Offset).ToString("dd/MM/yyyy HH:mm")</td>
+                        <td><span class="status-badge status-@item.Status.ToString().ToLowerInvariant()">@item.Status</span></td>
+                        <td>@item.Result</td>
+                        <td>@item.RecordedBy.FullName</td>
+                        <td>
+                            <span class="status-badge @(item.ShareWithFamily ? "status-active" : "status-discharged")">
+                                @(item.ShareWithFamily ? "Có" : "Không")
+                            </span>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="5" class="text-center text-secondary py-5">Chưa có dữ liệu phù hợp.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

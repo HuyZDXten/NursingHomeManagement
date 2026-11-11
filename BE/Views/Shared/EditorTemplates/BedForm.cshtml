@@ -1,0 +1,25 @@
+@model BedForm
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <label asp-for="RoomId" class="form-label"></label>
+        <select asp-for="RoomId" asp-items='ViewBag.RoomIdOptions' class="form-select">
+            <option value="">— Chọn phòng —</option>
+        </select>
+        <span asp-validation-for="RoomId" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Number" class="form-label"></label>
+        <input asp-for="Number" class="form-control" placeholder="VD: G-01, A, B…" />
+        <span asp-validation-for="Number" class="text-danger small"></span>
+    </div>
+    <div class="col-12">
+        <div class="p-3 rounded-3 bg-light border">
+            <div class="form-check m-0">
+                <input asp-for="Maintenance" class="form-check-input" />
+                <label asp-for="Maintenance" class="form-check-label fw-semibold"></label>
+                <div class="small text-secondary">Đánh dấu nếu giường đang bảo trì kỹ thuật và tạm thời không nhận cư dân.</div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,34 @@
+@model ContactForm
+
+<div class="row g-4">
+    <input asp-for="ResidentId" type="hidden" />
+    <div class="col-md-6">
+        <label asp-for="FullName" class="form-label"></label>
+        <input asp-for="FullName" class="form-control" placeholder="Họ và tên người liên hệ" />
+        <span asp-validation-for="FullName" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Relationship" class="form-label"></label>
+        <input asp-for="Relationship" class="form-control" placeholder="VD: Con trai, Con gái, Cháu…" />
+        <span asp-validation-for="Relationship" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Phone" class="form-label"></label>
+        <input asp-for="Phone" class="form-control" placeholder="Số điện thoại liên lạc" />
+        <span asp-validation-for="Phone" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Email" class="form-label"></label>
+        <input asp-for="Email" class="form-control" placeholder="dia-chi@email.com" />
+        <span asp-validation-for="Email" class="text-danger small"></span>
+    </div>
+    <div class="col-12">
+        <div class="p-3 rounded-3 bg-light border">
+            <div class="form-check m-0">
+                <input asp-for="IsEmergencyContact" class="form-check-input" />
+                <label asp-for="IsEmergencyContact" class="form-check-label fw-semibold"></label>
+                <div class="small text-secondary">Đánh dấu nếu đây là đầu mối ưu tiên liên hệ đầu tiên trong tình huống khẩn cấp.</div>
+            </div>
+        </div>
+    </div>
+</div>

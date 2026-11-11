@@ -1,0 +1,38 @@
+@model CareTaskForm
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <label asp-for="ResidentId" class="form-label"></label>
+        <select asp-for="ResidentId" asp-items='ViewBag.ResidentIdOptions' class="form-select">
+            <option value="">— Chọn cư dân —</option>
+        </select>
+        <span asp-validation-for="ResidentId" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="AssignedToId" class="form-label"></label>
+        <select asp-for="AssignedToId" asp-items='ViewBag.AssignedToIdOptions' class="form-select">
+            <option value="">— Chọn điều dưỡng phụ trách —</option>
+        </select>
+        <span asp-validation-for="AssignedToId" class="text-danger small"></span>
+    </div>
+    <div class="col-12">
+        <label asp-for="Title" class="form-label"></label>
+        <input asp-for="Title" class="form-control" placeholder="VD: Hỗ trợ vận động buổi sáng, Kiểm tra sinh hiệu định kỳ…" />
+        <span asp-validation-for="Title" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Date" class="form-label"></label>
+        <input asp-for="Date" class="form-control" />
+        <span asp-validation-for="Date" class="text-danger small"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="Time" class="form-label"></label>
+        <input asp-for="Time" class="form-control" type="time" />
+        <span asp-validation-for="Time" class="text-danger small"></span>
+    </div>
+    <div class="col-12">
+        <label asp-for="Instructions" class="form-label"></label>
+        <textarea asp-for="Instructions" class="form-control" rows="3" placeholder="Hướng dẫn chi tiết quy trình thực hiện hoặc lưu ý riêng cho điều dưỡng…"></textarea>
+        <span asp-validation-for="Instructions" class="text-danger small"></span>
+    </div>
+</div>

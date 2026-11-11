@@ -1,0 +1,78 @@
+@model PagedList<Invoice>
+@{
+    ViewData["Title"] = "Hóa đơn & công nợ";
+}
+<div class="page-heading">
+    <div>
+        <p class="eyebrow"><i class="bi bi-receipt-cutoff"></i> NURSING HOME · TÀI CHÍNH & THANH TOÁN</p>
+        <h1>Hóa đơn & công nợ</h1>
+        <p class="text-secondary mb-0">Quản lý hóa đơn định kỳ theo tháng, phát hành khóa sổ và theo dõi thanh toán thực thu.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> + Tạo hóa đơn</a>
+        <a asp-action="Packages" class="btn btn-outline-primary"><i class="bi bi-gem me-1"></i> Gói dịch vụ</a>
+        <a asp-action="Subscriptions" class="btn btn-outline-primary"><i class="bi bi-card-checklist me-1"></i> Đăng ký gói</a>
+    </div>
+</div>
+<form method="get" class="filter-bar">
+    <input name="search" value="@Context.Request.Query["search"]" class="form-control" placeholder="Tìm theo số hóa đơn hoặc tên cư dân…" aria-label="Tìm kiếm" />
+    <select name="status" class="form-select" aria-label="Trạng thái">
+        <option value="">Tất cả trạng thái</option>
+        @foreach (var status in Enum.GetValues<InvoiceStatus>())
+        {
+            <option value="@status" selected="@(Context.Request.Query["status"] == status.ToString())">@status</option>
+        }
+    </select>
+    @foreach (var key in new[] { "residentId", "id" })
+    {
+        if (Context.Request.Query.ContainsKey(key))
+        {
+            <input type="hidden" name="@key" value="@Context.Request.Query[key]" />
+        }
+    }
+    <button class="btn btn-primary" type="submit"><i class="bi bi-funnel-fill me-1"></i> Lọc</button>
+</form>
+<div class="card table-card">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Số hóa đơn</th>
+                    <th>Cư dân</th>
+                    <th>Kỳ</th>
+                    <th>Tổng tiền</th>
+                    <th>Đã trả</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td><span class="badge text-bg-light border fw-semibold">@item.Number</span></td>
+                        <td class="fw-semibold">@item.Resident.FullName</td>
+                        <td>@item.BillingPeriod.ToString("MM/yyyy")</td>
+                        <td class="fw-bold">@BillingService.Total(item).ToString("N2") đ</td>
+                        <td class="text-success fw-semibold">@item.Payments.Sum(payment => payment.Amount).ToString("N2") đ</td>
+                        <td>
+                            <span class="status-badge status-@item.Status.ToString().ToLowerInvariant()">@item.Status</span>
+                        </td>
+                        <td>
+                            <div class="row-actions">
+                                <a asp-controller="Billing" asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-secondary py-5">Chưa có dữ liệu phù hợp.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+<partial name="_Pagination" model="@((Model.Page, Model.TotalPages, Model.TotalCount))" />

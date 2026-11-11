@@ -1,0 +1,54 @@
+@model object
+@{
+    ViewData["Title"] ??= Model switch
+    {
+        ResidentForm => "Hồ sơ cư dân",
+        ContactForm => "Người liên hệ",
+        FamilyLinkForm => "Quyền truy cập của gia đình",
+        RoomForm => "Thông tin phòng",
+        BedForm => "Thông tin giường",
+        BedAssignmentForm => "Phân / chuyển giường",
+        HealthForm => "Ghi nhận sinh hiệu",
+        CareTaskForm => "Phân công chăm sóc",
+        CareUpdateForm => "Kết quả chăm sóc",
+        MedicationForm => "Nhập lịch thuốc đã phê duyệt",
+        MedicationLogForm => "Ghi nhận lần dùng thuốc",
+        PackageForm => "Gói dịch vụ",
+        SubscriptionForm => "Đăng ký gói dịch vụ",
+        InvoiceForm => "Tạo hóa đơn theo tháng",
+        InvoiceItemForm => "Thêm khoản phí",
+        PaymentForm => "Ghi nhận thanh toán",
+        UserForm => "Tạo tài khoản",
+        UserEditForm => "Vai trò và trạng thái tài khoản",
+        ChangePasswordForm => "Đổi mật khẩu",
+        _ => "Cập nhật thông tin"
+    };
+}
+<div class="page-heading">
+    <div>
+        <p class="eyebrow"><i class="bi bi-pencil-square"></i> NURSING HOME · BIỂU MẪU NGHIỆP VỤ</p>
+        <h1>@ViewData["Title"]</h1>
+        <p class="text-secondary mb-0">Kiểm tra thông tin trước khi lưu. Các trường bắt buộc được kiểm tra trên máy chủ.</p>
+    </div>
+</div>
+<div class="card form-card">
+    <div class="card-body p-4 p-lg-5">
+        <form method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="All" class="text-danger mb-3" role="alert">
+            </div>
+            @Html.EditorForModel()
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check2-circle me-1"></i> Lưu thông tin
+                </button>
+                <a href="javascript:history.back()" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Quay lại
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+}

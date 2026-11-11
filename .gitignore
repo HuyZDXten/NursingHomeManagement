@@ -1,0 +1,60 @@
+# Build & Output directories
+**/bin/
+**/obj/
+**/out/
+**/publish/
+
+# Local workspace, DataProtection keys, caches & test results
+work/
+**/keys/
+**/TestResults/
+*.trx
+*.coverage
+*.log
+
+# Secrets, Credentials & Local Environment Configurations
+.env
+.env.*
+*.env
+**/appsettings.Local.json
+**/appsettings.*.Local.json
+**/appsettings.Secret.json
+**/appsettings.Secrets.json
+**/secrets.json
+*credentials*
+*CREDENTIALS*
+*.secret
+*.secrets
+
+# Certificates & Private Keys
+*.pfx
+*.p12
+*.cer
+*.crt
+*.pem
+*.key
+
+# SQL Server & Local Databases
+*.mdf
+*.ldf
+*.ndf
+*.bak
+*.dacpac
+*.db
+*.sqlite
+*.sqlite3
+
+# IDEs & Editors (Visual Studio, VS Code, Rider)
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+# OS generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
