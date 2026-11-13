@@ -51,4 +51,10 @@ export const OPERATIONS_STATUS: Record<string, Record<string, StatusMeta>> = {
     Incident: { label: 'Sự cố', color: 'volcano' },
     Note: { label: 'Ghi chú', color: 'default' },
   },
+  // S3-V5 nhắc nợ
+  reminderStage: {
+    Before3Days: { label: 'Sắp đến hạn (≤ 3 ngày)', color: 'gold' },
+    Overdue: { label: 'Quá hạn', color: 'orange' },
+    Overdue7: { label: 'Quá hạn ≥ 7 ngày', color: 'red' },
+  },
 };

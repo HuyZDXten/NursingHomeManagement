@@ -1,5 +1,6 @@
 using NursingHome.BusinessObjects.Entities;
 using NursingHome.DTOs.Admissions;
+using NursingHome.DTOs.Billing;
 using NursingHome.DTOs.Common;
 using NursingHome.DTOs.Reports;
 using NursingHome.DTOs.Staffing;
@@ -105,4 +106,40 @@ public interface IHandoverService
     Task<List<HandoverDto>> InboxAsync(CurrentUser user);
 
     Task<HandoverDto> AcknowledgeAsync(CurrentUser user, long id);
+}
+
+/// <summary>S3-V5 — UC-85 danh mục dịch vụ phát sinh, UC-86 ghi lần sử dụng (giá chốt lúc ghi).</summary>
+public interface IExtraServiceService
+{
+    Task<List<ExtraServiceDto>> ListServicesAsync(bool activeOnly);
+
+    Task<ExtraServiceDto> SaveServiceAsync(int? id, SaveExtraServiceRequest request);
+
+    /// <summary>Không chọn cư dân = mọi cư dân người gọi được xem; mặc định từ đầu tháng tới hôm nay.</summary>
+    Task<List<ServiceUsageDto>> ListUsagesAsync(CurrentUser user, int? residentId, DateOnly? from, DateOnly? to);
+
+    Task<ServiceUsageDto> RecordUsageAsync(CurrentUser user, int residentId, CreateServiceUsageRequest request);
+
+    Task DeleteUsageAsync(CurrentUser user, int id);
+}
+
+/// <summary>S3-V5 — UC-98 hóa đơn hàng loạt, UC-97 nhắc nợ, UC-88 PDF.</summary>
+public interface IInvoiceAutomationService
+{
+    Task<BatchInvoiceResultDto> CreateBatchAsync(CreateBatchInvoiceRequest request);
+
+    /// <summary>Job mỗi giờ (InvoiceReminderJob) và nút "Chạy nhắc nợ" của kế toán.</summary>
+    Task<ReminderRunResultDto> SendRemindersAsync(CancellationToken cancellationToken = default);
+
+    Task<List<InvoiceReminderDto>> ListRemindersAsync(int invoiceId);
+
+    Task<ExportFile> GetPdfAsync(CurrentUser user, int id);
+}
+
+/// <summary>S3-V5 — UC-118 email hóa đơn cho gia đình có quyền Billing (chỉ khi SMTP đã cấu hình). Trả số email đã gửi.</summary>
+public interface IInvoiceMailer
+{
+    Task<int> SendIssuedAsync(InvoiceListItemDto invoice);
+
+    Task<int> SendReminderAsync(InvoiceListItemDto invoice, ReminderStage stage);
 }

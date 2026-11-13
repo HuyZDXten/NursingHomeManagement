@@ -110,7 +110,7 @@ public class AddInvoiceItemRequest
     [Required, MaxLength(250)]
     public string Description { get; set; } = "";
 
-    [Range(typeof(decimal), "0.01", "9999999")]
+    [Range(typeof(decimal), "0.01", "9999999", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public decimal Quantity { get; set; } = 1;
 
     [Range(typeof(decimal), "0", "999999999999")]

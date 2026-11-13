@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Alert, Button, Card, Col, Descriptions, Row, Table } from 'antd';
+import { Alert, App, Button, Card, Col, Descriptions, Row, Table } from 'antd';
+import { FilePdfOutlined } from '@ant-design/icons';
 import { billingApi } from '../../api/billing';
+import { billingExtrasApi } from '../../api/billingExtras';
 import { extractErrorMessage } from '../../api/client';
 import { PageTitle, StatusTag } from '../../components/Common';
 import { PayOsQrPanel } from '../../components/PayOsQrPanel';
@@ -14,6 +16,7 @@ export default function FamilyInvoice() {
   const [invoice, setInvoice] = useState<InvoiceDetail>();
   const [error, setError] = useState<string>();
   const [paying, setPaying] = useState(false);
+  const { message } = App.useApp();
 
   const load = useCallback(() => billingApi.invoice(id).then(setInvoice).catch((e) => setError(extractErrorMessage(e))), [id]);
   useEffect(() => {
@@ -26,7 +29,15 @@ export default function FamilyInvoice() {
 
   return (
     <>
-      <PageTitle title={<>Hóa đơn {invoice.number} <StatusTag kind="invoice" value={invoice.status} /></>} />
+      <PageTitle
+        title={<>Hóa đơn {invoice.number} <StatusTag kind="invoice" value={invoice.status} /></>}
+        extra={(
+          <Button icon={<FilePdfOutlined />}
+            onClick={() => billingExtrasApi.downloadPdf(invoice.id, invoice.number).catch((e) => message.error(extractErrorMessage(e)))}>
+            Tải PDF
+          </Button>
+        )}
+      />
       <Row gutter={16}>
         <Col xs={24} lg={14}>
           <Card style={{ marginBottom: 16 }}>

@@ -98,6 +98,7 @@ Role (cột `Accounts.Role`): `Admin, Receptionist, Accountant, Doctor, Nurse, C
 | `CarePlanners` | Admin, Nurse |
 | `Prescribers` | Admin, Doctor |
 | `FamilyOnly` | Family |
+| `ServiceRecorders` (S3-V5) | Admin, Receptionist, Accountant, Nurse, Caregiver — ghi dịch vụ phát sinh |
 
 Quyền theo từng cư dân (`ResidentAccessService`, chống IDOR) — **mọi service đọc dữ liệu cư dân phải gọi**:
 

@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { App, Button, Card, Col, Descriptions, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table } from 'antd';
+import { App, Button, Card, Col, Descriptions, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag } from 'antd';
+import { FilePdfOutlined } from '@ant-design/icons';
 import { billingApi } from '../../api/billing';
+import { billingExtrasApi } from '../../api/billingExtras';
 import { extractErrorMessage } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
 import { FINANCE_STAFF, hasRole } from '../../auth/roles';
 import { PageTitle, StatusTag } from '../../components/Common';
 import { PayOsQrPanel } from '../../components/PayOsQrPanel';
 import { dateOnly, dateTime, money, monthOf } from '../../utils/format';
+import { statusMeta } from '../../utils/status';
 import type { InvoiceDetail as Invoice } from '../../types';
+import type { InvoiceReminder } from '../../types/operations';
 
 const vnd = {
   formatter: (v?: string | number) => `${v ?? ''}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.'),
@@ -23,13 +27,24 @@ export default function InvoiceDetail() {
   const finance = hasRole(user?.role, FINANCE_STAFF);
   const [invoice, setInvoice] = useState<Invoice>();
   const [mode, setMode] = useState<'item' | 'pay' | 'qr' | null>(null);
+  const [reminders, setReminders] = useState<InvoiceReminder[]>([]);
   const [itemForm] = Form.useForm();
   const [payForm] = Form.useForm();
 
   const load = useCallback(() => billingApi.invoice(id).then(setInvoice).catch((e) => message.error(extractErrorMessage(e))), [id, message]);
   useEffect(() => {
     void load();
-  }, [load]);
+    billingExtrasApi.reminders(id).then(setReminders).catch(() => undefined);
+  }, [load, id]);
+
+  const downloadPdf = async () => {
+    if (!invoice) return;
+    try {
+      await billingExtrasApi.downloadPdf(invoice.id, invoice.number);
+    } catch (e) {
+      message.error(extractErrorMessage(e));
+    }
+  };
 
   const run = async (action: () => Promise<Invoice | unknown>, ok: string) => {
     try {
@@ -52,6 +67,7 @@ export default function InvoiceDetail() {
         title={<>Hóa đơn {invoice.number} <StatusTag kind="invoice" value={invoice.status} /></>}
         extra={(
           <Space wrap>
+            <Button icon={<FilePdfOutlined />} onClick={downloadPdf}>Tải PDF</Button>
             {invoice.status === 'Draft' && <Button onClick={() => { itemForm.resetFields(); itemForm.setFieldsValue({ quantity: 1 }); setMode('item'); }}>Thêm khoản phí</Button>}
             {invoice.status === 'Draft' && (
               <Popconfirm title="Phát hành sẽ khóa các khoản phí và báo cho gia đình. Tiếp tục?" onConfirm={() => run(() => billingApi.issue(id), 'Đã phát hành và gửi thông báo cho gia đình.')}>
@@ -97,6 +113,11 @@ export default function InvoiceDetail() {
               <Descriptions.Item label="Tổng">{money(invoice.total)}</Descriptions.Item>
               <Descriptions.Item label="Đã thu">{money(invoice.paid)}</Descriptions.Item>
               <Descriptions.Item label="Còn nợ"><b>{money(invoice.remaining)}</b></Descriptions.Item>
+              <Descriptions.Item label="Đã nhắc nợ">
+                {reminders.length
+                  ? reminders.map((r) => <Tag key={r.stage} color={statusMeta('reminderStage', r.stage).color}>{statusMeta('reminderStage', r.stage).label} · {dateTime(r.sentAt)}</Tag>)
+                  : '—'}
+              </Descriptions.Item>
             </Descriptions>
           </Card>
         </Col>

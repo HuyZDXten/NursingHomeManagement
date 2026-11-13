@@ -28,9 +28,17 @@ public partial class NursingHomeContext
 
     public DbSet<ShiftHandover> ShiftHandovers => Set<ShiftHandover>();
 
+    // S3-V5 dịch vụ phát sinh, nhắc nợ
+    public DbSet<ExtraService> ExtraServices => Set<ExtraService>();
+
+    public DbSet<ServiceUsage> ServiceUsages => Set<ServiceUsage>();
+
+    public DbSet<InvoiceReminder> InvoiceReminders => Set<InvoiceReminder>();
+
     partial void ConfigureOperations(ModelBuilder modelBuilder)
     {
         ConfigureStaffing(modelBuilder);
+        ConfigureBillingExtras(modelBuilder);
 
         modelBuilder.Entity<Inquiry>(entity =>
         {
@@ -48,6 +56,30 @@ public partial class NursingHomeContext
             entity.Property(e => e.TimeSlot).HasConversion<string>();
             entity.Property(e => e.Status).HasConversion<string>();
             entity.HasOne(e => e.ConfirmedBy).WithMany().HasForeignKey(e => e.ConfirmedById);
+        });
+    }
+
+    private static void ConfigureBillingExtras(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ExtraService>(entity =>
+        {
+            entity.ToTable("ExtraServices");
+            entity.Property(e => e.UnitPrice).HasPrecision(18, 0);
+        });
+        modelBuilder.Entity<ServiceUsage>(entity =>
+        {
+            entity.ToTable("ServiceUsages");
+            entity.Property(e => e.Quantity).HasPrecision(9, 2);
+            entity.Property(e => e.UnitPrice).HasPrecision(18, 0);
+            entity.HasOne(e => e.Resident).WithMany().HasForeignKey(e => e.ResidentId);
+            entity.HasOne(e => e.ExtraService).WithMany().HasForeignKey(e => e.ExtraServiceId);
+            entity.HasOne(e => e.RecordedBy).WithMany().HasForeignKey(e => e.RecordedById);
+            entity.HasOne(e => e.InvoiceItem).WithMany().HasForeignKey(e => e.InvoiceItemId);
+        });
+        modelBuilder.Entity<InvoiceReminder>(entity =>
+        {
+            entity.ToTable("InvoiceReminders");
+            entity.Property(e => e.Stage).HasConversion<string>();
         });
     }
 

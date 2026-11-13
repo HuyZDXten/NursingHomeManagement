@@ -10,13 +10,28 @@ Hoàn thiện vòng tài chính: ghi nhận dịch vụ phát sinh (giặt ủi,
 
 ## Tiêu chí hoàn thành
 
-- [ ] Admin quản lý danh mục dịch vụ phát sinh (tên, đơn vị, đơn giá, đang bán).
-- [ ] Nhân viên (Receptionist, Nurse, Caregiver) ghi một lần sử dụng cho cư dân: dịch vụ, ngày, số lượng; **đơn giá chốt lúc ghi**.
-- [ ] Tạo hóa đơn tháng (đơn lẻ và hàng loạt) tự thêm các lần sử dụng **chưa vào hóa đơn** trong kỳ thành dòng phí; lần sử dụng đã vào hóa đơn thì không sửa/xóa được.
-- [ ] Hóa đơn hàng loạt: chọn kỳ + hạn → tạo Draft cho mọi cư dân có gói trong kỳ và chưa có hóa đơn; trả về danh sách đã tạo / bỏ qua kèm lý do.
-- [ ] Phát hành hóa đơn → email cho tài khoản gia đình có quyền Billing (nếu SMTP đã cấu hình), ngoài thông báo in-app đang có.
-- [ ] Job nhắc nợ chạy mỗi giờ: gửi một lần cho mỗi mốc **trước hạn 3 ngày**, **quá hạn**, **quá hạn 7 ngày** (in-app + email).
-- [ ] Nút **Tải PDF** ở trang hóa đơn (nhân viên) và trang hóa đơn của gia đình; gia đình chỉ tải được hóa đơn của người thân có quyền Billing.
+- [x] Admin quản lý danh mục dịch vụ phát sinh (tên, đơn vị, đơn giá, đang bán).
+- [x] Nhân viên (Receptionist, Nurse, Caregiver) ghi một lần sử dụng cho cư dân: dịch vụ, ngày, số lượng; **đơn giá chốt lúc ghi**.
+- [x] Tạo hóa đơn tháng (đơn lẻ và hàng loạt) tự thêm các lần sử dụng **chưa vào hóa đơn** trong kỳ thành dòng phí; lần sử dụng đã vào hóa đơn thì không sửa/xóa được.
+- [x] Hóa đơn hàng loạt: chọn kỳ + hạn → tạo Draft cho mọi cư dân có gói trong kỳ và chưa có hóa đơn; trả về danh sách đã tạo / bỏ qua kèm lý do.
+- [x] Phát hành hóa đơn → email cho tài khoản gia đình có quyền Billing (nếu SMTP đã cấu hình), ngoài thông báo in-app đang có.
+- [x] Job nhắc nợ chạy mỗi giờ: gửi một lần cho mỗi mốc **trước hạn 3 ngày**, **quá hạn**, **quá hạn 7 ngày** (in-app + email).
+- [x] Nút **Tải PDF** ở trang hóa đơn (nhân viên) và trang hóa đơn của gia đình; gia đình chỉ tải được hóa đơn của người thân có quyền Billing.
+
+### Kết quả triển khai (13/11/2026)
+
+- Kiểm thử: smoke thêm 34 kiểm tra (tổng 162/162 PASS: giá chốt, tự vào hóa đơn, không xóa khi đã tính, hàng loạt bỏ qua đúng lý do, chạy lại không trùng, nhắc nợ 2 lần chỉ 1 mốc, PDF theo quyền); unit thêm `BillingExtrasRuleTests` (63/63, gồm render PDF thật).
+- Các trang mới (`/staff/extra-services`, `/staff/service-usages`, khối "Dịch vụ phát sinh" trong tab Gói & hóa đơn, modal hóa đơn hàng loạt, nút Tải PDF / Chạy nhắc nợ) build/lint sạch nhưng **chưa xem trên trình duyệt**. Email thật **chưa thử** (máy test không cấu hình SMTP; khi chưa cấu hình thì chỉ bỏ qua email).
+- **Sửa lỗi lõi:** `[Range(typeof(decimal), "0.01", ...)]` parse giới hạn theo culture vi-VN (dấu thập phân ",") nên `POST /api/invoices/{id}/items` trả **500**. Đã thêm `ParseLimitsInInvariantCulture` cho `AddInvoiceItemRequest` + DTO mới, có unit test và smoke hồi quy.
+- Quyết định khác/bổ sung so với đặc tả:
+  - Hóa đơn lấy mọi lần sử dụng chưa tính có `UsedOn` **đến hết kỳ** (không chỉ trong kỳ), để lần ghi muộn sau khi hóa đơn kỳ đó đã tạo sẽ vào hóa đơn kỳ sau. Dòng phí ghi rõ ngày: "Giặt ủi 10/11/2026 (kg)".
+  - **Hủy hóa đơn** gỡ `InvoiceItemId` của các lần sử dụng (vào hóa đơn kỳ sau), vì kỳ đã hủy không tạo lại được (UQ kỳ). Thêm `UX_ServiceUsages_InvoiceItem` (một dòng phí ↔ một lần sử dụng).
+  - Ghi bổ sung tối đa 62 ngày trước; Nurse/Caregiver chỉ xóa lần mình ghi, lễ tân/kế toán/Admin xóa mọi lần chưa tính. Caregiver chỉ ghi cho cư dân mình được xem (`ResidentSection.Basic`).
+  - Hàng loạt xét cư dân đang ở + ngừng lưu trú trong 2 tháng trước kỳ, để bảng "Bỏ qua" giải thích rõ (đã có hóa đơn / đã ngừng lưu trú / không có gói…). Mỗi cư dân tạo qua `BillingService.CreateInvoiceAsync` (quy tắc tính tiền một chỗ).
+  - Nhắc nợ: **giữ chỗ** dòng `InvoiceReminders` trước rồi mới gửi (trùng UQ thì bỏ) nên chạy song song/chạy lại không gửi trùng. Mốc `Overdue7` báo thêm cho Kế toán. Thêm `POST /api/invoices/reminders/run` (nút "Chạy nhắc nợ", FinanceStaff) và `GET /api/invoices/{id}/reminders` (lịch sử nhắc ở trang chi tiết). Job: `Billing:ReminderJobEnabled`, `ReminderIntervalMinutes` (mặc định 60; lượt đầu sau 1 chu kỳ).
+  - Email tách vào `InvoiceMailer` (dùng chung cho phát hành và nhắc nợ); batch/nhắc nợ/PDF ở `InvoiceAutomationService` (module Vận hành) — `BillingService` lõi chỉ thêm 1 dòng gọi mailer khi phát hành.
+  - PDF: QuestPDF **2025.7.2** (Community), font Arial; quyền giống xem hóa đơn (Family không tải được bản nháp → 404).
+  - Thêm `GET /api/service-usages?from&to` (mọi cư dân mình được xem) cho trang ghi nhanh.
 
 ## 1. Database — `01_Schema.sql` mục 9
 

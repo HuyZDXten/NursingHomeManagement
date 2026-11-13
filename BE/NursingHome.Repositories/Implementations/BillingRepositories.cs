@@ -35,6 +35,10 @@ public class BillingRepository : IBillingRepository
 
     public Task<Invoice> CreateInvoiceAsync(Invoice invoice) => Dao.CreateInvoiceAsync(invoice);
 
+    public Task<List<Resident>> ListBatchCandidatesAsync(DateTime dischargedSinceUtc) => Dao.ListBatchCandidatesAsync(dischargedSinceUtc);
+
+    public Task<Dictionary<int, string>> InvoiceNumbersForPeriodAsync(DateOnly billingPeriod) => Dao.InvoiceNumbersForPeriodAsync(billingPeriod);
+
     public Task AddItemAsync(int invoiceId, InvoiceItem item, DateTime now) => Dao.AddItemAsync(invoiceId, item, now);
 
     public Task<Invoice> IssueAsync(int id, DateTime now) => Dao.IssueAsync(id, now);

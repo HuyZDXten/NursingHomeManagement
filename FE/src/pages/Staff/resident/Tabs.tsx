@@ -7,6 +7,7 @@ import { billingApi } from '../../../api/billing';
 import { extractErrorMessage } from '../../../api/client';
 import { residentsApi, type ContactForm } from '../../../api/residents';
 import { roomsApi } from '../../../api/rooms';
+import { ServiceUsagePanel } from '../../Operations/ServiceUsages';
 import { dateOnly, dateTime, dayjs, money, monthOf } from '../../../utils/format';
 import type {
   BedAssignment, Contact, FamilyLink, InvoiceListItem, ResidentDetail, Room, ServicePackage, Subscription,
@@ -255,6 +256,7 @@ export function BillingTab({ residentId, active }: { residentId: number; active:
           { title: 'Còn nợ', dataIndex: 'remaining', render: money },
           { title: 'Trạng thái', dataIndex: 'status', render: (v: string) => <StatusTag kind="invoice" value={v} /> },
         ]} />
+      <ServiceUsagePanel residentId={residentId} active={active} />
       <Modal open={mode === 'sub'} title="Đăng ký gói (giá chốt theo giá hiện tại)" onOk={subscribe} onCancel={() => setMode(null)} destroyOnHidden>
         <Form form={subForm} layout="vertical">
           <Form.Item name="servicePackageId" label="Gói" rules={[{ required: true }]}>

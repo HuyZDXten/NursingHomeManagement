@@ -287,6 +287,12 @@ Sprint 3+ (module):
 | Nghỉ phép & bàn giao (S3-V4) | `GET /api/leave-requests?status` (Admin thấy tất cả; người khác: đơn của mình + đơn xin đổi ca với mình), `POST /api/leave-requests`, `GET /swap-candidates?shiftAssignmentId`, `POST /{id}/cancel` (chủ đơn) | ClinicalStaff |
 | | `POST /api/leave-requests/{id}/approve` · `reject` | AdminOnly |
 | | `GET /api/handovers/draft?shiftId&date`, `GET /api/handovers?date`, `GET /api/handovers/inbox`, `POST /api/handovers`, `POST /{id}/acknowledge` | ClinicalStaff |
+| Tài chính mở rộng (S3-V5) | `GET /api/extra-services?activeOnly` | Staff |
+| | `POST /api/extra-services`, `PUT /{id}` | AdminOnly |
+| | `GET /api/service-usages?from&to`, `GET·POST /api/residents/{id}/service-usages`, `DELETE /api/service-usages/{id}` (chỉ khi chưa vào hóa đơn) | ServiceRecorders (Admin, Receptionist, Accountant, Nurse, Caregiver) |
+| | `POST /api/invoices/batch`, `GET /api/invoices/{id}/reminders` | BillingStaff |
+| | `GET /api/invoices/{id}/pdf` (Family: như xem hóa đơn) | InvoiceReaders |
+| | `POST /api/invoices/reminders/run` (job `InvoiceReminderJob` cũng chạy mỗi giờ) | FinanceStaff |
 | Báo cáo (S3-V3) | `GET /api/reports/revenue?year` · `/revenue/export` (.xlsx) | FinanceStaff |
 | | `GET /api/reports/occupancy?year` · `/occupancy/export` | BillingStaff |
 | | `GET /api/reports/medication-adherence?from&to` · `/medication-adherence/export` | Prescribers |

@@ -30,6 +30,11 @@ public interface IBillingRepository
 
     Task<Invoice> CreateInvoiceAsync(Invoice invoice);
 
+    /// <summary>S3-V5 hóa đơn hàng loạt.</summary>
+    Task<List<Resident>> ListBatchCandidatesAsync(DateTime dischargedSinceUtc);
+
+    Task<Dictionary<int, string>> InvoiceNumbersForPeriodAsync(DateOnly billingPeriod);
+
     Task AddItemAsync(int invoiceId, InvoiceItem item, DateTime now);
 
     Task<Invoice> IssueAsync(int id, DateTime now);

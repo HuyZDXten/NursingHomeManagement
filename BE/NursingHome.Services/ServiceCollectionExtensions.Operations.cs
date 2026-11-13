@@ -4,6 +4,7 @@ using NursingHome.Repositories.Implementations;
 using NursingHome.Repositories.Interfaces;
 using NursingHome.Services.Implementations;
 using NursingHome.Services.Interfaces;
+using NursingHome.Services.Options;
 
 namespace NursingHome.Services;
 
@@ -24,5 +25,13 @@ public static partial class ServiceCollectionExtensions
         // S3-V3 báo cáo
         services.AddScoped<IReportRepository, ReportRepository>();
         services.AddScoped<IReportService, ReportService>();
+
+        // S3-V5 dịch vụ phát sinh, hóa đơn hàng loạt, PDF, nhắc nợ, email
+        services.Configure<BillingJobOptions>(configuration.GetSection(BillingJobOptions.SectionName));
+        services.AddScoped<IExtraServiceRepository, ExtraServiceRepository>();
+        services.AddScoped<IReminderRepository, ReminderRepository>();
+        services.AddScoped<IExtraServiceService, ExtraServiceService>();
+        services.AddScoped<IInvoiceMailer, InvoiceMailer>();
+        services.AddScoped<IInvoiceAutomationService, InvoiceAutomationService>();
     }
 }

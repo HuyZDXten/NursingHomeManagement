@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { App, Button, DatePicker, Form, Input, Modal, Select, Space, Table } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { BellOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { billingApi } from '../../api/billing';
+import { billingExtrasApi } from '../../api/billingExtras';
 import { extractErrorMessage } from '../../api/client';
 import { containsAny, odataString } from '../../api/odata';
+import { useAuth } from '../../auth/AuthContext';
+import { FINANCE_STAFF, hasRole } from '../../auth/roles';
 import { PageTitle, ResidentSelect, StatusTag } from '../../components/Common';
 import { dateOnly, dayjs, money, monthOf } from '../../utils/format';
 import { statusOptions } from '../../utils/status';
 import type { InvoiceListItem } from '../../types';
+import { BatchInvoiceModal } from '../Operations/BatchInvoiceModal';
 
 const PAGE_SIZE = 10;
 
@@ -22,6 +26,9 @@ export default function Invoices() {
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState<string>();
   const [creating, setCreating] = useState(false);
+  const [batching, setBatching] = useState(false);
+  const { user } = useAuth();
+  const finance = hasRole(user?.role, FINANCE_STAFF);
   const [form] = Form.useForm();
 
   const load = useCallback(async () => {
@@ -55,12 +62,29 @@ export default function Invoices() {
     }
   };
 
+  /** S3-V5 (UC-97): chạy nhắc nợ ngay — job nền cũng chạy mỗi giờ, mỗi mốc chỉ nhắc một lần. */
+  const runReminders = async () => {
+    try {
+      const result = await billingExtrasApi.runReminders();
+      message.success(result.sent ? `Đã gửi ${result.sent} lượt nhắc (xét ${result.checked} hóa đơn còn nợ).` : `Không có mốc nhắc mới (xét ${result.checked} hóa đơn còn nợ).`);
+    } catch (e) {
+      message.error(extractErrorMessage(e));
+    }
+  };
+
   return (
     <>
       <PageTitle
         title="Hóa đơn"
-        extra={<Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); form.setFieldsValue({ period: dayjs().subtract(1, 'month'), dueDate: dayjs().date(10) }); setCreating(true); }}>Tạo hóa đơn tháng</Button>}
+        extra={(
+          <Space wrap>
+            {finance && <Button icon={<BellOutlined />} onClick={runReminders}>Chạy nhắc nợ</Button>}
+            <Button icon={<ThunderboltOutlined />} onClick={() => setBatching(true)}>Tạo hóa đơn hàng loạt</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); form.setFieldsValue({ period: dayjs().subtract(1, 'month'), dueDate: dayjs().date(10) }); setCreating(true); }}>Tạo hóa đơn tháng</Button>
+          </Space>
+        )}
       />
+      {batching && <BatchInvoiceModal onClose={() => setBatching(false)} onDone={() => void load()} />}
       <Space style={{ marginBottom: 16 }} wrap>
         <Input.Search placeholder="Số hóa đơn, mã hoặc tên cư dân" allowClear onSearch={(v) => { setPage(1); setKeyword(v); }} style={{ width: 300 }} />
         <Select placeholder="Trạng thái" allowClear style={{ width: 180 }} options={statusOptions('invoice')} onChange={(v) => { setPage(1); setStatus(v); }} />

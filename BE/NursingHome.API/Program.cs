@@ -58,6 +58,7 @@ builder.Services.AddNursingHomeServices(builder.Configuration);
 builder.Services.AddSingleton<INotificationPublisher, SignalRNotificationPublisher>();
 builder.Services.AddSingleton<IUserIdProvider, SubjectUserIdProvider>();
 builder.Services.AddHostedService<PayOsSyncService>();
+builder.Services.AddHostedService<InvoiceReminderJob>(); // S3-V5 nhắc nợ mỗi giờ
 builder.Services.AddSignalR();
 
 // ---- Auth: JWT bearer (giống ASS2) ----

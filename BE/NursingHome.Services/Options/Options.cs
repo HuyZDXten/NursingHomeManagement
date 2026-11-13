@@ -74,3 +74,12 @@ public class VitalAlertOptions
     public decimal TemperatureHigh { get; set; } = 38.0m;
     public decimal SpO2Low { get; set; } = 92m;
 }
+
+/// <summary>S3-V5: job nhắc nợ (InvoiceReminderJob).</summary>
+public class BillingJobOptions
+{
+    public const string SectionName = "Billing";
+
+    public bool ReminderJobEnabled { get; set; } = true;
+    public int ReminderIntervalMinutes { get; set; } = 60;
+}

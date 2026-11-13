@@ -1,13 +1,16 @@
 import { lazy } from 'react';
 import { Route } from 'react-router-dom';
-import { BarChartOutlined, ScheduleOutlined, SolutionOutlined } from '@ant-design/icons';
+import { AppstoreAddOutlined, BarChartOutlined, ScheduleOutlined, ShoppingCartOutlined, SolutionOutlined } from '@ant-design/icons';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
-import { CLINICAL_STAFF, FRONT_DESK } from '../auth/roles';
+import { ADMIN_ONLY, CLINICAL_STAFF, FRONT_DESK } from '../auth/roles';
 import type { MenuEntry } from '../layouts/menu';
 import type { Role } from '../types';
 
 /** Ai có ít nhất một tab báo cáo (từng tab tự lọc role; thêm 'Nurse' khi có báo cáo sự cố UC-125 sau S3-H1). */
 const REPORT_VIEWERS: Role[] = ['Admin', 'Receptionist', 'Accountant', 'Doctor'];
+
+/** S3-V5: ai ghi được dịch vụ phát sinh (policy ServiceRecorders). */
+const SERVICE_RECORDERS: Role[] = ['Admin', 'Receptionist', 'Accountant', 'Nurse', 'Caregiver'];
 
 /**
  * MODULE VẬN HÀNH & TÀI CHÍNH — người phụ trách: Viên (docs/tasks/README.md).
@@ -27,6 +30,9 @@ const Admissions = lazy(() => import('../pages/Operations/Admissions'));
 const Shifts = lazy(() => import('../pages/Operations/Shifts'));
 // S3-V3 báo cáo
 const Reports = lazy(() => import('../pages/Operations/Reports'));
+// S3-V5 dịch vụ phát sinh
+const ExtraServices = lazy(() => import('../pages/Operations/ExtraServices'));
+const ServiceUsages = lazy(() => import('../pages/Operations/ServiceUsages'));
 
 export const operationsPublicRoutes = (
   <>
@@ -39,6 +45,8 @@ export const operationsAppRoutes = (
     <Route path="/staff/admissions" element={<ProtectedRoute roles={FRONT_DESK}><Admissions /></ProtectedRoute>} />
     <Route path="/staff/shifts" element={<ProtectedRoute roles={CLINICAL_STAFF}><Shifts /></ProtectedRoute>} />
     <Route path="/staff/reports" element={<ProtectedRoute roles={REPORT_VIEWERS}><Reports /></ProtectedRoute>} />
+    <Route path="/staff/extra-services" element={<ProtectedRoute roles={ADMIN_ONLY}><ExtraServices /></ProtectedRoute>} />
+    <Route path="/staff/service-usages" element={<ProtectedRoute roles={SERVICE_RECORDERS}><ServiceUsages /></ProtectedRoute>} />
   </>
 );
 
@@ -46,4 +54,6 @@ export const operationsMenu: MenuEntry[] = [
   { key: '/staff/admissions', label: 'Tiếp nhận & tham quan', icon: <SolutionOutlined />, roles: FRONT_DESK },
   { key: '/staff/shifts', label: 'Ca trực', icon: <ScheduleOutlined />, roles: CLINICAL_STAFF },
   { key: '/staff/reports', label: 'Báo cáo', icon: <BarChartOutlined />, roles: REPORT_VIEWERS },
+  { key: '/staff/service-usages', label: 'Ghi dịch vụ phát sinh', icon: <ShoppingCartOutlined />, roles: SERVICE_RECORDERS },
+  { key: '/staff/extra-services', label: 'Dịch vụ phát sinh', icon: <AppstoreAddOutlined />, roles: ADMIN_ONLY },
 ];

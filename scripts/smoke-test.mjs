@@ -243,7 +243,8 @@ const monthIdx = Number(plusDays(0).slice(5, 7)) - 1;
 const download = async (path, token) => {
   const res = await fetch(API + path, { headers: { authorization: `Bearer ${token}` } });
   const bytes = new Uint8Array(await res.arrayBuffer());
-  return { status: res.status, type: res.headers.get('content-type') ?? '', name: res.headers.get('content-disposition') ?? '', zip: bytes[0] === 0x50 && bytes[1] === 0x4b };
+  return { status: res.status, type: res.headers.get('content-type') ?? '', name: res.headers.get('content-disposition') ?? '', zip: bytes[0] === 0x50 && bytes[1] === 0x4b,
+    pdf: String.fromCharCode(...bytes.slice(0, 4)) === '%PDF' };
 };
 const revenue = await call('GET', `/api/reports/revenue?year=${yearNow}`, accountant.accessToken);
 check('Báo cáo doanh thu đủ 12 tháng + bảng công nợ', revenue.status === 200 && revenue.data.months.length === 12 && revenue.data.debts.length >= 1,
@@ -343,6 +344,68 @@ check('Xác nhận lần hai -> 400', (await call('POST', `/api/handovers/${hand
 check('Người viết nhận thông báo bàn giao đã được đọc', (await call('GET', '/api/notifications', adminToken)).data.items.some((n) => n.title === 'Bàn giao ca đã được đọc'));
 // Bàn giao demo Id 2: ca sáng hôm nay → ca kế tiếp là ca chiều; caregiver (6) chỉ có ca sáng.
 check('Caregiver không làm ca kế tiếp thì không xác nhận được -> 403', (await call('POST', '/api/handovers/2/acknowledge', caregiver.accessToken)).status === 403);
+
+// ---- Sprint 3 · S3-V5: dịch vụ phát sinh, hóa đơn hàng loạt, PDF, nhắc nợ ----
+const thisMonth1 = `${plusDays(0).slice(0, 8)}01`;
+const firstOfMonthPlus = (n) => { const d = new Date(`${thisMonth1}T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 10); };
+const nextMonth1 = firstOfMonthPlus(1);
+const extraList = await call('GET', '/api/extra-services?activeOnly=true', caregiver.accessToken);
+check('Danh mục 4 dịch vụ phát sinh (nhân viên xem được)', extraList.status === 200 && extraList.data.length === 4);
+const laundry = extraList.data.find((s) => s.name === 'Giặt ủi');
+check('Lễ tân thêm dịch vụ -> 403', (await call('POST', '/api/extra-services', recep.accessToken, { name: 'Cắt móng', unit: 'lần', unitPrice: 40000, isActive: true })).status === 403);
+check('Admin thêm dịch vụ', (await call('POST', '/api/extra-services', adminToken, { name: 'Cắt móng', unit: 'lần', unitPrice: 40000, isActive: true })).status === 200);
+check('Trùng tên dịch vụ -> 409', (await call('POST', '/api/extra-services', adminToken, { name: 'Cắt móng', unit: 'lần', unitPrice: 1, isActive: true })).status === 409);
+const usage = await call('POST', '/api/residents/2/service-usages', caregiver.accessToken, { extraServiceId: laundry.id, quantity: 2, note: 'Ga giường' });
+check('Caregiver ghi Giặt ủi 2 kg cho NH-0002 (giá chốt 30.000)', usage.status === 200 && usage.data.unitPrice === 30000 && usage.data.amount === 60000 && !usage.data.invoiced, usage.data?.message);
+check('Admin đổi giá danh mục', (await call('PUT', `/api/extra-services/${laundry.id}`, adminToken, { name: 'Giặt ủi', unit: 'kg', unitPrice: 35000, isActive: true })).data.unitPrice === 35000);
+check('Caregiver ghi cho cư dân ngoài phạm vi -> 403', (await call('POST', '/api/residents/1/service-usages', caregiver.accessToken, { extraServiceId: laundry.id, quantity: 1 })).status === 403);
+check('Số lượng 3 chữ số thập phân -> 400', (await call('POST', '/api/residents/2/service-usages', caregiver.accessToken, { extraServiceId: laundry.id, quantity: 1.255 })).status === 400);
+check('Ngày sử dụng ở tương lai -> 400', (await call('POST', '/api/residents/2/service-usages', caregiver.accessToken, { extraServiceId: laundry.id, quantity: 1, usedOn: plusDays(1) })).status === 400);
+check('Family ghi dịch vụ -> 403', (await call('POST', '/api/residents/2/service-usages', family2.accessToken, { extraServiceId: laundry.id, quantity: 1 })).status === 403);
+const extraInvoice = await call('POST', '/api/invoices', accountant.accessToken, { residentId: 2, billingPeriod: thisMonth1, dueDate: plusDays(2) });
+check('Tạo hóa đơn tháng này cho NH-0002 tự thêm dòng Giặt ủi với giá chốt', extraInvoice.status === 200
+  && extraInvoice.data.items.some((i) => i.description.startsWith('Giặt ủi') && i.unitPrice === 30000 && i.quantity === 2), extraInvoice.data?.message);
+const usageAfter = (await call('GET', '/api/residents/2/service-usages', caregiver.accessToken)).data.find((u) => u.id === usage.data.id);
+check('Lần sử dụng đã vào hóa đơn', usageAfter?.invoiced === true && usageAfter.invoiceId === extraInvoice.data.id);
+check('Xóa lần sử dụng đã vào hóa đơn -> 400', (await call('DELETE', `/api/service-usages/${usage.data.id}`, caregiver.accessToken)).status === 400);
+const spare = await call('POST', '/api/residents/2/service-usages', nurse.accessToken, { extraServiceId: laundry.id, quantity: 1 });
+check('Lần ghi sau dùng giá mới', spare.status === 200 && spare.data.unitPrice === 35000);
+check('Caregiver xóa lần người khác ghi -> 403', (await call('DELETE', `/api/service-usages/${spare.data.id}`, caregiver.accessToken)).status === 403);
+check('Nurse xóa lần mình ghi (chưa vào hóa đơn)', (await call('DELETE', `/api/service-usages/${spare.data.id}`, nurse.accessToken)).status === 204);
+
+check('Family tải PDF hóa đơn nháp -> 404', (await download(`/api/invoices/${extraInvoice.data.id}/pdf`, family2.accessToken)).status === 404);
+const draftPdf = await download(`/api/invoices/${extraInvoice.data.id}/pdf`, accountant.accessToken);
+check('Kế toán tải PDF hóa đơn nháp', draftPdf.status === 200 && draftPdf.type.includes('application/pdf') && draftPdf.pdf);
+check('Phát hành hóa đơn', (await call('POST', `/api/invoices/${extraInvoice.data.id}/issue`, accountant.accessToken)).data.status === 'Unpaid');
+const familyPdf = await download(`/api/invoices/${extraInvoice.data.id}/pdf`, family2.accessToken);
+check('family2 tải PDF hóa đơn của NH-0002', familyPdf.status === 200 && familyPdf.pdf && familyPdf.name.includes('.pdf'));
+check('family2 tải PDF hóa đơn của NH-0001 -> 403', (await download('/api/invoices/1/pdf', family2.accessToken)).status === 403);
+check('Caregiver tải PDF -> 403', (await download(`/api/invoices/${extraInvoice.data.id}/pdf`, caregiver.accessToken)).status === 403);
+
+check('Lễ tân chạy nhắc nợ -> 403', (await call('POST', '/api/invoices/reminders/run', recep.accessToken)).status === 403);
+const remindRun = await call('POST', '/api/invoices/reminders/run', accountant.accessToken);
+check('Chạy nhắc nợ: có lượt nhắc mới', remindRun.status === 200 && remindRun.data.sent >= 1, JSON.stringify(remindRun.data));
+const remindAgain = await call('POST', '/api/invoices/reminders/run', accountant.accessToken);
+check('Chạy lại không nhắc trùng mốc', remindAgain.status === 200 && remindAgain.data.sent === 0, JSON.stringify(remindAgain.data));
+const sentStages = await call('GET', `/api/invoices/${extraInvoice.data.id}/reminders`, accountant.accessToken);
+check('Hóa đơn hạn +2 ngày chỉ có 1 mốc "trước hạn 3 ngày"', sentStages.data.length === 1 && sentStages.data[0].stage === 'Before3Days', JSON.stringify(sentStages.data));
+check('family2 nhận thông báo nhắc thanh toán', (await call('GET', '/api/notifications', family2.accessToken)).data.items.some((n) => n.title.startsWith('Nhắc thanh toán')));
+
+const batch = await call('POST', '/api/invoices/batch', accountant.accessToken, { billingPeriod: nextMonth1, dueDate: nextMonth1.replace(/01$/, '10') });
+const batchCodes = batch.data?.created?.map((i) => i.residentCode) ?? [];
+check('Hóa đơn hàng loạt tháng sau: tạo cho NH-0001..0004', batch.status === 200 && ['NH-0001', 'NH-0002', 'NH-0003', 'NH-0004'].every((c) => batchCodes.includes(c)), batchCodes.join());
+check('Bỏ qua NH-0005 vì đã ngừng lưu trú', batch.data.skipped.some((s) => s.residentCode === 'NH-0005' && s.reason.includes('ngừng lưu trú')), JSON.stringify(batch.data.skipped));
+const nh1Next = await call('GET', `/api/invoices/${batch.data.created.find((i) => i.residentCode === 'NH-0001').id}`, accountant.accessToken);
+check('Dịch vụ phát sinh chưa tính tiền vào hóa đơn kỳ sau', nh1Next.data.items.some((i) => i.description.startsWith('Giặt ủi') && i.quantity === 3.5));
+// Hồi quy lõi: số lượng thập phân khi thêm khoản phí (trước đây [Range] parse "0.01" theo culture vi-VN → 500).
+const addItem = await call('POST', `/api/invoices/${nh1Next.data.id}/items`, accountant.accessToken, { description: 'Phụ thu điện máy lạnh', quantity: 1.5, unitPrice: 100000 });
+check('Thêm khoản phí số lượng 1,5 vào hóa đơn nháp', addItem.status === 200 && addItem.data.items.some((i) => i.quantity === 1.5 && i.amount === 150000), addItem.data?.message);
+const batchAgain = await call('POST', '/api/invoices/batch', accountant.accessToken, { billingPeriod: nextMonth1, dueDate: nextMonth1.replace(/01$/, '10') });
+check('Chạy lại hàng loạt không tạo trùng', batchAgain.data.created.length === 0 && batchAgain.data.skipped.filter((s) => s.reason.startsWith('Đã có hóa đơn')).length >= 4);
+check('Kỳ không phải ngày 1 -> 400', (await call('POST', '/api/invoices/batch', accountant.accessToken, { billingPeriod: `${plusDays(0).slice(0, 8)}15`, dueDate: plusDays(30) })).status === 400);
+await call('POST', `/api/invoices/${batch.data.created.find((i) => i.residentCode === 'NH-0003').id}/cancel`, accountant.accessToken);
+const nh3Usages = await call('GET', `/api/residents/3/service-usages?from=${thisMonth1}&to=${plusDays(0)}`, accountant.accessToken);
+check('Hủy hóa đơn trả dịch vụ phát sinh về "chưa tính"', nh3Usages.status === 200 && nh3Usages.data.length >= 1 && nh3Usages.data.every((u) => !u.invoiced));
 
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);
