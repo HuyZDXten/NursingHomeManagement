@@ -40,10 +40,20 @@ public partial class NursingHomeContext
 
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
+    // S4-V1 hạ tầng AI
+    public DbSet<AiConversation> AiConversations => Set<AiConversation>();
+
+    public DbSet<AiMessageRecord> AiMessages => Set<AiMessageRecord>();
+
+    public DbSet<AiKnowledgeDoc> AiKnowledgeDocs => Set<AiKnowledgeDoc>();
+
     partial void ConfigureOperations(ModelBuilder modelBuilder)
     {
         ConfigureStaffing(modelBuilder);
         ConfigureBillingExtras(modelBuilder);
+        modelBuilder.Entity<AiConversation>().ToTable("AiConversations");
+        modelBuilder.Entity<AiMessageRecord>().ToTable("AiMessages");
+        modelBuilder.Entity<AiKnowledgeDoc>().ToTable("AiKnowledgeDocs");
         modelBuilder.Entity<Conversation>(entity =>
         {
             entity.ToTable("Conversations");
