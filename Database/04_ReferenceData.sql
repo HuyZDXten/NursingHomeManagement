@@ -42,6 +42,17 @@ BEGIN
     SET IDENTITY_INSERT dbo.ServicePackages OFF;
 END;
 
+-- Danh mục ca trực (S3-V2). Giờ cơ sở UTC+7; ca đêm kết thúc sáng hôm sau (EndTime < StartTime).
+IF NOT EXISTS (SELECT 1 FROM dbo.Shifts WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Shifts ON;
+    INSERT INTO dbo.Shifts (Id, Code, Name, StartTime, EndTime, IsActive) VALUES
+    (1, N'MORNING', N'Ca sáng', '06:00', '14:00', 1),
+    (2, N'AFTERNOON', N'Ca chiều', '14:00', '22:00', 1),
+    (3, N'NIGHT', N'Ca đêm', '22:00', '06:00', 1);
+    SET IDENTITY_INSERT dbo.Shifts OFF;
+END;
+
 COMMIT TRANSACTION;
 PRINT N'04_ReferenceData.sql: xong.';
 GO

@@ -27,4 +27,10 @@ export const OPERATIONS_STATUS: Record<string, Record<string, StatusMeta>> = {
     Morning: { label: 'Sáng (08:00–11:00)', color: 'gold' },
     Afternoon: { label: 'Chiều (14:00–17:00)', color: 'orange' },
   },
+  // S3-V2 ca trực
+  shift: {
+    MORNING: { label: 'Ca sáng', color: 'gold' },
+    AFTERNOON: { label: 'Ca chiều', color: 'blue' },
+    NIGHT: { label: 'Ca đêm', color: 'purple' },
+  },
 };

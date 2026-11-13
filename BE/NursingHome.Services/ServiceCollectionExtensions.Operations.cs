@@ -15,5 +15,9 @@ public static partial class ServiceCollectionExtensions
         // S3-V1 tiếp nhận & tham quan
         services.AddScoped<IAdmissionRepository, AdmissionRepository>();
         services.AddScoped<IAdmissionService, AdmissionService>();
+
+        // S3-V2 ca trực & phân công phụ trách
+        services.AddScoped<IStaffingRepository, StaffingRepository>();
+        services.AddScoped<IStaffingService, StaffingService>();
     }
 }

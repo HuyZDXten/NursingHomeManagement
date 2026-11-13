@@ -280,6 +280,10 @@ Sprint 3+ (module):
 | Tiếp nhận (S3-V1) | `POST /api/public/inquiries`, `POST /api/public/tour-bookings` | ẩn danh, rate limit `PublicForms` (5/phút/IP) |
 | | `GET /api/public/tour-slots?from&to` (chỉ số chỗ còn lại) | ẩn danh |
 | | `GET /odata/Inquiries`, `PUT /api/inquiries/{id}`, `POST /{id}/admit`, `GET /api/tour-bookings?from&to`, `POST /api/tour-bookings/{id}/confirm` · `cancel` · `done` · `no-show` | FrontDesk |
+| Ca trực (S3-V2) | `GET /api/shifts`, `GET /api/shift-assignments/mine?days=14` | Staff |
+| | `GET /api/shift-assignments?from&to` (Admin/Nurse thấy tất cả, Doctor/Caregiver chỉ của mình), `GET /api/care-assignments?residentId&accountId&activeOnly` (Caregiver chỉ của mình) | ClinicalStaff |
+| | `POST /api/shift-assignments`, `DELETE /{id}`, `POST /copy-week` | AdminOnly |
+| | `POST /api/care-assignments`, `POST /{id}/end` | CarePlanners |
 
 **OData chỉ dùng attribute routing** (`Program.cs` bỏ các convention theo tên controller): mỗi entity set cần một `ODataController` có `[Route("odata/TenEntitySet")]`. Controller REST trùng tên entity set (vd. `InvoicesController`) không còn bị OData bắt nhầm.
 
