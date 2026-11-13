@@ -35,11 +35,23 @@ PR 1 — hạ tầng:
 4. Lỗi nghiệp vụ trong tool (`NotFound`, `Forbidden`, `BusinessRule`) tự thành `{"error": "..."}` cho model giải thích; không cần try/catch.
 
 PR 2 — chatbot công khai:
-- [ ] Widget trên mọi trang công khai; khách không đăng nhập; hội thoại gắn với `conversationKey` (UUID lưu `localStorage`).
-- [ ] Trả lời đúng giá gói, số giường trống, giờ thăm (lấy qua tool); câu hỏi y tế → khuyên liên hệ bác sĩ/điều dưỡng.
-- [ ] Tạo yêu cầu tư vấn / đặt tham quan qua tool **chỉ sau khi khách xác nhận lại thông tin**; yêu cầu tạo từ chatbot có `Source = Chatbot` (S3-V1).
-- [ ] Admin quản lý **tài liệu tri thức** (FAQ, quy trình nhập viện, chính sách thăm) tại `/staff/ai-knowledge`.
-- [ ] Quá `RateLimit:AiMessagesPerMinute` mỗi IP → 429; `Ai:PublicChatbotEnabled = false` → widget ẩn.
+- [x] Widget trên mọi trang công khai; khách không đăng nhập; hội thoại gắn với `conversationKey` (UUID lưu `localStorage`).
+- [x] Trả lời đúng giá gói, số giường trống, giờ thăm (lấy qua tool); câu hỏi y tế → khuyên liên hệ bác sĩ/điều dưỡng.
+- [x] Tạo yêu cầu tư vấn / đặt tham quan qua tool **chỉ sau khi khách xác nhận lại thông tin**; yêu cầu tạo từ chatbot có `Source = Chatbot` (S3-V1).
+- [x] Admin quản lý **tài liệu tri thức** (FAQ, quy trình nhập viện, chính sách thăm) tại `/staff/ai-knowledge`.
+- [x] Quá `RateLimit:AiMessagesPerMinute` mỗi IP → 429; `Ai:PublicChatbotEnabled = false` → widget ẩn.
+
+### Kết quả PR 2 — chatbot công khai (13/11/2026, nhánh `feature/s4-v1-public-bot`)
+
+- Kiểm thử: smoke thêm 19 kiểm tra với provider **Fake** (tổng 203/203 PASS: giá từ `list_packages`, giường trống, giờ thăm từ tri thức, từ chối câu hỏi thuốc, tài liệu nội bộ không lộ, tạo yêu cầu/đặt tham quan chỉ sau khi xác nhận, nguồn `Chatbot`, tham số sai không 500, 429). Unit thêm `PublicToolsTests` (85/85). `run-smoke-isolated.ps1` giờ chạy với `Ai__Enabled=true`, `Ai__Provider=Fake`.
+- **Chưa chạy với Gemini thật** (không có key trên máy test) — khi có key: `dotnet user-secrets set "Ai:Gemini:ApiKey" "..."`, `"Ai:Gemini:Model" "gemini-3.8-flash"` (model StreetBiz dùng), `Provider = Gemini`, rồi thử các câu ở mục 6. Widget và trang `/staff/ai-knowledge` **chưa xem trên trình duyệt**.
+- Khác đặc tả:
+  - Chốt chặn server-side cho tool ghi dữ liệu: cần `confirmed = true` **và** tin vừa gửi của khách là lời xác nhận rõ ("đồng ý", "xác nhận", "ok", "vâng", "chốt"… — không tính "có", "được" vì quá chung). Thiếu một trong hai → tool chỉ trả câu đọc lại thông tin.
+  - Tool gọi service trực tiếp nên tự kiểm DataAnnotations của `CreateInquiryRequest`/`BookTourRequest`; lỗi trả về cho model dạng `{"error"}` (khách thấy câu giải thích, không 500).
+  - Mỗi kết quả tool có trường `summary` (tiếng Việt) để provider Fake trả lời khi demo không có key; Gemini dùng toàn bộ dữ liệu.
+  - System prompt nhắc model coi dữ liệu tool là dữ liệu tra cứu, bỏ qua chỉ dẫn trong đó (chống prompt injection từ tài liệu).
+  - Tài liệu `IsPublic = 0` (ví dụ "Quy trình nội bộ khi cư dân té ngã") chỉ dành cho kênh gia đình/nội bộ; chatbot công khai không tìm thấy.
+  - Widget gắn bằng `<PublicChatbot />` trong `PublicLayout` (1 dòng ở file lõi).
 
 ## 1. Database — `01_Schema.sql` mục 9
 

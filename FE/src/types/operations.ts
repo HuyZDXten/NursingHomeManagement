@@ -400,3 +400,28 @@ export interface ChatMessage {
   sentAt: string;
   readAt?: string | null;
 }
+
+// ---------------- S4-V1 AI: chatbot công khai + tri thức ----------------
+
+export interface AiPublicConfig {
+  enabled: boolean;
+  greeting: string;
+}
+
+export interface AiHistoryItem {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AiKnowledgeDoc {
+  id: number;
+  title: string;
+  content: string;
+  tags?: string | null;
+  /** false = chỉ trợ lý gia đình/nội bộ dùng. */
+  isPublic: boolean;
+  isActive: boolean;
+  updatedAt: string;
+}
+
+export type AiKnowledgeForm = Omit<AiKnowledgeDoc, 'id' | 'updatedAt'>;

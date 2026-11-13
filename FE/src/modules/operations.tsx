@@ -1,6 +1,6 @@
 import { lazy } from 'react';
 import { Route } from 'react-router-dom';
-import { AppstoreAddOutlined, BarChartOutlined, MessageOutlined, ScheduleOutlined, ShoppingCartOutlined, SolutionOutlined } from '@ant-design/icons';
+import { AppstoreAddOutlined, BarChartOutlined, BookOutlined, MessageOutlined, ScheduleOutlined, ShoppingCartOutlined, SolutionOutlined } from '@ant-design/icons';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
 import { ADMIN_ONLY, CLINICAL_STAFF, FRONT_DESK } from '../auth/roles';
 import type { MenuEntry } from '../layouts/menu';
@@ -38,6 +38,8 @@ const ExtraServices = lazy(() => import('../pages/Operations/ExtraServices'));
 const ServiceUsages = lazy(() => import('../pages/Operations/ServiceUsages'));
 // S3-V6 chat gia đình – nhân viên
 const Messages = lazy(() => import('../pages/Operations/Messages'));
+// S4-V1 AI: tri thức cho chatbot (widget công khai gắn ở PublicLayout)
+const AiKnowledge = lazy(() => import('../pages/Operations/AiKnowledge'));
 
 export const operationsPublicRoutes = (
   <>
@@ -54,6 +56,7 @@ export const operationsAppRoutes = (
     <Route path="/staff/service-usages" element={<ProtectedRoute roles={SERVICE_RECORDERS}><ServiceUsages /></ProtectedRoute>} />
     <Route path="/staff/messages" element={<ProtectedRoute roles={CHAT_STAFF}><Messages /></ProtectedRoute>} />
     <Route path="/family/messages" element={<ProtectedRoute roles={['Family']}><Messages /></ProtectedRoute>} />
+    <Route path="/staff/ai-knowledge" element={<ProtectedRoute roles={ADMIN_ONLY}><AiKnowledge /></ProtectedRoute>} />
   </>
 );
 
@@ -65,4 +68,5 @@ export const operationsMenu: MenuEntry[] = [
   { key: '/staff/extra-services', label: 'Dịch vụ phát sinh', icon: <AppstoreAddOutlined />, roles: ADMIN_ONLY },
   { key: '/staff/messages', label: 'Tin nhắn gia đình', icon: <MessageOutlined />, roles: CHAT_STAFF },
   { key: '/family/messages', label: 'Tin nhắn với cơ sở', icon: <MessageOutlined />, roles: ['Family'] },
+  { key: '/staff/ai-knowledge', label: 'Tri thức trợ lý AI', icon: <BookOutlined />, roles: ADMIN_ONLY },
 ];

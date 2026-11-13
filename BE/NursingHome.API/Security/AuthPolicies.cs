@@ -47,4 +47,7 @@ public static class RateLimitPolicies
 
     /// <summary>S3-V6: gửi tin nhắn — RateLimit:ChatPerMinute (mặc định 20) theo từng tài khoản.</summary>
     public const string Chat = nameof(Chat);
+
+    /// <summary>S4-V1: chatbot công khai — RateLimit:AiMessagesPerMinute (mặc định 20) theo IP.</summary>
+    public const string AiPublic = nameof(AiPublic);
 }

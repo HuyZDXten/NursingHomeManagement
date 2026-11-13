@@ -123,6 +123,7 @@ foreach (var (policy, roles) in AuthPolicies.Map)
 int credentialsPerMinute = builder.Configuration.GetValue("RateLimit:CredentialsPerMinute", 10);
 int publicFormsPerMinute = builder.Configuration.GetValue("RateLimit:PublicFormsPerMinute", 5);
 int chatPerMinute = builder.Configuration.GetValue("RateLimit:ChatPerMinute", 20);
+int aiPerMinute = builder.Configuration.GetValue("RateLimit:AiMessagesPerMinute", 20);
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -136,6 +137,10 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy(RateLimitPolicies.Chat, httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.User.FindFirst("sub")?.Value ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = chatPerMinute, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    // S4-V1: chatbot công khai theo IP (khách không đăng nhập).
+    options.AddPolicy(RateLimitPolicies.AiPublic, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = aiPerMinute, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.OnRejected = (context, _) => new ValueTask(ExceptionHandlingMiddleware.WriteErrorAsync(
         context.HttpContext.Response, StatusCodes.Status429TooManyRequests, "Thao tác quá nhiều lần. Vui lòng chờ một phút."));
 });

@@ -296,6 +296,8 @@ Sprint 3+ (module):
 | Chat gia đình (S3-V6) | `GET /api/conversations`, `GET·POST /api/conversations/{id}/messages?beforeId&take` (gửi: rate limit `Chat` 20/phút/tài khoản), `POST /{id}/read` — quyền kiểm ở `ChatService` (Family: người thân được liên kết; Admin, Receptionist, Nurse; Caregiver phụ trách chính) | đăng nhập |
 | | `POST /api/conversations {residentId}` (mở hoặc lấy lại) | FamilyOnly |
 | | Sự kiện realtime `chat` (ChatMessageDto) trên hub `/hubs/notifications` | — |
+| AI công khai (S4-V1) | `GET /api/ai/public/config`, `POST /api/ai/public/chat {conversationKey, message}` (rate limit `AiPublic` 20/phút/IP), `GET /api/ai/public/history?conversationKey` | ẩn danh |
+| | `GET·POST /api/ai/knowledge`, `PUT·DELETE /{id}` | AdminOnly |
 | Báo cáo (S3-V3) | `GET /api/reports/revenue?year` · `/revenue/export` (.xlsx) | FinanceStaff |
 | | `GET /api/reports/occupancy?year` · `/occupancy/export` | BillingStaff |
 | | `GET /api/reports/medication-adherence?from&to` · `/medication-adherence/export` | Prescribers |
