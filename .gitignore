@@ -12,10 +12,17 @@ work/
 *.coverage
 *.log
 
+# Frontend (Vite + React)
+**/node_modules/
+FE/dist/
+*.local
+
 # Secrets, Credentials & Local Environment Configurations
 .env
 .env.*
+!.env.example
 *.env
+**/appsettings.Development.json
 **/appsettings.Local.json
 **/appsettings.*.Local.json
 **/appsettings.Secret.json
