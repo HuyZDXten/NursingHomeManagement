@@ -10,13 +10,26 @@ Admin lập lịch ca theo tuần (Sáng/Chiều/Đêm) cho Doctor, Nurse, Careg
 
 ## Tiêu chí hoàn thành
 
-- [ ] Bảng tuần: hàng = nhân viên lâm sàng, cột = 7 ngày, ô = các ca; Admin bấm ô để thêm/xóa ca.
-- [ ] Không xếp một người 2 lần cùng ca cùng ngày (UNIQUE); xếp 2 ca liền nhau trong một ngày thì cảnh báo nhưng vẫn cho.
-- [ ] Nút "Sao chép tuần trước" (bỏ qua ô đã có).
-- [ ] `nurse`/`caregiver` mở "Lịch ca của tôi" thấy 14 ngày tới; không thấy nút sửa.
-- [ ] Tab "Phân công phụ trách": chọn cư dân + nhân viên + ca (tùy chọn) + từ ngày; kết thúc phân công; một cư dân chỉ một người phụ trách chính đang hiệu lực mỗi ca.
-- [ ] Caregiver được phân công phụ trách cư dân **xem được hồ sơ** cư dân đó kể cả khi chưa có việc (mở rộng `ResidentAccessService`, có test).
-- [ ] Receptionist/Accountant/Family gọi API sửa → 403.
+- [ ] Bảng tuần: hàng = nhân viên lâm sàng, cột = 7 ngày, ô = các ca; Admin bấm ô để thêm/xóa ca. *(API xong; trang `/staff/shifts` build/lint sạch, cần thử trên trình duyệt khi review)*
+- [x] Không xếp một người 2 lần cùng ca cùng ngày (UNIQUE); xếp 2 ca liền nhau trong một ngày thì cảnh báo nhưng vẫn cho.
+- [x] Nút "Sao chép tuần trước" (bỏ qua ô đã có).
+- [x] `nurse`/`caregiver` mở "Lịch ca của tôi" thấy 14 ngày tới; không thấy nút sửa.
+- [x] Tab "Phân công phụ trách": chọn cư dân + nhân viên + ca (tùy chọn) + từ ngày; kết thúc phân công; một cư dân chỉ một người phụ trách chính đang hiệu lực mỗi ca.
+- [ ] Caregiver được phân công phụ trách cư dân **xem được hồ sơ** cư dân đó kể cả khi chưa có việc (mở rộng `ResidentAccessService`, có test). *(nhánh/PR riêng `feature/s3-v2-access`, xem bên dưới)*
+- [x] Receptionist/Accountant/Family gọi API sửa → 403.
+
+### Kết quả triển khai (13/11/2026)
+
+- Kiểm thử: smoke thêm 24 kiểm tra S3-V2 (tổng 78/78 PASS), unit thêm `StaffingRuleTests` (35/35).
+- Quyết định khác/bổ sung so với đặc tả:
+  - Dữ liệu demo phụ trách: **NH-0002 → caregiver**, NH-0004 → caregiver2 (đặc tả ghi NH-0001). NH-0001 giữ nguyên để kịch bản cũ "Caregiver hết việc với NH-0001 thì hết quyền" vẫn đúng.
+  - Phụ trách "mọi ca" (ShiftId NULL) trùng với mọi ca cụ thể: đã có "mọi ca" thì không thêm "ca sáng" và ngược lại (kiểm trong transaction Serializable của `StaffingDAO.AddCareAssignmentAsync`, 409). Phân công đang hiệu lực = `EndDate IS NULL`; "Kết thúc" đặt `EndDate = hôm nay` và mất hiệu lực ngay.
+  - Cảnh báo ca liền kề tính theo khung giờ thật (`StaffingRules.ShiftWindow` + `Touches`), nên cả "ca đêm hôm trước + ca sáng hôm nay" cũng được cảnh báo.
+  - Sao chép tuần: bỏ qua ô đã có, ngày đã qua và tài khoản đã khóa; trả `{ copied, skipped }`; báo mỗi người có ca mới một thông báo.
+  - Bỏ ca (`DELETE`) cũng báo cho người bị bỏ ca. Không sửa/bỏ ca của ngày đã qua.
+  - `GET /api/care-assignments`: Caregiver chỉ thấy phân công của chính mình (không lộ danh sách cư dân ngoài phạm vi được xem).
+  - Khung giờ ca và `WeekStart` nằm ở `Services/Helpers/StaffingRules.cs` để S3-V4 dùng lại.
+- Phần quyền (`ResidentAccessService`) tách nhánh `feature/s3-v2-access` (tạo từ nhánh này) để Huy review riêng vì ảnh hưởng mọi màn chăm sóc.
 
 ## 1. Database — `01_Schema.sql` mục 9
 

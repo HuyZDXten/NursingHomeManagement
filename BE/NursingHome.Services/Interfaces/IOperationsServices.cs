@@ -1,6 +1,7 @@
 using NursingHome.BusinessObjects.Entities;
 using NursingHome.DTOs.Admissions;
 using NursingHome.DTOs.Common;
+using NursingHome.DTOs.Staffing;
 
 namespace NursingHome.Services.Interfaces;
 
@@ -34,4 +35,28 @@ public interface IAdmissionService
     Task<TourBookingDto> CompleteTourAsync(int id);
 
     Task<TourBookingDto> MarkNoShowAsync(int id);
+}
+
+/// <summary>S3-V2 — UC-44 lịch ca, UC-45 phân công phụ trách, UC-46 lịch ca của tôi.</summary>
+public interface IStaffingService
+{
+    Task<List<ShiftDto>> ListShiftsAsync();
+
+    /// <summary>Admin/Nurse thấy mọi người; Doctor/Caregiver chỉ ca của mình.</summary>
+    Task<List<ShiftAssignmentDto>> ListAssignmentsAsync(CurrentUser user, DateOnly? from, DateOnly? to);
+
+    Task<List<ShiftAssignmentDto>> MyAssignmentsAsync(CurrentUser user, int days);
+
+    Task<ShiftAssignmentDto> CreateAssignmentAsync(CurrentUser user, CreateShiftAssignmentRequest request);
+
+    Task DeleteAssignmentAsync(int id);
+
+    Task<CopyWeekResultDto> CopyWeekAsync(CurrentUser user, CopyWeekRequest request);
+
+    /// <summary>Caregiver chỉ thấy phân công của mình.</summary>
+    Task<List<CareAssignmentDto>> ListCareAssignmentsAsync(CurrentUser user, int? residentId, int? accountId, bool activeOnly);
+
+    Task<CareAssignmentDto> CreateCareAssignmentAsync(CurrentUser user, CreateCareAssignmentRequest request);
+
+    Task<CareAssignmentDto> EndCareAssignmentAsync(int id);
 }

@@ -182,5 +182,55 @@ for (let i = 0; i < 8 && !limited; i++) {
 }
 check('Form công khai quá 5 lần/phút -> 429', limited);
 
+// ---- Sprint 3 · S3-V2: ca trực & phân công phụ trách ----
+const vnNow = new Date(Date.now() + 7 * 3600e3);
+const thisMonday = plusDays(-((vnNow.getUTCDay() + 6) % 7));
+const mondayPlus = (n) => new Date(Date.parse(thisMonday) + n * 86400e3).toISOString().slice(0, 10);
+const nextMonday = mondayPlus(7);
+const shiftList = await call('GET', '/api/shifts', recep.accessToken);
+check('Danh mục 3 ca (mọi nhân viên đọc được)', shiftList.status === 200 && shiftList.data.length === 3);
+const shiftOf = (code) => shiftList.data.find((s) => s.code === code).id;
+check('Receptionist xếp ca -> 403', (await call('POST', '/api/shift-assignments', recep.accessToken, { accountId: 7, shiftId: shiftOf('MORNING'), workDate: nextMonday })).status === 403);
+const morningCg2 = await call('POST', '/api/shift-assignments', adminToken, { accountId: 7, shiftId: shiftOf('MORNING'), workDate: nextMonday });
+check('Admin xếp ca sáng thứ Hai tuần sau cho caregiver2', morningCg2.status === 200 && !morningCg2.data.warning, morningCg2.data?.message);
+check('Xếp trùng người + ngày + ca -> 409', (await call('POST', '/api/shift-assignments', adminToken, { accountId: 7, shiftId: shiftOf('MORNING'), workDate: nextMonday })).status === 409);
+const afternoonCg2 = await call('POST', '/api/shift-assignments', adminToken, { accountId: 7, shiftId: shiftOf('AFTERNOON'), workDate: nextMonday });
+check('Ca liền kề vẫn tạo nhưng có cảnh báo', afternoonCg2.status === 200 && !!afternoonCg2.data.warning, afternoonCg2.data?.warning);
+const nightCg2 = await call('POST', '/api/shift-assignments', adminToken, { accountId: 7, shiftId: shiftOf('NIGHT'), workDate: nextMonday });
+check('Ca đêm 8 tiếng, kết thúc sáng hôm sau', nightCg2.status === 200
+  && Date.parse(nightCg2.data.endsAt) - Date.parse(nightCg2.data.startsAt) === 8 * 3600e3
+  && nightCg2.data.endsAt.slice(0, 10) === mondayPlus(7) && nightCg2.data.startsAt.slice(0, 10) === mondayPlus(7), `${nightCg2.data?.startsAt} → ${nightCg2.data?.endsAt}`);
+check('Không xếp ca cho lễ tân -> 400', (await call('POST', '/api/shift-assignments', adminToken, { accountId: 2, shiftId: shiftOf('MORNING'), workDate: nextMonday })).status === 400);
+check('Không xếp ca ngày đã qua -> 400', (await call('POST', '/api/shift-assignments', adminToken, { accountId: 7, shiftId: shiftOf('MORNING'), workDate: plusDays(-1) })).status === 400);
+check('Admin bỏ ca đêm vừa xếp', (await call('DELETE', `/api/shift-assignments/${nightCg2.data.id}`, adminToken)).status === 204);
+
+const caregiver2 = await login('caregiver2@nursinghome.local');
+const cg2Mine = await call('GET', '/api/shift-assignments/mine?days=14', caregiver2.accessToken);
+check('Caregiver2 xem "Lịch ca của tôi" 14 ngày', cg2Mine.status === 200 && cg2Mine.data.every((a) => a.accountId === 7)
+  && cg2Mine.data.some((a) => a.workDate === nextMonday && a.shiftCode === 'MORNING'));
+check('Caregiver2 nhận thông báo lịch ca', (await call('GET', '/api/notifications', caregiver2.accessToken)).data.items.some((n) => n.title === 'Lịch ca mới'));
+const weekRange = `from=${thisMonday}&to=${mondayPlus(6)}`;
+const cgWeek = await call('GET', `/api/shift-assignments?${weekRange}`, caregiver.accessToken);
+check('Caregiver chỉ thấy ca của mình', cgWeek.status === 200 && cgWeek.data.length === 5 && cgWeek.data.every((a) => a.accountId === 6));
+check('Nurse thấy lịch ca của mọi người', (await call('GET', `/api/shift-assignments?${weekRange}`, nurse.accessToken)).data.length === 15);
+const copied = await call('POST', '/api/shift-assignments/copy-week', adminToken, { fromWeekStart: thisMonday, toWeekStart: nextMonday });
+check('Sao chép tuần này sang tuần sau, bỏ qua ô đã có', copied.status === 200 && copied.data.copied === 14 && copied.data.skipped === 1, JSON.stringify(copied.data));
+check('Sao chép từ ngày không phải thứ Hai -> 400', (await call('POST', '/api/shift-assignments/copy-week', adminToken, { fromWeekStart: mondayPlus(1), toWeekStart: nextMonday })).status === 400);
+
+const careAssign = await call('POST', '/api/care-assignments', nurse.accessToken, { residentId: 3, accountId: 6 });
+check('Nurse phân công caregiver phụ trách NH-0003 (mọi ca)', careAssign.status === 200 && careAssign.data.isActive && careAssign.data.shiftId === null, careAssign.data?.message);
+check('NH-0003 đã có người phụ trách mọi ca -> 409', (await call('POST', '/api/care-assignments', nurse.accessToken, { residentId: 3, accountId: 7, shiftId: shiftOf('MORNING') })).status === 409);
+check('Phụ trách phải là Nurse/Caregiver -> 400', (await call('POST', '/api/care-assignments', nurse.accessToken, { residentId: 1, accountId: 4 })).status === 400);
+check('Caregiver không tự phân công -> 403', (await call('POST', '/api/care-assignments', caregiver.accessToken, { residentId: 1, accountId: 6 })).status === 403);
+check('Receptionist xem phân công -> 403', (await call('GET', '/api/care-assignments', recep.accessToken)).status === 403);
+const nh3Assignments = await call('GET', '/api/care-assignments?residentId=3', nurse.accessToken);
+check('Danh sách phân công đang hiệu lực của NH-0003', nh3Assignments.data.length === 1 && nh3Assignments.data[0].accountName === 'Hoàng Văn Nam');
+const cg2Care = await call('GET', '/api/care-assignments', caregiver2.accessToken);
+check('Caregiver chỉ thấy phân công của chính mình', cg2Care.status === 200 && cg2Care.data.length === 1 && cg2Care.data.every((a) => a.accountId === 7));
+// (S3-V2 phần quyền) kiểm tra caregiver đọc hồ sơ NH-0003 nhờ phân công phụ trách: chèn tại đây.
+const endedAssign = await call('POST', `/api/care-assignments/${careAssign.data.id}/end`, nurse.accessToken);
+check('Kết thúc phân công phụ trách', endedAssign.status === 200 && !endedAssign.data.isActive && !!endedAssign.data.endDate);
+check('Kết thúc lần hai -> 400', (await call('POST', `/api/care-assignments/${careAssign.data.id}/end`, nurse.accessToken)).status === 400);
+
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);

@@ -87,3 +87,63 @@ export interface UpdateInquiryForm {
 export interface PublicFormResult {
   message: string;
 }
+
+// ---------------- S3-V2 ca trực & phân công phụ trách ----------------
+
+export type ShiftCode = 'MORNING' | 'AFTERNOON' | 'NIGHT';
+
+export interface Shift {
+  id: number;
+  code: ShiftCode;
+  name: string;
+  /** "06:00:00" — giờ cơ sở. */
+  startTime: string;
+  endTime: string;
+  crossesMidnight: boolean;
+}
+
+export interface ShiftAssignment {
+  id: number;
+  accountId: number;
+  accountName: string;
+  role: string;
+  shiftId: number;
+  shiftCode: ShiftCode;
+  shiftName: string;
+  workDate: string;
+  /** UTC — ca đêm kết thúc ngày hôm sau. */
+  startsAt: string;
+  endsAt: string;
+  note?: string | null;
+  /** Chỉ có khi vừa tạo: làm hai ca liền nhau. */
+  warning?: string | null;
+}
+
+export interface CopyWeekResult {
+  copied: number;
+  skipped: number;
+}
+
+export interface CareAssignment {
+  id: number;
+  residentId: number;
+  residentCode: string;
+  residentName: string;
+  accountId: number;
+  accountName: string;
+  role: string;
+  /** null = mọi ca. */
+  shiftId?: number | null;
+  shiftName?: string | null;
+  startDate: string;
+  endDate?: string | null;
+  isActive: boolean;
+  assignedByName: string;
+}
+
+export interface CareAssignmentForm {
+  residentId: number;
+  accountId: number;
+  shiftId?: number | null;
+  startDate?: string;
+}

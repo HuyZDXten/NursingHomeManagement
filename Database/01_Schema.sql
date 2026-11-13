@@ -496,6 +496,54 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_TourBookings_Inquiry'
     CREATE INDEX IX_TourBookings_Inquiry ON dbo.TourBookings (InquiryId);
 GO
 
+/* ---- 9.2 Ca trực & phân công phụ trách (S3-V2: UC-44, 45, 46). Danh mục ca ở 04_ReferenceData.sql ---- */
+IF OBJECT_ID(N'dbo.Shifts', N'U') IS NULL
+CREATE TABLE dbo.Shifts (
+    Id        INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Shifts PRIMARY KEY,
+    Code      NVARCHAR(20) NOT NULL CONSTRAINT UQ_Shifts_Code UNIQUE,
+    Name      NVARCHAR(50) NOT NULL,
+    StartTime TIME(0)      NOT NULL,                -- giờ cơ sở (UTC+7)
+    EndTime   TIME(0)      NOT NULL,                -- ca đêm: EndTime < StartTime (kết thúc ngày hôm sau)
+    IsActive  BIT          NOT NULL CONSTRAINT DF_Shifts_IsActive DEFAULT (1)
+);
+GO
+IF OBJECT_ID(N'dbo.ShiftAssignments', N'U') IS NULL
+CREATE TABLE dbo.ShiftAssignments (
+    Id          INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ShiftAssignments PRIMARY KEY,
+    AccountId   INT           NOT NULL CONSTRAINT FK_ShiftAssignments_Accounts REFERENCES dbo.Accounts (Id),
+    ShiftId     INT           NOT NULL CONSTRAINT FK_ShiftAssignments_Shifts REFERENCES dbo.Shifts (Id),
+    WorkDate    DATE          NOT NULL,              -- ngày BẮT ĐẦU ca (giờ cơ sở)
+    Note        NVARCHAR(500) NULL,
+    CreatedById INT           NOT NULL CONSTRAINT FK_ShiftAssignments_CreatedBy REFERENCES dbo.Accounts (Id),
+    CreatedAt   DATETIME2     NOT NULL CONSTRAINT DF_ShiftAssignments_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT UQ_ShiftAssignments UNIQUE (AccountId, WorkDate, ShiftId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ShiftAssignments_Date')
+    CREATE INDEX IX_ShiftAssignments_Date ON dbo.ShiftAssignments (WorkDate, ShiftId);
+GO
+IF OBJECT_ID(N'dbo.ResidentCareAssignments', N'U') IS NULL
+CREATE TABLE dbo.ResidentCareAssignments (
+    Id           INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ResidentCareAssignments PRIMARY KEY,
+    ResidentId   INT       NOT NULL CONSTRAINT FK_RCA_Residents REFERENCES dbo.Residents (Id),
+    AccountId    INT       NOT NULL CONSTRAINT FK_RCA_Accounts REFERENCES dbo.Accounts (Id),
+    ShiftId      INT       NULL CONSTRAINT FK_RCA_Shifts REFERENCES dbo.Shifts (Id),   -- NULL = mọi ca
+    StartDate    DATE      NOT NULL,
+    EndDate      DATE      NULL,                                                      -- NULL = đang hiệu lực
+    AssignedById INT       NOT NULL CONSTRAINT FK_RCA_AssignedBy REFERENCES dbo.Accounts (Id),
+    CreatedAt    DATETIME2 NOT NULL CONSTRAINT DF_RCA_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_RCA_Dates CHECK (EndDate IS NULL OR EndDate >= StartDate)
+);
+GO
+-- Một người phụ trách chính đang hiệu lực cho mỗi (cư dân, ca). Các NULL coi là bằng nhau trong unique index,
+-- nên mỗi cư dân chỉ một phân công "mọi ca" đang hiệu lực. "Mọi ca" + ca cụ thể do StaffingDAO kiểm thêm.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_RCA_ActivePrimary')
+    CREATE UNIQUE INDEX UX_RCA_ActivePrimary ON dbo.ResidentCareAssignments (ResidentId, ShiftId) WHERE EndDate IS NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_RCA_Account_Active')
+    CREATE INDEX IX_RCA_Account_Active ON dbo.ResidentCareAssignments (AccountId, ResidentId) WHERE EndDate IS NULL;
+GO
+
 /* ---- 9. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 
