@@ -284,6 +284,9 @@ Sprint 3+ (module):
 | | `GET /api/shift-assignments?from&to` (Admin/Nurse thấy tất cả, Doctor/Caregiver chỉ của mình), `GET /api/care-assignments?residentId&accountId&activeOnly` (Caregiver chỉ của mình) | ClinicalStaff |
 | | `POST /api/shift-assignments`, `DELETE /{id}`, `POST /copy-week` | AdminOnly |
 | | `POST /api/care-assignments`, `POST /{id}/end` | CarePlanners |
+| Báo cáo (S3-V3) | `GET /api/reports/revenue?year` · `/revenue/export` (.xlsx) | FinanceStaff |
+| | `GET /api/reports/occupancy?year` · `/occupancy/export` | BillingStaff |
+| | `GET /api/reports/medication-adherence?from&to` · `/medication-adherence/export` | Prescribers |
 
 **OData chỉ dùng attribute routing** (`Program.cs` bỏ các convention theo tên controller): mỗi entity set cần một `ODataController` có `[Route("odata/TenEntitySet")]`. Controller REST trùng tên entity set (vd. `InvoicesController`) không còn bị OData bắt nhầm.
 

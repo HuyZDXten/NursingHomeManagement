@@ -10,12 +10,25 @@ Màn "Báo cáo" có 4 báo cáo truy vấn SQL thật, có biểu đồ và nú
 
 ## Tiêu chí hoàn thành
 
-- [ ] **Doanh thu & công nợ** (UC-123, Must): chọn năm → cột thực thu theo tháng (tách PayOS/thủ công), bảng công nợ các hóa đơn còn nợ (cư dân, số, kỳ, hạn, còn nợ, số ngày quá hạn).
-- [ ] **Công suất giường** (UC-122): chọn năm → % công suất theo tháng = số giường-ngày có người / số giường-ngày khả dụng.
-- [ ] **Tuân thủ thuốc** (UC-124): khoảng ngày → theo cư dân: số liều Taken/Missed/Refused, tỉ lệ Taken.
-- [ ] **Sự cố** (UC-125, làm sau khi S3-H1 merge): khoảng ngày → số sự cố theo loại × mức độ, theo tháng.
-- [ ] Mỗi báo cáo có nút **Xuất Excel** (`.xlsx`, tiêu đề tiếng Việt, định dạng tiền `#,##0`).
-- [ ] Phân quyền đúng từng báo cáo; Caregiver/Family → 403.
+- [x] **Doanh thu & công nợ** (UC-123, Must): chọn năm → cột thực thu theo tháng (tách PayOS/thủ công), bảng công nợ các hóa đơn còn nợ (cư dân, số, kỳ, hạn, còn nợ, số ngày quá hạn).
+- [x] **Công suất giường** (UC-122): chọn năm → % công suất theo tháng = số giường-ngày có người / số giường-ngày khả dụng.
+- [x] **Tuân thủ thuốc** (UC-124): khoảng ngày → theo cư dân: số liều Taken/Missed/Refused, tỉ lệ Taken.
+- [ ] **Sự cố** (UC-125, làm sau khi S3-H1 merge): khoảng ngày → số sự cố theo loại × mức độ, theo tháng. *(chờ bảng `Incidents` của Huy)*
+- [x] Mỗi báo cáo có nút **Xuất Excel** (`.xlsx`, tiêu đề tiếng Việt, định dạng tiền `#,##0`).
+- [x] Phân quyền đúng từng báo cáo; Caregiver/Family → 403.
+
+### Kết quả triển khai (13/11/2026) — UC-122, 123, 124, 128
+
+- Kiểm thử: smoke thêm 12 kiểm tra (tổng 94/94 PASS; công nợ khớp Dashboard, file tải về là .xlsx thật), unit thêm `ReportRuleTests` (45/45, đọc ngược file Excel kiểm tiêu đề + định dạng `#,##0`).
+- Trang `/staff/reports` build/lint sạch nhưng **chưa xem trên trình duyệt** — khi review cần mở thử 3 tab, bấm "Xuất Excel" và mở file.
+- Quyết định khác/bổ sung so với đặc tả:
+  - `sp_OccupancyByMonth`: tháng hiện tại chỉ tính tới hôm nay, tháng chưa tới trả 0 (FE hiện "—"); viết bằng `LEFT JOIN + GROUP BY` vì SQL Server không cho `SUM` trộn cột ngoài/trong (Msg 8124). % chặn ở 100 (đổi giường trong ngày có thể đếm 2 giường-ngày).
+  - `sp_MedicationAdherence` bỏ liều `Scheduled` (chưa ghi nhận). Mặc định 30 ngày gần nhất, tối đa 366 ngày.
+  - Excel: `Services/Helpers/ExcelExporter.cs` (ClosedXML 0.104.2, MIT) — builder nhiều sheet, mỗi sheet có tiêu đề + dòng ghi chú; file doanh thu có 2 sheet (thực thu, công nợ). Tên file đặt ở FE (CORS không lộ `Content-Disposition`).
+  - Menu "Báo cáo" cho Admin, Receptionist, Accountant, Doctor (mỗi tab tự lọc role). Thêm Nurse khi có tab sự cố.
+  - Màu biểu đồ theo skill dataviz, đã chạy `validate_palette.js`: nguồn thu xanh `#2a78d6`/cam `#eb6834`; liều thuốc dùng màu trạng thái good/warning/critical, luôn kèm legend + bảng (màu warning dưới 3:1 theo thiết kế). Mỗi biểu đồ có nút chuyển "Bảng".
+  - Dữ liệu demo mục 10.3: hóa đơn đã trả 2–4 tháng trước (Id 100–104) + nhật ký thuốc 7 ngày.
+- Việc còn lại (UC-125): thêm `dbo.sp_IncidentSummary` vào `03_StoredProcedures.sql` (chỗ đánh dấu sẵn), `IncidentSummaryRow` trong `ReportDAO`, action `incidents` (CarePlanners) và tab thứ 4.
 
 ## 1. Database — `03_StoredProcedures.sql` (file của Viên)
 

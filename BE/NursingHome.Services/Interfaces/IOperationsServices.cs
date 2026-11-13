@@ -1,6 +1,7 @@
 using NursingHome.BusinessObjects.Entities;
 using NursingHome.DTOs.Admissions;
 using NursingHome.DTOs.Common;
+using NursingHome.DTOs.Reports;
 using NursingHome.DTOs.Staffing;
 
 namespace NursingHome.Services.Interfaces;
@@ -59,4 +60,20 @@ public interface IStaffingService
     Task<CareAssignmentDto> CreateCareAssignmentAsync(CurrentUser user, CreateCareAssignmentRequest request);
 
     Task<CareAssignmentDto> EndCareAssignmentAsync(int id);
+}
+
+/// <summary>S3-V3 — UC-123 doanh thu &amp; công nợ, UC-122 công suất giường, UC-124 tuân thủ thuốc. Mỗi báo cáo có bản Excel.</summary>
+public interface IReportService
+{
+    Task<RevenueReportDto> GetRevenueAsync(int? year);
+
+    Task<ExportFile> ExportRevenueAsync(int? year);
+
+    Task<OccupancyReportDto> GetOccupancyAsync(int? year);
+
+    Task<ExportFile> ExportOccupancyAsync(int? year);
+
+    Task<AdherenceReportDto> GetAdherenceAsync(DateOnly? from, DateOnly? to);
+
+    Task<ExportFile> ExportAdherenceAsync(DateOnly? from, DateOnly? to);
 }

@@ -237,5 +237,34 @@ check('Kết thúc phân công phụ trách', endedAssign.status === 200 && !end
 check('Hết phân công -> caregiver lại không xem được NH-0003 (403)', (await call('GET', '/api/residents/3', caregiver.accessToken)).status === 403);
 check('Kết thúc lần hai -> 400', (await call('POST', `/api/care-assignments/${careAssign.data.id}/end`, nurse.accessToken)).status === 400);
 
+// ---- Sprint 3 · S3-V3: báo cáo + xuất Excel ----
+const yearNow = Number(plusDays(0).slice(0, 4));
+const monthIdx = Number(plusDays(0).slice(5, 7)) - 1;
+const download = async (path, token) => {
+  const res = await fetch(API + path, { headers: { authorization: `Bearer ${token}` } });
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  return { status: res.status, type: res.headers.get('content-type') ?? '', name: res.headers.get('content-disposition') ?? '', zip: bytes[0] === 0x50 && bytes[1] === 0x4b };
+};
+const revenue = await call('GET', `/api/reports/revenue?year=${yearNow}`, accountant.accessToken);
+check('Báo cáo doanh thu đủ 12 tháng + bảng công nợ', revenue.status === 200 && revenue.data.months.length === 12 && revenue.data.debts.length >= 1,
+  `thu=${revenue.data?.totalCollected} nợ=${revenue.data?.totalDebt}`);
+check('Tháng này có khoản thu PayOS vừa thanh toán', revenue.data.months[monthIdx].collectedOnline >= 8000000);
+check('Tổng công nợ khớp Dashboard', revenue.data.totalDebt === dash.data.debt, `${revenue.data.totalDebt} vs ${dash.data.debt}`);
+const revenueXlsx = await download(`/api/reports/revenue/export?year=${yearNow}`, accountant.accessToken);
+check('Xuất Excel doanh thu (.xlsx)', revenueXlsx.status === 200 && revenueXlsx.type.includes('spreadsheetml') && revenueXlsx.zip && revenueXlsx.name.includes('doanh-thu'));
+const occupancy = await call('GET', `/api/reports/occupancy?year=${yearNow}`, recep.accessToken);
+check('Công suất giường tháng này (lễ tân xem được)', occupancy.status === 200 && occupancy.data.months[monthIdx].percent > 0
+  && occupancy.data.months[monthIdx].percent <= 100, `${occupancy.data?.months?.[monthIdx]?.percent}%`);
+check('Xuất Excel công suất giường', (await download(`/api/reports/occupancy/export?year=${yearNow}`, recep.accessToken)).zip);
+const adherence = await call('GET', '/api/reports/medication-adherence', doctor.accessToken);
+const nh1Adherence = adherence.data?.rows?.find((r) => r.code === 'NH-0001');
+check('Tuân thủ thuốc 30 ngày (bác sĩ)', adherence.status === 200 && nh1Adherence?.total > 0 && nh1Adherence.takenRate > 0 && nh1Adherence.takenRate <= 100,
+  `NH-0001 ${nh1Adherence?.taken}/${nh1Adherence?.total} = ${nh1Adherence?.takenRate}%`);
+check('Xuất Excel tuân thủ thuốc', (await download('/api/reports/medication-adherence/export', doctor.accessToken)).zip);
+check('Khoảng ngày ngược -> 400', (await call('GET', `/api/reports/medication-adherence?from=${plusDays(0)}&to=${plusDays(-5)}`, doctor.accessToken)).status === 400);
+check('Doctor xem doanh thu -> 403', (await call('GET', '/api/reports/revenue', doctor.accessToken)).status === 403);
+check('Caregiver xem công suất -> 403', (await call('GET', '/api/reports/occupancy', caregiver.accessToken)).status === 403);
+check('Family tải Excel doanh thu -> 403', (await download('/api/reports/revenue/export', family2.accessToken)).status === 403);
+
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);
