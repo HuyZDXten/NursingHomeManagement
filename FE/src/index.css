@@ -1,0 +1,86 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #f5f7f7;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 64px;
+  padding: 0 20px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #2f7d6d;
+  white-space: nowrap;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: #fff;
+  border-bottom: 1px solid #edf0f0;
+}
+
+.app-header.public .brand {
+  padding: 0;
+}
+
+.hero {
+  padding: 56px 24px;
+  text-align: center;
+  background: linear-gradient(135deg, #2f7d6d 0%, #4ea38f 100%);
+  color: #fff;
+}
+
+.hero h1 {
+  color: #fff;
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+.container {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+.bed-card {
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e5e9e9;
+  min-height: 74px;
+}
+
+.bed-card.Available {
+  background: #f1fbf6;
+  border-color: #a6e3c3;
+}
+
+.bed-card.Occupied {
+  background: #eef5ff;
+  border-color: #a8c8f5;
+}
+
+.bed-card.Maintenance {
+  background: #fff7ec;
+  border-color: #f5c88a;
+}
+
+.auth-box {
+  max-width: 420px;
+  margin: 64px auto;
+}
+
+@media (max-width: 640px) {
+  .hide-sm {
+    display: none;
+  }
+}
