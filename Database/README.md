@@ -18,7 +18,7 @@ Cần `sqlcmd` (đi kèm SQL Server Management Studio hoặc gói *Microsoft Com
 | Thứ tự | File | Nội dung |
 | --- | --- | --- |
 | 0 | `00_CreateDatabase.sql` | Tạo `NursingHomeDB` (collation `Vietnamese_CI_AS`) |
-| 1 | `01_Schema.sql` | 21 bảng lõi (mục 1–8) + bảng module: mục 9 Viên (`Inquiries`, `TourBookings`, `Shifts`, `ShiftAssignments`, `ResidentCareAssignments`, `LeaveRequests`, `ShiftHandovers`…), mục 10 Huy. Khóa, FK, CHECK, unique, filtered index, rowversion |
+| 1 | `01_Schema.sql` | 21 bảng lõi (mục 1–8) + bảng module: mục 9 Viên (`Inquiries`, `TourBookings`, `Shifts`, `ShiftAssignments`, `ResidentCareAssignments`, `LeaveRequests`, `ShiftHandovers`, `ExtraServices`, `ServiceUsages`, `InvoiceReminders`…), mục 10 Huy. Khóa, FK, CHECK, unique, filtered index, rowversion |
 | 2 | `02_Views_Functions.sql` | `vw_InvoiceBalances`, `vw_BedOccupancy` |
 | 3 | `03_StoredProcedures.sql` | `sp_MonthlyRevenue` (báo cáo) |
 | 4 | `04_ReferenceData.sql` | Admin đầu tiên + danh mục gói dịch vụ (mọi môi trường) |

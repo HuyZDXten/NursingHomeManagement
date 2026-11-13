@@ -53,6 +53,18 @@ BEGIN
     SET IDENTITY_INSERT dbo.Shifts OFF;
 END;
 
+-- Danh mục dịch vụ phát sinh (S3-V5). Đổi giá danh mục không ảnh hưởng lần sử dụng đã ghi (giá chốt lúc ghi).
+IF NOT EXISTS (SELECT 1 FROM dbo.ExtraServices WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.ExtraServices ON;
+    INSERT INTO dbo.ExtraServices (Id, Name, Unit, UnitPrice, IsActive) VALUES
+    (1, N'Giặt ủi', N'kg', 30000, 1),
+    (2, N'Vật lý trị liệu', N'buổi', 250000, 1),
+    (3, N'Cắt tóc', N'lần', 50000, 1),
+    (4, N'Đưa đón khám ngoài', N'chuyến', 300000, 1);
+    SET IDENTITY_INSERT dbo.ExtraServices OFF;
+END;
+
 COMMIT TRANSACTION;
 PRINT N'04_ReferenceData.sql: xong.';
 GO

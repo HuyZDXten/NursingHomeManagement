@@ -153,18 +153,66 @@ public sealed class BillingDAO : GenericDAO<Invoice>
         return await WithDetails(context).FirstOrDefaultAsync(invoice => invoice.Id == id);
     }
 
-    /// <summary>Unique (ResidentId, BillingPeriod) chặn tạo trùng kỳ (kể cả kỳ đã Cancelled).</summary>
+    /// <summary>
+    /// Tạo hóa đơn trong MỘT transaction Serializable. Unique (ResidentId, BillingPeriod) chặn tạo trùng kỳ (kể cả kỳ đã
+    /// Cancelled). S3-V5: thêm mọi lần dùng dịch vụ phát sinh CHƯA vào hóa đơn có UsedOn đến hết kỳ (gồm cả lần ghi muộn
+    /// của kỳ trước) thành dòng phí với đơn giá chốt, rồi gán InvoiceItemId — hai kế toán tạo cùng lúc không tính trùng.
+    /// </summary>
     public async Task<Invoice> CreateInvoiceAsync(Invoice invoice)
     {
         await using var context = CreateContext();
+        await using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         if (await context.Invoices.AnyAsync(item => item.ResidentId == invoice.ResidentId && item.BillingPeriod == invoice.BillingPeriod))
         {
             throw new ConflictException("Cư dân đã có hóa đơn cho kỳ này.");
         }
 
+        var periodEnd = invoice.BillingPeriod.AddMonths(1).AddDays(-1);
+        var usages = await context.ServiceUsages.Include(usage => usage.ExtraService)
+            .Where(usage => usage.ResidentId == invoice.ResidentId && usage.InvoiceItemId == null && usage.UsedOn <= periodEnd)
+            .OrderBy(usage => usage.UsedOn).ThenBy(usage => usage.Id)
+            .ToListAsync();
+        var lines = usages.Select(usage => (Usage: usage, Item: new InvoiceItem
+        {
+            Description = $"{usage.ExtraService.Name} {usage.UsedOn:dd/MM/yyyy} ({usage.ExtraService.Unit})",
+            Quantity = usage.Quantity,
+            UnitPrice = usage.UnitPrice,
+            CreatedAt = invoice.CreatedAt
+        })).ToList();
+        foreach (var line in lines)
+        {
+            invoice.Items.Add(line.Item);
+        }
+
         context.Invoices.Add(invoice);
         await context.SaveChangesAsync();
+        foreach (var line in lines)
+        {
+            line.Usage.InvoiceItemId = line.Item.Id;
+        }
+
+        await context.SaveChangesAsync();
+        await transaction.CommitAsync();
         return invoice;
+    }
+
+    /// <summary>Hóa đơn hàng loạt (S3-V5): cư dân đang ở, hoặc ngừng lưu trú từ <paramref name="dischargedSinceUtc"/>.</summary>
+    public async Task<List<Resident>> ListBatchCandidatesAsync(DateTime dischargedSinceUtc)
+    {
+        await using var context = CreateContext();
+        return await context.Residents.AsNoTracking()
+            .Where(resident => resident.Status == ResidentStatus.Active || resident.DischargedAt >= dischargedSinceUtc)
+            .OrderBy(resident => resident.Code)
+            .ToListAsync();
+    }
+
+    /// <summary>Số hóa đơn đã có của kỳ, theo cư dân.</summary>
+    public async Task<Dictionary<int, string>> InvoiceNumbersForPeriodAsync(DateOnly billingPeriod)
+    {
+        await using var context = CreateContext();
+        return await context.Invoices.AsNoTracking()
+            .Where(invoice => invoice.BillingPeriod == billingPeriod)
+            .ToDictionaryAsync(invoice => invoice.ResidentId, invoice => invoice.Number);
     }
 
     public async Task AddItemAsync(int invoiceId, InvoiceItem item, DateTime now)
@@ -217,6 +265,9 @@ public sealed class BillingDAO : GenericDAO<Invoice>
 
         invoice.Status = InvoiceStatus.Cancelled;
         invoice.UpdatedAt = now;
+        // S3-V5: dịch vụ phát sinh của hóa đơn bị hủy được gỡ ra để vào hóa đơn kỳ sau.
+        await context.ServiceUsages.Where(usage => usage.InvoiceItem != null && usage.InvoiceItem.InvoiceId == id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(usage => usage.InvoiceItemId, (int?)null));
         await context.PaymentTransactions.Where(item => item.InvoiceId == id && item.Status == PaymentTransactionStatus.Pending)
             .ForEachAsync(item =>
             {

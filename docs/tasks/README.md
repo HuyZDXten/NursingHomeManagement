@@ -31,7 +31,7 @@ Trạng thái: `Chưa làm` → `Đang làm` → `Chờ review` → `Xong`. Ngư
 | [S3-V2](S3-V2-ca-truc-phu-trach.md) | Ca trực & phân công phụ trách | UC-44, 45, 46 | Viên | Must | 5 | 3.1 | — | Chờ review (2 PR: tính năng + quyền) |
 | [S3-V3](S3-V3-bao-cao.md) | Báo cáo + xuất Excel | UC-122, 123, 124, 125, 128 | Viên | Must/Should | 5 | 3.1–3.2 | UC-125 cần S3-H1 | Chờ review (UC-125 chờ S3-H1) |
 | [S3-V4](S3-V4-ban-giao-ca-nghi-phep.md) | Nghỉ phép/đổi ca & bàn giao ca | UC-47, 49 | Viên | Should | 5 | 3.2 | S3-V2 | Chờ review |
-| [S3-V5](S3-V5-tai-chinh-mo-rong.md) | Dịch vụ phát sinh, hóa đơn hàng loạt, PDF, nhắc nợ, email | UC-85, 86, 88, 97, 98, 118 | Viên | Should | 8 | 3.2 | — | Chưa làm |
+| [S3-V5](S3-V5-tai-chinh-mo-rong.md) | Dịch vụ phát sinh, hóa đơn hàng loạt, PDF, nhắc nợ, email | UC-85, 86, 88, 97, 98, 118 | Viên | Should | 8 | 3.2 | — | Chờ review |
 | [S3-V6](S3-V6-chat-gia-dinh.md) | Chat gia đình – nhân viên | UC-106 | Viên | Should | 5 | 3.2 | — | Chưa làm |
 | [S3-H1](S3-H1-su-co.md) | Báo cáo & xử lý sự cố | UC-58, 59, 107 | Huy | Must | 5 | 3.1 | — | Chưa làm |
 | [S3-H2](S3-H2-benh-nen-di-ung-che-do-an.md) | Bệnh nền, dị ứng, chế độ ăn, cảnh báo dị ứng | UC-66, 71, 82 | Huy | Must/Should | 5 | 3.1 | — | Chưa làm |

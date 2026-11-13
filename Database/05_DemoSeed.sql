@@ -333,6 +333,21 @@ BEGIN
     SET IDENTITY_INSERT dbo.ShiftHandovers OFF;
 END;
 
+/* ---- 10.5 Dịch vụ phát sinh (S3-V5) ----
+   3 lần sử dụng tháng này CHƯA vào hóa đơn (NH-0001, NH-0003) để thử "tạo hóa đơn tự thêm dịch vụ phát sinh".
+   Danh mục dịch vụ ở 04_ReferenceData.sql. Ngày sử dụng kẹp trong tháng này, không quá hôm nay. */
+IF NOT EXISTS (SELECT 1 FROM dbo.ServiceUsages WHERE Id = 1)
+BEGIN
+    DECLARE @UsageEarly DATE = CASE WHEN DATEADD(DAY, -5, @Today) < @ThisMonth THEN @ThisMonth ELSE DATEADD(DAY, -5, @Today) END;
+    DECLARE @UsageLate DATE = CASE WHEN DATEADD(DAY, -1, @Today) < @ThisMonth THEN @ThisMonth ELSE DATEADD(DAY, -1, @Today) END;
+    SET IDENTITY_INSERT dbo.ServiceUsages ON;
+    INSERT INTO dbo.ServiceUsages (Id, ResidentId, ExtraServiceId, UsedOn, Quantity, UnitPrice, Note, RecordedById, InvoiceItemId, CreatedAt) VALUES
+    (1, 1, 1, @UsageEarly, 3.5, 30000, N'Chăn + quần áo', 6, NULL, DATEADD(HOUR, -7, CAST(@UsageEarly AS DATETIME2))),
+    (2, 1, 3, @UsageLate, 1, 50000, NULL, 2, NULL, DATEADD(HOUR, -7, CAST(@UsageLate AS DATETIME2))),
+    (3, 3, 2, @UsageEarly, 2, 250000, N'Tập phục hồi chức năng chân phải', 5, NULL, DATEADD(HOUR, -7, CAST(@UsageEarly AS DATETIME2)));
+    SET IDENTITY_INSERT dbo.ServiceUsages OFF;
+END;
+
 /* ---- 10. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 

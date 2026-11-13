@@ -1,3 +1,5 @@
+import type { InvoiceListItem } from './index';
+
 // Kiểu dữ liệu (khớp DTO) của module Vận hành & Tài chính — Viên.
 // Thêm interface ở đây thay vì sửa types/index.ts (phần lõi).
 
@@ -304,4 +306,70 @@ export interface HandoverForm {
   summary: string;
   highlights: HandoverItem[];
   aiGenerated?: boolean;
+}
+
+// ---------------- S3-V5 dịch vụ phát sinh, hóa đơn hàng loạt, nhắc nợ ----------------
+
+export interface ExtraService {
+  id: number;
+  name: string;
+  unit: string;
+  unitPrice: number;
+  isActive: boolean;
+}
+
+export type ExtraServiceForm = Omit<ExtraService, 'id'>;
+
+export interface ServiceUsage {
+  id: number;
+  residentId: number;
+  residentCode: string;
+  residentName: string;
+  extraServiceId: number;
+  serviceName: string;
+  unit: string;
+  usedOn: string;
+  quantity: number;
+  /** Đơn giá chốt lúc ghi. */
+  unitPrice: number;
+  amount: number;
+  note?: string | null;
+  recordedById: number;
+  recordedByName: string;
+  /** Đã vào hóa đơn → không xóa được. */
+  invoiced: boolean;
+  invoiceId?: number | null;
+  createdAt: string;
+}
+
+export interface ServiceUsageForm {
+  extraServiceId: number;
+  usedOn?: string;
+  quantity: number;
+  note?: string;
+}
+
+export interface BatchSkip {
+  residentId: number;
+  residentCode: string;
+  residentName: string;
+  reason: string;
+}
+
+export interface BatchInvoiceResult {
+  billingPeriod: string;
+  created: InvoiceListItem[];
+  skipped: BatchSkip[];
+}
+
+export interface ReminderRunResult {
+  checked: number;
+  sent: number;
+}
+
+export type ReminderStage = 'Before3Days' | 'Overdue' | 'Overdue7';
+
+export interface InvoiceReminder {
+  stage: ReminderStage;
+  sentAt: string;
 }

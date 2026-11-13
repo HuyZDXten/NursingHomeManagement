@@ -596,6 +596,54 @@ CREATE TABLE dbo.ShiftHandovers (
 );
 GO
 
+/* ---- 9.4 Dịch vụ phát sinh, nhắc nợ (S3-V5: UC-85, 86, 88, 97, 98, 118). Danh mục mẫu ở 04_ReferenceData.sql ---- */
+IF OBJECT_ID(N'dbo.ExtraServices', N'U') IS NULL
+CREATE TABLE dbo.ExtraServices (
+    Id        INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ExtraServices PRIMARY KEY,
+    Name      NVARCHAR(150) NOT NULL CONSTRAINT UQ_ExtraServices_Name UNIQUE,
+    Unit      NVARCHAR(30)  NOT NULL,
+    UnitPrice DECIMAL(18,0) NOT NULL,
+    IsActive  BIT           NOT NULL CONSTRAINT DF_ExtraServices_IsActive DEFAULT (1),
+    CreatedAt DATETIME2     NOT NULL CONSTRAINT DF_ExtraServices_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt DATETIME2     NULL,
+    CONSTRAINT CK_ExtraServices_Price CHECK (UnitPrice >= 0)
+);
+GO
+-- Một lần sử dụng: đơn giá chốt lúc ghi. InvoiceItemId gán khi tạo hóa đơn (BillingDAO.CreateInvoiceAsync, cùng transaction);
+-- đã có InvoiceItemId thì không sửa/xóa. Hủy hóa đơn → gỡ InvoiceItemId để vào hóa đơn kỳ sau.
+IF OBJECT_ID(N'dbo.ServiceUsages', N'U') IS NULL
+CREATE TABLE dbo.ServiceUsages (
+    Id             INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ServiceUsages PRIMARY KEY,
+    ResidentId     INT           NOT NULL CONSTRAINT FK_ServiceUsages_Residents REFERENCES dbo.Residents (Id),
+    ExtraServiceId INT           NOT NULL CONSTRAINT FK_ServiceUsages_Services REFERENCES dbo.ExtraServices (Id),
+    UsedOn         DATE          NOT NULL,                              -- giờ cơ sở
+    Quantity       DECIMAL(9,2)  NOT NULL,
+    UnitPrice      DECIMAL(18,0) NOT NULL,                              -- giá chốt lúc ghi
+    Note           NVARCHAR(500) NULL,
+    RecordedById   INT           NOT NULL CONSTRAINT FK_ServiceUsages_Accounts REFERENCES dbo.Accounts (Id),
+    InvoiceItemId  INT           NULL CONSTRAINT FK_ServiceUsages_InvoiceItems REFERENCES dbo.InvoiceItems (Id),
+    CreatedAt      DATETIME2     NOT NULL CONSTRAINT DF_ServiceUsages_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_ServiceUsages_Quantity CHECK (Quantity > 0),
+    CONSTRAINT CK_ServiceUsages_Price CHECK (UnitPrice >= 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ServiceUsages_Resident_Uninvoiced')
+    CREATE INDEX IX_ServiceUsages_Resident_Uninvoiced ON dbo.ServiceUsages (ResidentId, UsedOn) WHERE InvoiceItemId IS NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ServiceUsages_InvoiceItem')
+    CREATE UNIQUE INDEX UX_ServiceUsages_InvoiceItem ON dbo.ServiceUsages (InvoiceItemId) WHERE InvoiceItemId IS NOT NULL;
+GO
+IF OBJECT_ID(N'dbo.InvoiceReminders', N'U') IS NULL
+CREATE TABLE dbo.InvoiceReminders (
+    Id        INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_InvoiceReminders PRIMARY KEY,
+    InvoiceId INT          NOT NULL CONSTRAINT FK_InvoiceReminders_Invoices REFERENCES dbo.Invoices (Id),
+    Stage     NVARCHAR(20) NOT NULL,
+    SentAt    DATETIME2    NOT NULL CONSTRAINT DF_InvoiceReminders_SentAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_InvoiceReminders_Stage CHECK (Stage IN (N'Before3Days', N'Overdue', N'Overdue7')),
+    CONSTRAINT UQ_InvoiceReminders UNIQUE (InvoiceId, Stage)    -- mỗi mốc chỉ nhắc một lần (job ghi dòng TRƯỚC rồi mới gửi)
+);
+GO
+
 /* ---- 9. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 

@@ -45,6 +45,8 @@ public class ResidentRepository : IResidentRepository
 
     public Task<List<int>> FamilyAccountIdsAsync(int residentId, bool requireBilling) => Dao.FamilyAccountIdsAsync(residentId, requireBilling);
 
+    public Task<List<string>> FamilyEmailsAsync(int residentId, bool requireBilling) => Dao.FamilyEmailsAsync(residentId, requireBilling);
+
     public Task<ResidentFamilyLink> AddLinkAsync(ResidentFamilyLink link) => Dao.AddLinkAsync(link);
 
     public Task UpdateLinkAsync(ResidentFamilyLink link) => Dao.UpdateLinkAsync(link);

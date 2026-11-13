@@ -20,6 +20,7 @@ public class BillingService(
     IResidentRepository residents,
     IResidentAccessService access,
     INotificationService notifications,
+    IInvoiceMailer mailer,
     FacilityClock clock) : IBillingService
 {
     // ---------------- Gói dịch vụ ----------------
@@ -174,7 +175,9 @@ public class BillingService(
             $"Hóa đơn {issued.Number} đã phát hành",
             $"Tổng {InvoiceMath.Total(issued.Items):N0} đ, hạn thanh toán {issued.DueDate:dd/MM/yyyy}.",
             $"/family/invoices/{issued.Id}");
-        return (await FindAsync(id)).ToDetail();
+        var detail = (await FindAsync(id)).ToDetail();
+        await mailer.SendIssuedAsync(detail); // S3-V5 (UC-118): chỉ gửi khi đã cấu hình SMTP, lỗi chỉ ghi log
+        return detail;
     }
 
     public async Task<InvoiceDetailDto> RecordPaymentAsync(CurrentUser user, int id, RecordPaymentRequest request)
