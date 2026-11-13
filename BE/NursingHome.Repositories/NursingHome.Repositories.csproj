@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\NursingHome.DataAccessObjects\NursingHome.DataAccessObjects.csproj" />
+  </ItemGroup>
+
+</Project>

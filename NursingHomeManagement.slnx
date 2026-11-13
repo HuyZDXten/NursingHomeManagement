@@ -1,8 +1,0 @@
-<Solution>
-  <Folder Name="/BE/">
-    <Project Path="BE/NursingHomeManagement.csproj" />
-  </Folder>
-  <Folder Name="/Tests/">
-    <Project Path="Tests/NursingHomeManagement.Tests.csproj" />
-  </Folder>
-</Solution>

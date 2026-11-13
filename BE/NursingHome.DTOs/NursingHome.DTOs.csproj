@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- DTOs thuần: không phụ thuộc EF/ASP.NET, dùng chung giữa API và Services. -->
+
+</Project>
