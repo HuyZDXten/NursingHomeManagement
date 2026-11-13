@@ -1,5 +1,8 @@
 import { apiClient } from './client';
-import type { CareAssignment, CareAssignmentForm, CopyWeekResult, Shift, ShiftAssignment } from '../types/operations';
+import type {
+  CareAssignment, CareAssignmentForm, CopyWeekResult, Handover, HandoverDraft, HandoverForm, LeaveApproval, LeaveRequest,
+  LeaveRequestForm, LeaveStatus, Shift, ShiftAssignment,
+} from '../types/operations';
 
 /** S3-V2 — UC-44, 45, 46. Xếp/bỏ/chép ca: Admin; phân công phụ trách: Admin + Nurse. */
 export const staffingApi = {
@@ -17,4 +20,24 @@ export const staffingApi = {
     apiClient.get<CareAssignment[]>('/api/care-assignments', { params }).then((r) => r.data),
   addCareAssignment: (body: CareAssignmentForm) => apiClient.post<CareAssignment>('/api/care-assignments', body).then((r) => r.data),
   endCareAssignment: (id: number) => apiClient.post<CareAssignment>(`/api/care-assignments/${id}/end`).then((r) => r.data),
+};
+
+/** S3-V4 — UC-47 nghỉ phép/đổi ca (Admin duyệt), UC-49 bàn giao ca. */
+export const handoverApi = {
+  leaveRequests: (status?: LeaveStatus) =>
+    apiClient.get<LeaveRequest[]>('/api/leave-requests', { params: { status } }).then((r) => r.data),
+  createLeave: (body: LeaveRequestForm) => apiClient.post<LeaveRequest>('/api/leave-requests', body).then((r) => r.data),
+  swapCandidates: (shiftAssignmentId: number) =>
+    apiClient.get<ShiftAssignment[]>('/api/leave-requests/swap-candidates', { params: { shiftAssignmentId } }).then((r) => r.data),
+  approve: (id: number, note?: string) =>
+    apiClient.post<LeaveApproval>(`/api/leave-requests/${id}/approve`, { note }).then((r) => r.data),
+  reject: (id: number, note?: string) => apiClient.post<LeaveRequest>(`/api/leave-requests/${id}/reject`, { note }).then((r) => r.data),
+  cancel: (id: number) => apiClient.post<LeaveRequest>(`/api/leave-requests/${id}/cancel`).then((r) => r.data),
+
+  draft: (shiftId: number, date: string) =>
+    apiClient.get<HandoverDraft>('/api/handovers/draft', { params: { shiftId, date } }).then((r) => r.data),
+  list: (date: string) => apiClient.get<Handover[]>('/api/handovers', { params: { date } }).then((r) => r.data),
+  inbox: () => apiClient.get<Handover[]>('/api/handovers/inbox').then((r) => r.data),
+  create: (body: HandoverForm) => apiClient.post<Handover>('/api/handovers', body).then((r) => r.data),
+  acknowledge: (id: number) => apiClient.post<Handover>(`/api/handovers/${id}/acknowledge`).then((r) => r.data),
 };

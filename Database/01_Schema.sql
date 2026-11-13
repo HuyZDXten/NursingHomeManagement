@@ -544,6 +544,58 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_RCA_Account_Active')
     CREATE INDEX IX_RCA_Account_Active ON dbo.ResidentCareAssignments (AccountId, ResidentId) WHERE EndDate IS NULL;
 GO
 
+/* ---- 9.3 Nghỉ phép/đổi ca & bàn giao ca (S3-V4: UC-47, 49) ---- */
+-- Đổi ca: ShiftAssignmentId = ca của người xin, SwapShiftAssignmentId = ca của đồng nghiệp. Duyệt = hoán AccountId
+-- của 2 dòng ShiftAssignments trong một transaction (StaffingDAO.ApproveSwapAsync).
+-- Khi một ca bị bỏ (Admin bỏ ca, duyệt nghỉ phép), StaffingDAO hủy các đơn đổi ca đang chờ và gỡ tham chiếu tới ca đó,
+-- nên CK_LeaveRequests_Swap chỉ bắt buộc đủ 2 ca khi đơn còn Pending.
+IF OBJECT_ID(N'dbo.LeaveRequests', N'U') IS NULL
+CREATE TABLE dbo.LeaveRequests (
+    Id                    INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_LeaveRequests PRIMARY KEY,
+    AccountId             INT           NOT NULL CONSTRAINT FK_LeaveRequests_Accounts REFERENCES dbo.Accounts (Id),
+    Type                  NVARCHAR(10)  NOT NULL,
+    FromDate              DATE          NOT NULL,                      -- đổi ca: ngày của 2 ca (nhỏ → lớn)
+    ToDate                DATE          NOT NULL,
+    ShiftAssignmentId     INT           NULL CONSTRAINT FK_LeaveRequests_MyShift REFERENCES dbo.ShiftAssignments (Id),
+    SwapWithAccountId     INT           NULL CONSTRAINT FK_LeaveRequests_SwapWith REFERENCES dbo.Accounts (Id),
+    SwapShiftAssignmentId INT           NULL CONSTRAINT FK_LeaveRequests_TheirShift REFERENCES dbo.ShiftAssignments (Id),
+    Reason                NVARCHAR(500) NOT NULL,
+    Status                NVARCHAR(20)  NOT NULL CONSTRAINT DF_LeaveRequests_Status DEFAULT (N'Pending'),
+    ReviewedById          INT           NULL CONSTRAINT FK_LeaveRequests_Reviewer REFERENCES dbo.Accounts (Id),
+    ReviewedAt            DATETIME2     NULL,
+    ReviewNote            NVARCHAR(500) NULL,
+    CreatedAt             DATETIME2     NOT NULL CONSTRAINT DF_LeaveRequests_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_LeaveRequests_Type CHECK (Type IN (N'Leave', N'Swap')),
+    CONSTRAINT CK_LeaveRequests_Status CHECK (Status IN (N'Pending', N'Approved', N'Rejected', N'Cancelled')),
+    CONSTRAINT CK_LeaveRequests_Dates CHECK (ToDate >= FromDate),
+    CONSTRAINT CK_LeaveRequests_Swap CHECK (Type = N'Leave' OR Status <> N'Pending'
+        OR (ShiftAssignmentId IS NOT NULL AND SwapShiftAssignmentId IS NOT NULL AND SwapWithAccountId IS NOT NULL))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_LeaveRequests_Account_Status')
+    CREATE INDEX IX_LeaveRequests_Account_Status ON dbo.LeaveRequests (AccountId, Status);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_LeaveRequests_Status_CreatedAt')
+    CREATE INDEX IX_LeaveRequests_Status_CreatedAt ON dbo.LeaveRequests (Status, CreatedAt DESC);
+GO
+IF OBJECT_ID(N'dbo.ShiftHandovers', N'U') IS NULL
+CREATE TABLE dbo.ShiftHandovers (
+    Id               BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ShiftHandovers PRIMARY KEY,
+    ShiftId          INT            NOT NULL CONSTRAINT FK_ShiftHandovers_Shifts REFERENCES dbo.Shifts (Id),
+    WorkDate         DATE           NOT NULL,                          -- ngày BẮT ĐẦU ca (giờ cơ sở)
+    FromAccountId    INT            NOT NULL CONSTRAINT FK_ShiftHandovers_From REFERENCES dbo.Accounts (Id),
+    Summary          NVARCHAR(4000) NOT NULL,
+    HighlightsJson   NVARCHAR(MAX)  NULL,                              -- các mục gợi ý đã chọn (JSON), S4-V2 dùng lại
+    AiGenerated      BIT            NOT NULL CONSTRAINT DF_ShiftHandovers_Ai DEFAULT (0),
+    AcknowledgedById INT            NULL CONSTRAINT FK_ShiftHandovers_Ack REFERENCES dbo.Accounts (Id),
+    AcknowledgedAt   DATETIME2      NULL,
+    CreatedAt        DATETIME2      NOT NULL CONSTRAINT DF_ShiftHandovers_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT UQ_ShiftHandovers UNIQUE (WorkDate, ShiftId, FromAccountId),
+    CONSTRAINT CK_ShiftHandovers_Ack CHECK ((AcknowledgedById IS NULL AND AcknowledgedAt IS NULL)
+        OR (AcknowledgedById IS NOT NULL AND AcknowledgedAt IS NOT NULL))
+);
+GO
+
 /* ---- 9. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 

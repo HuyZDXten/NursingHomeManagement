@@ -5,8 +5,11 @@ using NursingHome.BusinessObjects.Exceptions;
 
 namespace NursingHome.DataAccessObjects;
 
-/// <summary>MODULE VẬN HÀNH (Viên) — S3-V2: danh mục ca, lịch ca, phân công phụ trách cư dân.</summary>
-public sealed class StaffingDAO : GenericDAO<ShiftAssignment>
+/// <summary>
+/// MODULE VẬN HÀNH (Viên) — S3-V2: danh mục ca, lịch ca, phân công phụ trách cư dân.
+/// Nghỉ phép/đổi ca và bàn giao ca (S3-V4) ở StaffingDAO.Handover.cs.
+/// </summary>
+public sealed partial class StaffingDAO : GenericDAO<ShiftAssignment>
 {
     public static StaffingDAO Instance { get; } = new();
 
@@ -63,12 +66,17 @@ public sealed class StaffingDAO : GenericDAO<ShiftAssignment>
     /// <summary>Trùng (AccountId, WorkDate, ShiftId) bị UQ_ShiftAssignments chặn → middleware trả 409.</summary>
     public Task<ShiftAssignment> AddAssignmentAsync(ShiftAssignment assignment) => AddAsync(assignment);
 
-    public async Task DeleteAssignmentAsync(int id)
+    /// <summary>Bỏ một ca; đơn đổi ca đang chờ có dính ca này tự hủy (trả về để báo người xin).</summary>
+    public async Task<List<LeaveRequest>> DeleteAssignmentAsync(int id, DateTime now)
     {
         await using var context = CreateContext();
+        await using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         var assignment = await context.ShiftAssignments.FindAsync(id) ?? throw new NotFoundException("Không tìm thấy ca đã xếp.");
+        var cancelled = await ReleaseAssignmentsAsync(context, [id], now, "Tự hủy: ca trong đơn đã bị bỏ khỏi lịch.");
         context.ShiftAssignments.Remove(assignment);
         await context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return cancelled;
     }
 
     /// <summary>

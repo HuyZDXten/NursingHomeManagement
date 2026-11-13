@@ -101,9 +101,14 @@ public class StaffingService(
             throw new BusinessRuleException("Không sửa lịch ca đã qua.");
         }
 
-        await staffing.DeleteAssignmentAsync(id);
+        var cancelledSwaps = await staffing.DeleteAssignmentAsync(id, clock.UtcNow);
         await notifications.NotifyAsync([assignment.AccountId], NotificationType.System, "Lịch ca thay đổi",
             $"Đã bỏ {assignment.Shift.Name.ToLowerInvariant()} ngày {assignment.WorkDate:dd/MM/yyyy}.", ShiftsLink);
+        foreach (var request in cancelledSwaps)
+        {
+            int[] receivers = request.SwapWithAccountId is int colleague ? [request.AccountId, colleague] : [request.AccountId];
+            await notifications.NotifyAsync(receivers, NotificationType.System, "Đơn đổi ca tự hủy", request.ReviewNote, ShiftsLink);
+        }
     }
 
     public async Task<CopyWeekResultDto> CopyWeekAsync(CurrentUser user, CopyWeekRequest request)

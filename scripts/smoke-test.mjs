@@ -266,5 +266,83 @@ check('Doctor xem doanh thu -> 403', (await call('GET', '/api/reports/revenue', 
 check('Caregiver xem công suất -> 403', (await call('GET', '/api/reports/occupancy', caregiver.accessToken)).status === 403);
 check('Family tải Excel doanh thu -> 403', (await download('/api/reports/revenue/export', family2.accessToken)).status === 403);
 
+// ---- Sprint 3 · S3-V4: nghỉ phép/đổi ca & bàn giao ca ----
+// Sau S3-V2, thứ Ba tuần sau: caregiver (6) ca sáng, caregiver2 (7) ca chiều.
+const nextTuesday = mondayPlus(8);
+const cgNext = (await call('GET', `/api/shift-assignments/mine?days=28`, caregiver.accessToken)).data;
+const myTueMorning = cgNext.find((a) => a.workDate === nextTuesday && a.shiftCode === 'MORNING');
+const swapOptions = await call('GET', `/api/leave-requests/swap-candidates?shiftAssignmentId=${myTueMorning?.id}`, caregiver.accessToken);
+const theirTueAfternoon = swapOptions.data?.find?.((a) => a.workDate === nextTuesday && a.shiftCode === 'AFTERNOON' && a.accountId === 7);
+check('Gợi ý ca đổi được: ca chiều thứ Ba của caregiver2, không có ô làm trùng', swapOptions.status === 200 && !!theirTueAfternoon
+  && swapOptions.data.every((a) => a.accountId === 7 && !(a.shiftCode === 'MORNING' && a.workDate === mondayPlus(7))), `${swapOptions.data?.length} ca`);
+check('Không xin đổi ca của người khác -> 403', (await call('GET', `/api/leave-requests/swap-candidates?shiftAssignmentId=${theirTueAfternoon?.id}`, caregiver.accessToken)).status === 403);
+const swapReq = await call('POST', '/api/leave-requests', caregiver.accessToken,
+  { type: 'Swap', shiftAssignmentId: myTueMorning?.id, swapShiftAssignmentId: theirTueAfternoon?.id, reason: 'Sáng thứ Ba đưa con đi khám.' });
+check('Caregiver xin đổi ca sáng lấy ca chiều của caregiver2', swapReq.status === 200 && swapReq.data.status === 'Pending' && swapReq.data.swapWithName === 'Đỗ Thị Hoa', swapReq.data?.message);
+check('Đơn đổi ca trùng ca đang chờ -> 409', (await call('POST', '/api/leave-requests', caregiver.accessToken,
+  { type: 'Swap', shiftAssignmentId: myTueMorning?.id, swapShiftAssignmentId: theirTueAfternoon?.id, reason: 'Gửi lại lần nữa' })).status === 409);
+const nurseTuesday = (await call('GET', `/api/shift-assignments?from=${nextTuesday}&to=${nextTuesday}`, nurse.accessToken)).data.find((a) => a.accountId === 5);
+check('Đổi ca với người khác vai trò -> 400', (await call('POST', '/api/leave-requests', caregiver.accessToken,
+  { type: 'Swap', shiftAssignmentId: myTueMorning?.id, swapShiftAssignmentId: nurseTuesday?.id, reason: 'Thử khác vai trò' })).status === 400);
+check('Lễ tân xem đơn nghỉ phép -> 403', (await call('GET', '/api/leave-requests', recep.accessToken)).status === 403);
+const cg2Requests = await call('GET', '/api/leave-requests', caregiver2.accessToken);
+check('Caregiver2 thấy đơn nghỉ của mình + đơn xin đổi ca với mình', cg2Requests.status === 200
+  && cg2Requests.data.some((r) => r.id === 1 && r.type === 'Leave') && cg2Requests.data.some((r) => r.id === swapReq.data.id));
+check('Caregiver không thấy đơn nghỉ của caregiver2', (await call('GET', '/api/leave-requests', caregiver.accessToken)).data.every((r) => r.accountId === 6 || r.swapWithAccountId === 6));
+check('Caregiver tự duyệt đơn -> 403', (await call('POST', `/api/leave-requests/${swapReq.data.id}/approve`, caregiver.accessToken, {})).status === 403);
+check('Caregiver2 có thông báo xin đổi ca', (await call('GET', '/api/notifications', caregiver2.accessToken)).data.items.some((n) => n.title.includes('xin đổi ca với bạn')));
+const swapOk = await call('POST', `/api/leave-requests/${swapReq.data.id}/approve`, adminToken, { note: 'Đồng ý.' });
+check('Admin duyệt đổi ca', swapOk.status === 200 && swapOk.data.request.status === 'Approved', swapOk.data?.message);
+const tueAfter = (await call('GET', `/api/shift-assignments?from=${nextTuesday}&to=${nextTuesday}`, nurse.accessToken)).data;
+check('Lịch thứ Ba đã hoán đổi đúng người', tueAfter.some((a) => a.accountId === 6 && a.shiftCode === 'AFTERNOON')
+  && tueAfter.some((a) => a.accountId === 7 && a.shiftCode === 'MORNING')
+  && !tueAfter.some((a) => a.accountId === 6 && a.shiftCode === 'MORNING'), tueAfter.map((a) => `${a.accountId}:${a.shiftCode}`).join(' '));
+check('Duyệt lại đơn đã duyệt -> 400', (await call('POST', `/api/leave-requests/${swapReq.data.id}/approve`, adminToken, {})).status === 400);
+check('Caregiver nhận thông báo duyệt đổi ca', (await call('GET', '/api/notifications', caregiver.accessToken)).data.items.some((n) => n.title === 'Đơn đổi ca được duyệt'));
+
+check('Xin nghỉ ngày đã qua -> 400', (await call('POST', '/api/leave-requests', caregiver.accessToken,
+  { type: 'Leave', fromDate: plusDays(-1), toDate: plusDays(1), reason: 'Ốm' })).status === 400);
+check('Xin nghỉ quá 31 ngày -> 400', (await call('POST', '/api/leave-requests', caregiver.accessToken,
+  { type: 'Leave', fromDate: plusDays(1), toDate: plusDays(40), reason: 'Nghỉ dài' })).status === 400);
+const ownLeave = await call('POST', '/api/leave-requests', caregiver.accessToken, { type: 'Leave', fromDate: plusDays(20), toDate: plusDays(21), reason: 'Việc riêng' });
+check('Caregiver tự hủy đơn nghỉ đang chờ', ownLeave.status === 200
+  && (await call('POST', `/api/leave-requests/${ownLeave.data.id}/cancel`, caregiver.accessToken)).data.status === 'Cancelled');
+// Đơn nghỉ demo (Id 1) của caregiver2: +7..+8 ngày. Xếp thêm ca đêm +7 để chắc có ca bị bỏ dù hôm nay là thứ mấy.
+await call('POST', '/api/shift-assignments', adminToken, { accountId: 7, shiftId: shiftOf('NIGHT'), workDate: plusDays(7) });
+const leaveOk = await call('POST', '/api/leave-requests/1/approve', adminToken, {});
+check('Duyệt nghỉ: bỏ ca trong khoảng nghỉ, trả danh sách ca trống', leaveOk.status === 200 && leaveOk.data.vacatedShifts.length >= 1
+  && leaveOk.data.vacatedShifts.every((s) => s.workDate >= plusDays(7) && s.workDate <= plusDays(8)), JSON.stringify(leaveOk.data?.vacatedShifts?.map((s) => `${s.workDate} ${s.shiftCode}`)));
+check('Lịch caregiver2 trong khoảng nghỉ đã trống',
+  (await call('GET', `/api/shift-assignments?from=${plusDays(7)}&to=${plusDays(8)}`, nurse.accessToken)).data.every((a) => a.accountId !== 7));
+check('Admin nhận thông báo "Cần xếp người thay"', (await call('GET', '/api/notifications', adminToken)).data.items.some((n) => n.title.startsWith('Cần xếp người thay')));
+
+const yesterdayVn = plusDays(-1);
+const nurseDraft = await call('GET', `/api/handovers/draft?shiftId=${shiftOf('MORNING')}&date=${plusDays(0)}`, nurse.accessToken);
+check('Gợi ý bàn giao ca sáng (điều dưỡng): việc chưa xong của mọi cư dân', nurseDraft.status === 200
+  && nurseDraft.data.items.some((i) => i.kind === 'Task' && i.text.includes('Theo dõi bữa trưa'))
+  && !nurseDraft.data.items.some((i) => i.text.includes('Đo sinh hiệu buổi sáng')), `${nurseDraft.data?.items?.length} mục`);
+const cgDraft = await call('GET', `/api/handovers/draft?shiftId=${shiftOf('MORNING')}&date=${plusDays(0)}`, caregiver.accessToken);
+check('Gợi ý bàn giao của caregiver chỉ gồm cư dân mình được xem', cgDraft.status === 200
+  && cgDraft.data.items.some((i) => i.text.includes('Hỗ trợ đi lại')) && cgDraft.data.items.every((i) => i.residentId === 2));
+check('Lễ tân lấy gợi ý bàn giao -> 403', (await call('GET', `/api/handovers/draft?shiftId=1`, recep.accessToken)).status === 403);
+const handover = await call('POST', '/api/handovers', adminToken, {
+  shiftId: shiftOf('NIGHT'), workDate: yesterdayVn, summary: 'Ca đêm yên tĩnh, NH-0002 ngủ ngon, không sốt lại.',
+  highlights: [{ kind: 'Note', residentId: 2, residentName: 'NH-0002', text: 'Theo dõi nhiệt độ sáng nay.' }],
+});
+check('Admin viết bàn giao ca đêm hôm qua', handover.status === 200 && handover.data.highlights.length === 1 && !handover.data.canAcknowledge, handover.data?.message);
+check('Viết bàn giao trùng ca -> 409', (await call('POST', '/api/handovers', adminToken, { shiftId: shiftOf('NIGHT'), workDate: yesterdayVn, summary: 'Lần hai nè' })).status === 409);
+check('Không có ca thì không viết bàn giao -> 403', (await call('POST', '/api/handovers', caregiver2.accessToken, { shiftId: shiftOf('NIGHT'), workDate: yesterdayVn, summary: 'Thử viết' })).status === 403);
+check('Ca chưa bắt đầu thì chưa viết được -> 400', (await call('POST', '/api/handovers', adminToken, { shiftId: shiftOf('MORNING'), workDate: plusDays(1), summary: 'Viết trước' })).status === 400);
+const nurseInbox = await call('GET', '/api/handovers/inbox', nurse.accessToken);
+check('Điều dưỡng thấy bàn giao chờ xác nhận', nurseInbox.status === 200 && nurseInbox.data.some((h) => h.id === handover.data.id));
+check('Danh sách bàn giao hôm nay có bàn giao demo chưa đọc', (await call('GET', `/api/handovers?date=${plusDays(0)}`, nurse.accessToken)).data.some((h) => h.id === 2 && !h.acknowledgedAt));
+check('Admin tự xác nhận bàn giao của mình -> 400', (await call('POST', `/api/handovers/${handover.data.id}/acknowledge`, adminToken)).status === 400);
+const acked = await call('POST', `/api/handovers/${handover.data.id}/acknowledge`, nurse.accessToken);
+check('Điều dưỡng bấm "Đã đọc"', acked.status === 200 && acked.data.acknowledgedByName === 'ĐD. Trần Thị Mai' && !acked.data.canAcknowledge);
+check('Xác nhận lần hai -> 400', (await call('POST', `/api/handovers/${handover.data.id}/acknowledge`, nurse.accessToken)).status === 400);
+check('Người viết nhận thông báo bàn giao đã được đọc', (await call('GET', '/api/notifications', adminToken)).data.items.some((n) => n.title === 'Bàn giao ca đã được đọc'));
+// Bàn giao demo Id 2: ca sáng hôm nay → ca kế tiếp là ca chiều; caregiver (6) chỉ có ca sáng.
+check('Caregiver không làm ca kế tiếp thì không xác nhận được -> 403', (await call('POST', '/api/handovers/2/acknowledge', caregiver.accessToken)).status === 403);
+
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);

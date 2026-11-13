@@ -284,6 +284,9 @@ Sprint 3+ (module):
 | | `GET /api/shift-assignments?from&to` (Admin/Nurse thấy tất cả, Doctor/Caregiver chỉ của mình), `GET /api/care-assignments?residentId&accountId&activeOnly` (Caregiver chỉ của mình) | ClinicalStaff |
 | | `POST /api/shift-assignments`, `DELETE /{id}`, `POST /copy-week` | AdminOnly |
 | | `POST /api/care-assignments`, `POST /{id}/end` | CarePlanners |
+| Nghỉ phép & bàn giao (S3-V4) | `GET /api/leave-requests?status` (Admin thấy tất cả; người khác: đơn của mình + đơn xin đổi ca với mình), `POST /api/leave-requests`, `GET /swap-candidates?shiftAssignmentId`, `POST /{id}/cancel` (chủ đơn) | ClinicalStaff |
+| | `POST /api/leave-requests/{id}/approve` · `reject` | AdminOnly |
+| | `GET /api/handovers/draft?shiftId&date`, `GET /api/handovers?date`, `GET /api/handovers/inbox`, `POST /api/handovers`, `POST /{id}/acknowledge` | ClinicalStaff |
 | Báo cáo (S3-V3) | `GET /api/reports/revenue?year` · `/revenue/export` (.xlsx) | FinanceStaff |
 | | `GET /api/reports/occupancy?year` · `/occupancy/export` | BillingStaff |
 | | `GET /api/reports/medication-adherence?from&to` · `/medication-adherence/export` | Prescribers |

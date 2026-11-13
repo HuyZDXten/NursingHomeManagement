@@ -23,6 +23,11 @@ public partial class NursingHomeContext
 
     public DbSet<ResidentCareAssignment> ResidentCareAssignments => Set<ResidentCareAssignment>();
 
+    // S3-V4 nghỉ phép/đổi ca & bàn giao ca
+    public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+
+    public DbSet<ShiftHandover> ShiftHandovers => Set<ShiftHandover>();
+
     partial void ConfigureOperations(ModelBuilder modelBuilder)
     {
         ConfigureStaffing(modelBuilder);
@@ -62,6 +67,24 @@ public partial class NursingHomeContext
             entity.HasOne(e => e.Account).WithMany().HasForeignKey(e => e.AccountId);
             entity.HasOne(e => e.AssignedBy).WithMany().HasForeignKey(e => e.AssignedById);
             entity.HasOne(e => e.Shift).WithMany().HasForeignKey(e => e.ShiftId);
+        });
+        modelBuilder.Entity<LeaveRequest>(entity =>
+        {
+            entity.ToTable("LeaveRequests");
+            entity.Property(e => e.Type).HasConversion<string>();
+            entity.Property(e => e.Status).HasConversion<string>();
+            entity.HasOne(e => e.Account).WithMany().HasForeignKey(e => e.AccountId);
+            entity.HasOne(e => e.SwapWithAccount).WithMany().HasForeignKey(e => e.SwapWithAccountId);
+            entity.HasOne(e => e.ReviewedBy).WithMany().HasForeignKey(e => e.ReviewedById);
+            entity.HasOne(e => e.ShiftAssignment).WithMany().HasForeignKey(e => e.ShiftAssignmentId);
+            entity.HasOne(e => e.SwapShiftAssignment).WithMany().HasForeignKey(e => e.SwapShiftAssignmentId);
+        });
+        modelBuilder.Entity<ShiftHandover>(entity =>
+        {
+            entity.ToTable("ShiftHandovers");
+            entity.HasOne(e => e.Shift).WithMany().HasForeignKey(e => e.ShiftId);
+            entity.HasOne(e => e.FromAccount).WithMany().HasForeignKey(e => e.FromAccountId);
+            entity.HasOne(e => e.AcknowledgedBy).WithMany().HasForeignKey(e => e.AcknowledgedById);
         });
     }
 }
