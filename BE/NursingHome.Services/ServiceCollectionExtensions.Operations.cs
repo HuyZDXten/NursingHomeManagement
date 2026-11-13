@@ -51,5 +51,9 @@ public static partial class ServiceCollectionExtensions
             : provider.GetRequiredService<GeminiChatProvider>());
         services.AddScoped<IAiChatEngine, AiChatEngine>();
         services.AddScoped<IPublicChatbotService, PublicChatbotService>();
+
+        // S4-V2 AI tóm tắt bàn giao ca (AI-04) + hỏi đáp báo cáo (AI-12)
+        services.AddScoped<IHandoverAiService, HandoverAiService>();
+        services.AddScoped<IReportAssistantService, ReportAssistantService>();
     }
 }

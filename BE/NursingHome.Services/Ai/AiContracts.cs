@@ -21,7 +21,8 @@ public sealed record AiToolDefinition(string Name, string Description, JsonObjec
 /// <summary><paramref name="Id"/> bắt đầu bằng "local-" khi provider không cấp id (khi đó không gửi lại id cho provider).</summary>
 public sealed record AiToolCall(string Id, string Name, JsonElement Arguments);
 
-public sealed record AiChatRequest(string SystemPrompt, IReadOnlyList<AiMessage> Messages, IReadOnlyList<AiToolDefinition> Tools);
+/// <summary><paramref name="Temperature"/>: NULL = theo Ai:Temperature (vd. tóm tắt bàn giao dùng 0.2).</summary>
+public sealed record AiChatRequest(string SystemPrompt, IReadOnlyList<AiMessage> Messages, IReadOnlyList<AiToolDefinition> Tools, double? Temperature = null);
 
 /// <summary><paramref name="Native"/>: nội dung gốc lượt trả lời của provider (để gửi lại khi có tool call).</summary>
 public sealed record AiChatResult(string? Text, IReadOnlyList<AiToolCall> ToolCalls, int InputTokens, int OutputTokens, JsonElement? Native = null);

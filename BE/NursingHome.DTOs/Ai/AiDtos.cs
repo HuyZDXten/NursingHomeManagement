@@ -64,3 +64,11 @@ public class SaveAiKnowledgeRequest
 
     public bool IsActive { get; set; } = true;
 }
+
+/// <summary>S4-V2 (AI-12): câu hỏi của nhân viên cho trợ lý số liệu.</summary>
+public class AiStaffChatRequest
+{
+    [Required(ErrorMessage = "Nhập câu hỏi.")]
+    [StringLength(1000, MinimumLength = 1, ErrorMessage = "Câu hỏi 1–1000 ký tự.")]
+    public string Message { get; set; } = "";
+}

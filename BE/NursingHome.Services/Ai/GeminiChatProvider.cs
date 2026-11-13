@@ -24,7 +24,7 @@ public sealed class GeminiChatProvider(HttpClient http, IOptions<AiOptions> opti
             throw new AiProviderException("Chưa cấu hình Ai:Gemini:ApiKey / Ai:Gemini:Model.");
         }
 
-        var payload = BuildPayload(request, gemini.Model, settings.MaxOutputTokens, settings.Temperature);
+        var payload = BuildPayload(request, gemini.Model, settings.MaxOutputTokens, request.Temperature ?? settings.Temperature);
         using var message = new HttpRequestMessage(HttpMethod.Post,
             $"{gemini.BaseUrl.TrimEnd('/')}/models/{Uri.EscapeDataString(gemini.Model)}:generateContent")
         {

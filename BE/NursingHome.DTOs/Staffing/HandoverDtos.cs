@@ -142,3 +142,28 @@ public class HandoverDto
     /// <summary>Người đang xem được bấm "Đã đọc" (có ca kế tiếp, hoặc Admin/Nurse; không tự xác nhận bàn giao của mình).</summary>
     public bool CanAcknowledge { get; set; }
 }
+
+// ---------------- S4-V2 AI tóm tắt bàn giao ca (AI-04) ----------------
+
+public class HandoverAiDraftRequest
+{
+    [Range(1, int.MaxValue)]
+    public int ShiftId { get; set; }
+
+    /// <summary>Ngày bắt đầu ca, mặc định hôm nay.</summary>
+    public DateOnly? Date { get; set; }
+}
+
+/// <summary>Nháp do AI soạn — FE điền vào ô tóm tắt để người viết sửa rồi mới lưu.</summary>
+public class HandoverAiDraftDto
+{
+    public string Summary { get; set; } = "";
+
+    /// <summary>false khi AI lỗi và đây là bản tóm tắt theo quy tắc (lưu với AiGenerated = false).</summary>
+    public bool AiGenerated { get; set; }
+
+    /// <summary>Các mục gợi ý đã dùng (lưu vào HighlightsJson).</summary>
+    public List<HandoverItemDto> Items { get; set; } = [];
+
+    public string? Note { get; set; }
+}

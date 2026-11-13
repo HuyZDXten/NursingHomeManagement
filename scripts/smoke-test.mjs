@@ -519,5 +519,27 @@ while (aiStatus === 200 && aiSent < 25) {
 }
 check('Chatbot công khai quá 20 tin/phút/IP -> 429', aiStatus === 429, `dừng ở tin thứ ${aiSent}`);
 
+// ---- Sprint 4 · S4-V2: AI tóm tắt bàn giao ca (AI-04) + hỏi đáp báo cáo (AI-12) ----
+const aiHandover = await call('POST', '/api/handovers/ai-draft', nurse.accessToken, { shiftId: shiftOf('MORNING'), date: plusDays(0) });
+check('AI soạn nháp bàn giao ca sáng từ dữ liệu gợi ý', aiHandover.status === 200 && aiHandover.data.aiGenerated
+  && aiHandover.data.summary.includes('Theo dõi bữa trưa') && aiHandover.data.summary.split('\n').length <= 12 && aiHandover.data.items.length >= 1,
+  aiHandover.data?.summary?.split('\n')[0]);
+check('Nháp AI không chứa số điện thoại', !/0\d{9}/.test(aiHandover.data.summary));
+const quietShift = await call('POST', '/api/handovers/ai-draft', caregiver2.accessToken, { shiftId: shiftOf('NIGHT'), date: plusDays(-1) });
+check('Ca không có dữ liệu -> "Ca không có vấn đề cần lưu ý"', quietShift.status === 200 && quietShift.data.summary === 'Ca không có vấn đề cần lưu ý.');
+check('Lễ tân gọi AI bàn giao -> 403', (await call('POST', '/api/handovers/ai-draft', recep.accessToken, { shiftId: 1 })).status === 403);
+const aiSaved = await call('POST', '/api/handovers', adminToken, { shiftId: shiftOf('AFTERNOON'), workDate: plusDays(-1), summary: aiHandover.data.summary, highlights: aiHandover.data.items, aiGenerated: true });
+check('Lưu bàn giao do AI soạn (AiGenerated = true) sau khi người viết duyệt', aiSaved.status === 200 && aiSaved.data.aiGenerated === true, aiSaved.data?.message);
+
+const revenueAnswer = (await call('POST', '/api/ai/staff/report-chat', accountant.accessToken, { message: 'Năm nay doanh thu bao nhiêu?' })).data?.reply ?? '';
+check('Kế toán hỏi doanh thu: trả lời bằng số liệu báo cáo', revenueAnswer.includes('tổng thực thu') && revenueAnswer.includes(' đ'), revenueAnswer);
+const occupancyAnswer = (await call('POST', '/api/ai/staff/report-chat', accountant.accessToken, { message: 'Công suất giường năm nay thế nào?' })).data?.reply ?? '';
+check('Kế toán hỏi công suất giường', occupancyAnswer.startsWith('Công suất giường năm'), occupancyAnswer);
+const deniedAnswer = (await call('POST', '/api/ai/staff/report-chat', accountant.accessToken, { message: 'Tỉ lệ uống thuốc tháng này?' })).data?.reply ?? '';
+check('Kế toán hỏi tuân thủ thuốc -> tool giữ quyền, không trả số liệu', deniedAnswer.includes('không có quyền'), deniedAnswer);
+check('Bác sĩ dùng hỏi đáp báo cáo -> 403', (await call('POST', '/api/ai/staff/report-chat', doctor.accessToken, { message: 'Doanh thu?' })).status === 403);
+const reportHistory = await call('GET', '/api/ai/staff/report-chat/history', accountant.accessToken);
+check('Lịch sử hỏi đáp báo cáo của kế toán', reportHistory.status === 200 && reportHistory.data.length === 6);
+
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);

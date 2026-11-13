@@ -425,3 +425,13 @@ export interface AiKnowledgeDoc {
 }
 
 export type AiKnowledgeForm = Omit<AiKnowledgeDoc, 'id' | 'updatedAt'>;
+
+// ---------------- S4-V2 AI tóm tắt bàn giao + hỏi đáp báo cáo ----------------
+
+export interface HandoverAiDraft {
+  summary: string;
+  /** false khi AI lỗi và đây là bản tóm tắt theo quy tắc. */
+  aiGenerated: boolean;
+  items: HandoverItem[];
+  note?: string | null;
+}

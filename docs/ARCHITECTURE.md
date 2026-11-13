@@ -298,6 +298,8 @@ Sprint 3+ (module):
 | | Sự kiện realtime `chat` (ChatMessageDto) trên hub `/hubs/notifications` | — |
 | AI công khai (S4-V1) | `GET /api/ai/public/config`, `POST /api/ai/public/chat {conversationKey, message}` (rate limit `AiPublic` 20/phút/IP), `GET /api/ai/public/history?conversationKey` | ẩn danh |
 | | `GET·POST /api/ai/knowledge`, `PUT·DELETE /{id}` | AdminOnly |
+| AI nội bộ (S4-V2) | `POST /api/handovers/ai-draft {shiftId, date}` (nháp, không tự lưu) | ClinicalStaff |
+| | `POST /api/ai/staff/report-chat {message}`, `GET /api/ai/staff/report-chat/history` (tool tự kiểm quyền từng báo cáo) | FinanceStaff |
 | Báo cáo (S3-V3) | `GET /api/reports/revenue?year` · `/revenue/export` (.xlsx) | FinanceStaff |
 | | `GET /api/reports/occupancy?year` · `/occupancy/export` | BillingStaff |
 | | `GET /api/reports/medication-adherence?from&to` · `/medication-adherence/export` | Prescribers |

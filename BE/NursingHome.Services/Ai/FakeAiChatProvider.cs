@@ -27,7 +27,11 @@ public sealed partial class FakeAiChatProvider : IAiChatProvider
         (["giá", "gói", "chi phí", "bao nhiêu tiền"], "list_packages"),
         (["giường", "còn chỗ", "phòng trống"], "get_bed_availability"),
         (["tham quan", "lịch trống", "đặt lịch"], "get_tour_slots"),
-        (["giờ thăm", "quy trình", "thủ tục", "nhập viện", "thanh toán", "quy định"], "search_knowledge")
+        (["giờ thăm", "quy trình", "thủ tục", "nhập viện", "thanh toán", "quy định"], "search_knowledge"),
+        // S4-V2 kênh nhân viên (hỏi đáp báo cáo)
+        (["doanh thu", "thu được", "công nợ"], "revenue"),
+        (["công suất", "lấp đầy"], "occupancy"),
+        (["tuân thủ", "uống thuốc", "bỏ liều"], "medication_adherence")
     ];
 
     public string Name => AiOptions.FakeProvider;
@@ -53,12 +57,8 @@ public sealed partial class FakeAiChatProvider : IAiChatProvider
             return Call(directive.Groups["name"].Value, json);
         }
 
+        // Tool của kênh hiện tại xét trước (kênh nhân viên có "tỉ lệ uống thuốc"), sau đó mới từ chối câu hỏi y tế.
         var lower = last.Content.ToLowerInvariant();
-        if (MedicalWords.Any(lower.Contains))
-        {
-            return Text(MedicalRefusal);
-        }
-
         foreach (var (keywords, tool) in KeywordTools)
         {
             if (available.Contains(tool) && keywords.Any(lower.Contains))
@@ -67,7 +67,7 @@ public sealed partial class FakeAiChatProvider : IAiChatProvider
             }
         }
 
-        return Text(Greeting);
+        return Text(MedicalWords.Any(lower.Contains) ? MedicalRefusal : Greeting);
     }
 
     private static string SummaryOf(string toolJson)

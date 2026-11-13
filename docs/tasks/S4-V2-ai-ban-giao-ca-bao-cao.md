@@ -10,11 +10,21 @@ Nút **"Viết tóm tắt bằng AI"** trong màn bàn giao ca: AI đọc dữ l
 
 ## Tiêu chí hoàn thành
 
-- [ ] `POST /api/handovers/ai-draft {shiftId, date}` trả đoạn văn bản (≤ 12 dòng, gạch đầu dòng theo cư dân, mục cần ưu tiên ghi "[ƯU TIÊN]").
-- [ ] Chỉ dùng dữ liệu của `HandoverService.GetDraftAsync` (S3-V4); không có dữ liệu thì trả "Ca không có vấn đề cần lưu ý".
-- [ ] Văn bản AI được điền vào ô tóm tắt để **người dùng sửa**; lưu với `AiGenerated = 1`.
-- [ ] Dữ liệu gửi cho AI dùng **mã cư dân + tên gọi**, không gửi SĐT, CCCD, địa chỉ.
-- [ ] (Could, AI-12) Khung hỏi đáp ở trang Báo cáo; AI gọi tool `revenue(year)`, `occupancy(year)`, `medication_adherence(from,to)`, `incident_summary(from,to)` (gọi `IReportService` với `CurrentUser` để giữ quyền) và trả lời có số liệu; **không** sinh SQL.
+- [x] `POST /api/handovers/ai-draft {shiftId, date}` trả đoạn văn bản (≤ 12 dòng, gạch đầu dòng theo cư dân, mục cần ưu tiên ghi "[ƯU TIÊN]").
+- [x] Chỉ dùng dữ liệu của `HandoverService.GetDraftAsync` (S3-V4); không có dữ liệu thì trả "Ca không có vấn đề cần lưu ý".
+- [x] Văn bản AI được điền vào ô tóm tắt để **người dùng sửa**; lưu với `AiGenerated = 1`.
+- [x] Dữ liệu gửi cho AI dùng **mã cư dân + tên gọi**, không gửi SĐT, CCCD, địa chỉ.
+- [x] (Could, AI-12) Khung hỏi đáp ở trang Báo cáo; AI gọi tool `revenue(year)`, `occupancy(year)`, `medication_adherence(from,to)`, `incident_summary(from,to)` (gọi `IReportService` với `CurrentUser` để giữ quyền) và trả lời có số liệu; **không** sinh SQL. *(trừ `incident_summary` — chờ bảng `Incidents` của S3-H1)*
+
+### Kết quả triển khai (13/11/2026)
+
+- Kiểm thử: smoke thêm 10 kiểm tra với provider Fake (tổng 213/213 PASS), unit thêm `HandoverAiTests` (87/87). **Chưa chạy với Gemini thật**; nút "Viết tóm tắt bằng AI" và khung "Hỏi đáp số liệu" **chưa xem trên trình duyệt**.
+- Khác đặc tả:
+  - Provider Fake (hoặc khi AI lỗi/hết thời gian) dùng **bản tóm tắt theo quy tắc**: gộp theo cư dân, thuốc/sinh hiệu/sự cố lên đầu với "[ƯU TIÊN]", tối đa 12 dòng. Khi AI lỗi, nháp có `aiGenerated = false` + ghi chú, FE lưu đúng cờ đó.
+  - Thêm `AiChatRequest.Temperature` (tùy chọn) để gọi tóm tắt với 0.2. Với model `gemini-3*` không gửi temperature (để mặc định của model, như StreetBiz).
+  - `IReportService` không nhận `CurrentUser`, nên mỗi tool tự kiểm role theo policy của báo cáo tương ứng (doanh thu: FinanceStaff; công suất: BillingStaff; tuân thủ thuốc: Prescribers). Kế toán hỏi tuân thủ thuốc → model nhận `{"error": "không có quyền"}`.
+  - Endpoint hỏi đáp: `POST /api/ai/staff/report-chat` + `GET .../history` (FinanceStaff, rate limit `Chat` theo tài khoản). Provider Fake nhận các từ khóa "doanh thu", "công suất", "tuân thủ/uống thuốc".
+  - `incident_summary` thêm khi S3-H1 (bảng `Incidents`) merge — cùng chỗ với UC-125 của S3-V3.
 
 ## 1. Database
 
