@@ -26,6 +26,8 @@
 - [ ] `dotnet build` 0 cảnh báo, `dotnet test`, `npm run build`, `npm run lint` sạch.
 - [ ] Rà bảo mật: không còn secret trong `appsettings.json`/`.env` đã commit; đổi các secret từng lộ ở ASS2 nếu dùng lại tài khoản đó.
 
+> **Đã chạy sớm 13/11 trên nhánh `feature/s4-v2-ai-handover` (cuối chuỗi task V):** mục 10 của seed có dữ liệu cho mọi màn module (10.1–10.6: tham quan ngày mai, ca tuần này, hóa đơn 2–4 tháng trước, nhật ký thuốc 7 ngày, đơn nghỉ + 2 bàn giao, dịch vụ phát sinh, cuộc trò chuyện) + tri thức AI ở `04`; smoke cô lập **213/213**; `dotnet build` API/Tests 0 cảnh báo; unit **87/87**; `npm run build`/`lint` sạch; không có `.env`, `appsettings.Development.json` hay key thật trong file đã commit. **Vẫn phải chạy lại** ở tuần 5 sau khi merge cả phần của Huy, và QA bằng trình duyệt (chưa ai xem các trang mới của Sprint 3–4 trên trình duyệt).
+
 **Thứ Năm (11/12): đóng băng tính năng** — chỉ sửa lỗi. Merge `develop` → `main` bằng PR, Huy approve, `git tag v1.0`.
 
 **Thứ Sáu (12/12): tổng duyệt** theo kịch bản dưới với Huy, bấm giờ.
