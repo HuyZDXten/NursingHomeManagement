@@ -59,7 +59,7 @@ docs/                       SPRINTS.md (kế hoạch Scrum), HANDOVER.md (hướ
 ## Kiểm thử
 
 ```powershell
-dotnet test BE/NursingHome.sln          # 11 unit test
+dotnet test BE/NursingHome.sln          # unit test quy tắc nghiệp vụ (xUnit)
 .\scripts\run-smoke-isolated.ps1       # kiểm tra end-to-end trên DB/cổng riêng, không đụng bản dev đang chạy
 cd FE; npm run build; npm run lint
 ```

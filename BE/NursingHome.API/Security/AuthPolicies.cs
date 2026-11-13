@@ -37,4 +37,7 @@ public static class AuthPolicies
 public static class RateLimitPolicies
 {
     public const string Credentials = nameof(Credentials);
+
+    /// <summary>Form công khai không cần đăng nhập (tư vấn, đặt lịch tham quan): RateLimit:PublicFormsPerMinute.</summary>
+    public const string PublicForms = nameof(PublicForms);
 }

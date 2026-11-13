@@ -1,3 +1,8 @@
+import { lazy } from 'react';
+import { Route } from 'react-router-dom';
+import { SolutionOutlined } from '@ant-design/icons';
+import { ProtectedRoute } from '../auth/ProtectedRoute';
+import { FRONT_DESK } from '../auth/roles';
 import type { MenuEntry } from '../layouts/menu';
 
 /**
@@ -8,26 +13,25 @@ import type { MenuEntry } from '../layouts/menu';
  * - operationsAppRoutes:    trang trong AppLayout; luôn bọc <ProtectedRoute roles={...}>
  * - operationsMenu:         mục menu bên trái (lọc theo role)
  *
- * Trang đặt ở src/pages/Operations/, import bằng lazy() để chia nhỏ bundle. Ví dụ (S3-V1):
- *
- *   import { lazy } from 'react';
- *   import { Route } from 'react-router-dom';
- *   import { SolutionOutlined } from '@ant-design/icons';
- *   import { ProtectedRoute } from '../auth/ProtectedRoute';
- *   import { FRONT_DESK } from '../auth/roles';
- *   const Admissions = lazy(() => import('../pages/Operations/Admissions'));
- *
- *   export const operationsAppRoutes = (
- *     <>
- *       <Route path="/staff/admissions" element={<ProtectedRoute roles={FRONT_DESK}><Admissions /></ProtectedRoute>} />
- *     </>
- *   );
- *   export const operationsMenu: MenuEntry[] = [
- *     { key: '/staff/admissions', label: 'Tiếp nhận & tham quan', icon: <SolutionOutlined />, roles: FRONT_DESK },
- *   ];
+ * Trang đặt ở src/pages/Operations/, import bằng lazy() để chia nhỏ bundle.
  */
-export const operationsPublicRoutes = <></>;
 
-export const operationsAppRoutes = <></>;
+// S3-V1 tiếp nhận & tham quan
+const TourBooking = lazy(() => import('../pages/Operations/TourBooking'));
+const Admissions = lazy(() => import('../pages/Operations/Admissions'));
 
-export const operationsMenu: MenuEntry[] = [];
+export const operationsPublicRoutes = (
+  <>
+    <Route path="/dat-lich-tham-quan" element={<TourBooking />} />
+  </>
+);
+
+export const operationsAppRoutes = (
+  <>
+    <Route path="/staff/admissions" element={<ProtectedRoute roles={FRONT_DESK}><Admissions /></ProtectedRoute>} />
+  </>
+);
+
+export const operationsMenu: MenuEntry[] = [
+  { key: '/staff/admissions', label: 'Tiếp nhận & tham quan', icon: <SolutionOutlined />, roles: FRONT_DESK },
+];

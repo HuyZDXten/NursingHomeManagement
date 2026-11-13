@@ -287,6 +287,9 @@ git push -u origin feature/s3-h1-incidents   # rồi mở Pull Request vào deve
 | FE báo "Không kết nối được máy chủ" | API chưa chạy hoặc `FE/.env` sai `VITE_API_BASE_URL` |
 | Quên mật khẩu trả 503 | Chưa cấu hình `Email:SmtpUser/SmtpPassword` (Gmail App Password) |
 | Tạo VietQR trả 503 | `PayOs:Enabled=false` hoặc thiếu khóa; chạy payos-fake với khóa demo |
+| Form công khai (tư vấn, đặt lịch tham quan) trả 429 | Rate limit `RateLimit:PublicFormsPerMinute` (mặc định 5/phút/IP); chờ 1 phút |
+| `GET /odata/X` trả 404 kiểu "Không tìm thấy ..." của một action `Get(id)` | Thiếu `[Route("odata/X")]` trên ODataController của entity set mới (OData chỉ dùng attribute routing, xem ARCHITECTURE mục 7) |
+| Pull code mới có bảng mới, API báo `Invalid object name` | Chạy `.\Database\setup-local-db.ps1` (không cần `-Recreate`: script tạo bảng còn thiếu và seed phần chưa có) |
 | payos-fake báo "Đơn thanh toán đã tồn tại" | Đã dựng lại DB (Id giao dịch bắt đầu lại từ 1): khởi động lại payos-fake |
 | Caregiver không thấy cư dân | Đúng thiết kế: chỉ thấy cư dân đang có việc Pending/InProgress giao cho mình |
 | Tiếng Việt hiện `?` trong `sqlcmd` | Chỉ là console; dữ liệu đúng. Luôn chạy script với `-f 65001` (setup script đã có) |
