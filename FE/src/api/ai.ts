@@ -13,4 +13,8 @@ export const aiApi = {
   createKnowledge: (body: AiKnowledgeForm) => apiClient.post<AiKnowledgeDoc>('/api/ai/knowledge', body).then((r) => r.data),
   updateKnowledge: (id: number, body: AiKnowledgeForm) => apiClient.put<AiKnowledgeDoc>(`/api/ai/knowledge/${id}`, body).then((r) => r.data),
   deleteKnowledge: (id: number) => apiClient.delete(`/api/ai/knowledge/${id}`),
+
+  /** S4-V2 (AI-12): hỏi đáp báo cáo cho Admin/Kế toán (kênh Staff). */
+  reportChat: (message: string) => apiClient.post<{ reply: string }>('/api/ai/staff/report-chat', { message }).then((r) => r.data.reply),
+  reportHistory: () => apiClient.get<AiHistoryItem[]>('/api/ai/staff/report-chat/history').then((r) => r.data),
 };

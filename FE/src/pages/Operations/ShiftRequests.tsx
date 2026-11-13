@@ -4,7 +4,7 @@ import {
   Alert, App, Badge, Button, Card, Checkbox, DatePicker, Empty, Form, Input, List, Modal, Popconfirm, Segmented, Select, Space,
   Table, Tag, Tooltip, Typography,
 } from 'antd';
-import { BulbOutlined, CheckOutlined, PlusOutlined, SwapOutlined } from '@ant-design/icons';
+import { BulbOutlined, CheckOutlined, PlusOutlined, RobotOutlined, SwapOutlined } from '@ant-design/icons';
 import type { Dayjs } from 'dayjs';
 import { extractErrorMessage } from '../../api/client';
 import { handoverApi, staffingApi } from '../../api/staffing';
@@ -391,11 +391,33 @@ function HandoverWriter({ shifts, onSaved }: { shifts: Shift[]; onSaved: (saved:
   const [edited, setEdited] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  // S4-V2 (AI-04): nháp do AI soạn — người viết đọc, sửa rồi mới bấm Lưu.
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiGenerated, setAiGenerated] = useState(false);
+  const [aiNote, setAiNote] = useState<string>();
 
   useEffect(() => {
     setDate(initial.date);
     setShiftId(initial.shiftId);
   }, [initial]);
+
+  const writeWithAi = async () => {
+    if (!shiftId) return;
+    setAiLoading(true);
+    try {
+      const [base, ai] = await Promise.all([handoverApi.draft(shiftId, date), handoverApi.aiDraft(shiftId, date)]);
+      setDraft(base);
+      setChecked(base.items.map(itemKey));
+      setSummary(ai.summary);
+      setEdited(true); // bỏ chọn mục không ghi đè văn bản AI
+      setAiGenerated(ai.aiGenerated);
+      setAiNote(ai.note ?? 'Nội dung do AI soạn — kiểm tra và sửa lại trước khi lưu.');
+    } catch (e) {
+      message.error(extractErrorMessage(e));
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const selectedItems = (keys: string[]) => (draft?.items ?? []).filter((item, i) => keys.includes(itemKey(item, i)));
 
@@ -429,12 +451,14 @@ function HandoverWriter({ shifts, onSaved }: { shifts: Shift[]; onSaved: (saved:
     }
     setSaving(true);
     try {
-      const saved = await handoverApi.create({ shiftId, workDate: date, summary: summary.trim(), highlights: selectedItems(checked) });
+      const saved = await handoverApi.create({ shiftId, workDate: date, summary: summary.trim(), highlights: selectedItems(checked), aiGenerated });
       message.success('Đã lưu bàn giao. Người ca sau đã được báo.');
       setDraft(undefined);
       setChecked([]);
       setSummary('');
       setEdited(false);
+      setAiGenerated(false);
+      setAiNote(undefined);
       onSaved(saved);
     } catch (e) {
       message.error(extractErrorMessage(e));
@@ -452,7 +476,9 @@ function HandoverWriter({ shifts, onSaved }: { shifts: Shift[]; onSaved: (saved:
         <Select style={{ width: 220 }} value={shiftId} onChange={(v) => { setShiftId(v); setDraft(undefined); }}
           options={shifts.map((s) => ({ value: s.id, label: `${s.name} (${hhmm(s.startTime)}–${hhmm(s.endTime)})` }))} />
         <Button icon={<BulbOutlined />} loading={loading} onClick={suggest}>Lấy gợi ý</Button>
+        <Button icon={<RobotOutlined />} loading={aiLoading} disabled={!shiftId} onClick={writeWithAi}>Viết tóm tắt bằng AI</Button>
       </Space>
+      {aiNote && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={aiNote} />}
       {draft && draft.items.length > 0 && (
         <>
           <Typography.Text type="secondary">

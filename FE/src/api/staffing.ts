@@ -1,6 +1,6 @@
 import { apiClient } from './client';
 import type {
-  CareAssignment, CareAssignmentForm, CopyWeekResult, Handover, HandoverDraft, HandoverForm, LeaveApproval, LeaveRequest,
+  CareAssignment, CareAssignmentForm, CopyWeekResult, Handover, HandoverAiDraft, HandoverDraft, HandoverForm, LeaveApproval, LeaveRequest,
   LeaveRequestForm, LeaveStatus, Shift, ShiftAssignment,
 } from '../types/operations';
 
@@ -40,4 +40,7 @@ export const handoverApi = {
   inbox: () => apiClient.get<Handover[]>('/api/handovers/inbox').then((r) => r.data),
   create: (body: HandoverForm) => apiClient.post<Handover>('/api/handovers', body).then((r) => r.data),
   acknowledge: (id: number) => apiClient.post<Handover>(`/api/handovers/${id}/acknowledge`).then((r) => r.data),
+  /** S4-V2 (AI-04): nháp tóm tắt do AI soạn, không tự lưu. */
+  aiDraft: (shiftId: number, date: string) =>
+    apiClient.post<HandoverAiDraft>('/api/handovers/ai-draft', { shiftId, date }).then((r) => r.data),
 };

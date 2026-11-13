@@ -9,9 +9,11 @@ import {
   Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts';
 import { extractErrorMessage } from '../../api/client';
+import { aiApi } from '../../api/ai';
 import { reportsApi } from '../../api/reports';
 import { useAuth } from '../../auth/AuthContext';
 import { BILLING_STAFF, FINANCE_STAFF, PRESCRIBERS, hasRole } from '../../auth/roles';
+import { ChatWidget } from '../../components/ChatWidget';
 import { PageTitle, StatusTag } from '../../components/Common';
 import { dateOnly, dayjs, money, monthOf, todayVn } from '../../utils/format';
 import type { AdherenceReport, OccupancyReport, RevenueReport } from '../../types/operations';
@@ -47,6 +49,11 @@ export default function Reports() {
     <>
       <PageTitle title="Báo cáo" />
       {tabs.length ? <Tabs items={tabs} /> : <Empty description="Bạn chưa có báo cáo nào được xem." />}
+      {/* S4-V2 (AI-12): hỏi đáp số liệu — Admin, Kế toán; số liệu lấy từ báo cáo có sẵn, không sinh SQL */}
+      {hasRole(user?.role, FINANCE_STAFF) && (
+        <ChatWidget title="Hỏi đáp số liệu" greeting="Hỏi tôi về doanh thu, công nợ, công suất giường… Ví dụ: Tháng này thu được bao nhiêu?"
+          send={aiApi.reportChat} loadHistory={aiApi.reportHistory} disclaimer="Số liệu lấy từ báo cáo của hệ thống; kiểm tra lại ở các tab trước khi dùng chính thức." />
+      )}
     </>
   );
 }

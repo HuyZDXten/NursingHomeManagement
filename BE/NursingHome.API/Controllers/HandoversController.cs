@@ -3,18 +3,24 @@ using Microsoft.AspNetCore.Mvc;
 using NursingHome.API.Extensions;
 using NursingHome.API.Security;
 using NursingHome.DTOs.Staffing;
+using NursingHome.Services.Ai;
 using NursingHome.Services.Interfaces;
 
 namespace NursingHome.API.Controllers;
 
 /// <summary>
-/// MODULE VẬN HÀNH (Viên) — S3-V4: UC-47 nghỉ phép/đổi ca, UC-49 bàn giao ca.
+/// MODULE VẬN HÀNH (Viên) — S3-V4: UC-47 nghỉ phép/đổi ca, UC-49 bàn giao ca; S4-V2: AI-04 nháp bàn giao bằng AI.
 /// Lễ tân, kế toán, gia đình không có ca → 403 (policy ClinicalStaff).
 /// </summary>
 [ApiController]
 [Authorize(Policy = AuthPolicies.ClinicalStaff)]
-public class HandoversController(IHandoverService handovers) : ControllerBase
+public class HandoversController(IHandoverService handovers, IHandoverAiService handoverAi) : ControllerBase
 {
+    /// <summary>AI-04: nháp tóm tắt để người viết sửa rồi mới lưu (không tự lưu).</summary>
+    [HttpPost("api/handovers/ai-draft")]
+    public async Task<ActionResult<HandoverAiDraftDto>> AiDraft([FromBody] HandoverAiDraftRequest request, CancellationToken cancellationToken) =>
+        Ok(await handoverAi.DraftAsync(User.RequireCurrentUser(), request.ShiftId, request.Date, cancellationToken));
+
     // ---------------- Nghỉ phép / đổi ca ----------------
 
     /// <param name="status">Pending | Approved | Rejected | Cancelled (bỏ trống = tất cả).</param>
