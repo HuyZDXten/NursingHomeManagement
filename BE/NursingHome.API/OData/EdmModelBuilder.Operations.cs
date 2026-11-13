@@ -1,4 +1,5 @@
 using Microsoft.OData.ModelBuilder;
+using NursingHome.DTOs.Admissions;
 
 namespace NursingHome.API.OData;
 
@@ -7,6 +8,6 @@ public static partial class EdmModelBuilder
 {
     static partial void AddOperationsEntitySets(ODataConventionModelBuilder builder)
     {
-        // Ví dụ (S3-V1): builder.EntitySet<InquiryDto>("Inquiries");
+        builder.EntitySet<InquiryDto>("Inquiries"); // S3-V1
     }
 }

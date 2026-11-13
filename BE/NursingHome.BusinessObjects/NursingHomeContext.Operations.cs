@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NursingHome.BusinessObjects.Entities;
 
 namespace NursingHome.BusinessObjects;
 
@@ -10,16 +11,29 @@ namespace NursingHome.BusinessObjects;
 /// </summary>
 public partial class NursingHomeContext
 {
-    // Ví dụ (S3-V1):
-    // public DbSet<Inquiry> Inquiries => Set<Inquiry>();
+    // S3-V1 tiếp nhận & tham quan
+    public DbSet<Inquiry> Inquiries => Set<Inquiry>();
+
+    public DbSet<TourBooking> TourBookings => Set<TourBooking>();
 
     partial void ConfigureOperations(ModelBuilder modelBuilder)
     {
-        // Ví dụ:
-        // modelBuilder.Entity<Inquiry>(entity =>
-        // {
-        //     entity.ToTable("Inquiries");
-        //     entity.Property(e => e.Status).HasConversion<string>();
-        // });
+        modelBuilder.Entity<Inquiry>(entity =>
+        {
+            entity.ToTable("Inquiries");
+            entity.Property(e => e.Source).HasConversion<string>();
+            entity.Property(e => e.Status).HasConversion<string>();
+            entity.HasOne(e => e.InterestedPackage).WithMany().HasForeignKey(e => e.InterestedPackageId);
+            entity.HasOne(e => e.AssignedTo).WithMany().HasForeignKey(e => e.AssignedToId);
+            entity.HasOne(e => e.Resident).WithMany().HasForeignKey(e => e.ResidentId);
+            entity.HasMany(e => e.Tours).WithOne(e => e.Inquiry).HasForeignKey(e => e.InquiryId);
+        });
+        modelBuilder.Entity<TourBooking>(entity =>
+        {
+            entity.ToTable("TourBookings");
+            entity.Property(e => e.TimeSlot).HasConversion<string>();
+            entity.Property(e => e.Status).HasConversion<string>();
+            entity.HasOne(e => e.ConfirmedBy).WithMany().HasForeignKey(e => e.ConfirmedById);
+        });
     }
 }

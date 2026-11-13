@@ -87,7 +87,9 @@ sequenceDiagram
 
 Một ví dụ "đọc dữ liệu có kiểm quyền" để so sánh: `HealthService.ListAsync` gọi `access.RequireAsync(user, residentId, ResidentSection.Health)` trước khi đọc. **Mọi service đọc dữ liệu của một cư dân đều phải làm vậy.**
 
-## 3. Sơ đồ dữ liệu (21 bảng hiện có)
+## 3. Sơ đồ dữ liệu (21 bảng lõi)
+
+Bảng của module Sprint 3+ nằm ở `01_Schema.sql` mục 9 (Viên) / mục 10 (Huy), ví dụ `Inquiries` (yêu cầu tư vấn) 1–n `TourBookings` (lịch tham quan), `Inquiries.ResidentId` trỏ về `Residents` khi khách nhập viện.
 
 ```mermaid
 erDiagram
@@ -227,7 +229,7 @@ Từ Sprint 3, code mới chia làm 2 module để Viên và Huy làm song song 
 | DbSet + mapping | `NursingHomeContext.Operations.cs` | `NursingHomeContext.Care.cs` |
 | DAO, Repository | file mới trong project tương ứng | file mới |
 | Interface service | `Services/Interfaces/IOperationsServices.cs` | `Services/Interfaces/ICareModuleServices.cs` |
-| Map entity → DTO | `Services/Helpers/ModuleMappers.cs` → `OperationsMapper` | `CareMapper` |
+| Map entity → DTO | `OperationsMapper` (partial): mỗi task một file `Helpers/OperationsMapper.<Task>.cs`, vd. `OperationsMapper.Admissions.cs` | `CareMapper` trong `Helpers/ModuleMappers.cs` (có thể đổi thành `partial` và tách file như bên Operations) |
 | Đăng ký DI | `ServiceCollectionExtensions.Operations.cs` | `ServiceCollectionExtensions.Care.cs` |
 | Entity set OData | `API/OData/EdmModelBuilder.Operations.cs` | `EdmModelBuilder.Care.cs` |
 | Controller, DTO | file mới | file mới |
@@ -270,6 +272,16 @@ Tất cả trả JSON camelCase; lỗi `{ "message": "..." }`. Swagger: `http://
 | Tổng quan | `GET /api/dashboard` | BillingStaff |
 | | `GET /api/public/overview` | ẩn danh |
 | Thông báo | `GET /api/notifications`, `POST /{id}/read`, `POST /read-all`, hub `/hubs/notifications` | đăng nhập |
+
+Sprint 3+ (module):
+
+| Nhóm | Method + đường dẫn | Policy |
+| --- | --- | --- |
+| Tiếp nhận (S3-V1) | `POST /api/public/inquiries`, `POST /api/public/tour-bookings` | ẩn danh, rate limit `PublicForms` (5/phút/IP) |
+| | `GET /api/public/tour-slots?from&to` (chỉ số chỗ còn lại) | ẩn danh |
+| | `GET /odata/Inquiries`, `PUT /api/inquiries/{id}`, `POST /{id}/admit`, `GET /api/tour-bookings?from&to`, `POST /api/tour-bookings/{id}/confirm` · `cancel` · `done` · `no-show` | FrontDesk |
+
+**OData chỉ dùng attribute routing** (`Program.cs` bỏ các convention theo tên controller): mỗi entity set cần một `ODataController` có `[Route("odata/TenEntitySet")]`. Controller REST trùng tên entity set (vd. `InvoicesController`) không còn bị OData bắt nhầm.
 
 ## 8. Frontend trong 1 phút
 

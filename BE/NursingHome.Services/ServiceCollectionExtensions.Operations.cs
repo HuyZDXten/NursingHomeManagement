@@ -1,5 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using NursingHome.Repositories.Implementations;
+using NursingHome.Repositories.Interfaces;
+using NursingHome.Services.Implementations;
+using NursingHome.Services.Interfaces;
 
 namespace NursingHome.Services;
 
@@ -8,8 +12,8 @@ public static partial class ServiceCollectionExtensions
 {
     static partial void AddOperationsModule(IServiceCollection services, IConfiguration configuration)
     {
-        // Ví dụ (S3-V1):
-        // services.AddScoped<IAdmissionRepository, AdmissionRepository>();
-        // services.AddScoped<IAdmissionService, AdmissionService>();
+        // S3-V1 tiếp nhận & tham quan
+        services.AddScoped<IAdmissionRepository, AdmissionRepository>();
+        services.AddScoped<IAdmissionService, AdmissionService>();
     }
 }

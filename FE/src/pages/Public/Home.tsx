@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Card, Col, Row, Statistic, Typography } from 'antd';
-import { ClockCircleOutlined, EnvironmentOutlined, PhoneOutlined } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
+import { Button, Card, Col, Row, Statistic, Typography } from 'antd';
+import { CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined, PhoneOutlined } from '@ant-design/icons';
 import { portalApi } from '../../api/portal';
 import { money } from '../../utils/format';
 import type { PublicOverview } from '../../types';
+import { InquiryForm } from '../Operations/InquiryForm';
 
-/** UC-14..UC-16: giới thiệu cơ sở, bảng giá gói dịch vụ, số giường trống (không lộ thông tin cư dân). */
+/** UC-14..UC-17: giới thiệu cơ sở, bảng giá gói dịch vụ, số giường trống (không lộ thông tin cư dân), form nhận tư vấn. */
 export default function PublicHome() {
   const [data, setData] = useState<PublicOverview>();
   useEffect(() => {
@@ -42,9 +44,17 @@ export default function PublicHome() {
             </Col>
           ))}
         </Row>
-        <Typography.Paragraph type="secondary" style={{ marginTop: 24 }}>
-          Đặt lịch tham quan và chatbot tư vấn AI sẽ có ở Sprint 3–4 (UC-17, UC-18, AI-01).
-        </Typography.Paragraph>
+        <Row gutter={[16, 16]} style={{ marginTop: 32 }}>
+          <Col xs={24} lg={16}><InquiryForm packages={data?.packages ?? []} /></Col>
+          <Col xs={24} lg={8}>
+            <Card title="Tham quan cơ sở" style={{ height: '100%' }}>
+              <Typography.Paragraph>
+                Gia đình đến xem phòng, gặp đội ngũ chăm sóc và được tư vấn trực tiếp. Chọn ngày và buổi còn chỗ, lễ tân sẽ gọi xác nhận.
+              </Typography.Paragraph>
+              <Link to="/dat-lich-tham-quan"><Button type="primary" icon={<CalendarOutlined />}>Đặt lịch tham quan</Button></Link>
+            </Card>
+          </Col>
+        </Row>
       </div>
     </>
   );

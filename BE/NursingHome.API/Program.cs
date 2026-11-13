@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.OData;
+using Microsoft.AspNetCore.OData.Routing.Conventions;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -116,14 +117,18 @@ foreach (var (policy, roles) in AuthPolicies.Map)
     authorization.AddPolicy(policy, rule => rule.RequireRole(roles));
 }
 
-// ---- Rate limit cho đăng nhập/OTP/đổi mật khẩu ----
+// ---- Rate limit cho đăng nhập/OTP/đổi mật khẩu và form công khai ----
 int credentialsPerMinute = builder.Configuration.GetValue("RateLimit:CredentialsPerMinute", 10);
+int publicFormsPerMinute = builder.Configuration.GetValue("RateLimit:PublicFormsPerMinute", 5);
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddPolicy(RateLimitPolicies.Credentials, httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = credentialsPerMinute, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy(RateLimitPolicies.PublicForms, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = publicFormsPerMinute, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.OnRejected = (context, _) => new ValueTask(ExceptionHandlingMiddleware.WriteErrorAsync(
         context.HttpContext.Response, StatusCodes.Status429TooManyRequests, "Thao tác quá nhiều lần. Vui lòng chờ một phút."));
 });
@@ -136,8 +141,18 @@ builder.Services.AddCors(options => options.AddPolicy("Frontend", policy => poli
 // ---- Controllers + OData ----
 builder.Services.AddControllers()
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
-    .AddOData(options => options.Select().Filter().OrderBy().Expand().Count().SetMaxTop(200)
-        .AddRouteComponents("odata", EdmModelBuilder.Build()));
+    .AddOData(options =>
+    {
+        options.Select().Filter().OrderBy().Expand().Count().SetMaxTop(200)
+            .AddRouteComponents("odata", EdmModelBuilder.Build());
+        // Chỉ giữ attribute routing ([Route("odata/X")] trên ODataController) + $metadata. Convention theo TÊN controller
+        // bắt nhầm controller REST trùng tên entity set (InvoicesController.Get(id) nhận GET /odata/Invoices với id = 0 → 404).
+        foreach (var convention in options.Conventions
+                     .Where(convention => convention is not AttributeRoutingConvention and not MetadataRoutingConvention).ToList())
+        {
+            options.Conventions.Remove(convention);
+        }
+    });
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>

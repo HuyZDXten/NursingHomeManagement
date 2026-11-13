@@ -10,14 +10,27 @@ Khách (chưa đăng nhập) gửi yêu cầu tư vấn và đặt lịch tham q
 
 ## Tiêu chí hoàn thành
 
-- [ ] Trang công khai `/dat-lich-tham-quan`: chọn ngày (từ mai đến +60 ngày), buổi Sáng/Chiều, số khách, thấy số chỗ còn lại; gửi thành công không cần đăng nhập.
-- [ ] Trang chủ có form "Nhận tư vấn" (họ tên, SĐT, người cao tuổi, nhu cầu, gói quan tâm).
-- [ ] Gửi quá 5 lần/phút/IP → 429. Buổi đầy (`Facility:TourSlotCapacity`) → 400 với thông báo rõ.
-- [ ] Lễ tân (`receptionist`) thấy danh sách yêu cầu (OData, lọc theo trạng thái, tìm theo tên/SĐT), đổi trạng thái, ghi chú, giao cho nhân viên phụ trách.
-- [ ] "Nhập viện" từ một yêu cầu: mở form tạo cư dân (đã điền sẵn họ tên), lưu xong yêu cầu chuyển `Admitted` và lưu `ResidentId`.
-- [ ] Xác nhận lịch tham quan → gửi email cho khách nếu có email và SMTP đã cấu hình (không có thì vẫn xác nhận, chỉ bỏ qua email).
-- [ ] Yêu cầu/lịch mới → thông báo cho mọi Receptionist (chuông).
-- [ ] Caregiver/Family gọi API quản lý → 403.
+- [ ] Trang công khai `/dat-lich-tham-quan`: chọn ngày (từ mai đến +60 ngày), buổi Sáng/Chiều, số khách, thấy số chỗ còn lại; gửi thành công không cần đăng nhập. *(API đã kiểm bằng smoke test; trang FE build/lint sạch, cần thử trên trình duyệt khi review)*
+- [ ] Trang chủ có form "Nhận tư vấn" (họ tên, SĐT, người cao tuổi, nhu cầu, gói quan tâm). *(như trên)*
+- [x] Gửi quá 5 lần/phút/IP → 429. Buổi đầy (`Facility:TourSlotCapacity`) → 400 với thông báo rõ.
+- [x] Lễ tân (`receptionist`) thấy danh sách yêu cầu (OData, lọc theo trạng thái, tìm theo tên/SĐT), đổi trạng thái, ghi chú, giao cho nhân viên phụ trách. *(API; màn `/staff/admissions` cần thử trên trình duyệt)*
+- [x] "Nhập viện" từ một yêu cầu: mở form tạo cư dân (đã điền sẵn họ tên), lưu xong yêu cầu chuyển `Admitted` và lưu `ResidentId`. *(API; FE điền sẵn tên người cao tuổi + nhu cầu vào ghi chú)*
+- [x] Xác nhận lịch tham quan → gửi email cho khách nếu có email và SMTP đã cấu hình (không có thì vẫn xác nhận, chỉ bỏ qua email). *(đã kiểm nhánh "chưa cấu hình SMTP"; nhánh gửi thật cần SMTP)*
+- [x] Yêu cầu/lịch mới → thông báo cho mọi Receptionist (chuông).
+- [x] Caregiver/Family gọi API quản lý → 403.
+
+### Kết quả triển khai (13/11/2026)
+
+- Kiểm thử: `run-smoke-isolated.ps1` 54/54 PASS (thêm 22 kiểm tra cho S3-V1 + 1 kiểm tra OData), `dotnet test` 29/29 (thêm `AdmissionRuleTests`).
+- Quyết định khác/bổ sung so với đặc tả:
+  - `Lost` được chọn từ mọi trạng thái chưa kết thúc (kể cả `Contacted`, `Visited`); cho phép `New → Visited` (khách đến thẳng). `Admitted` chỉ qua `POST /admit` và chỉ từ `Visited`; DB có thêm `CK_Inquiries_Admitted` (Admitted phải có `ResidentId`).
+  - "Đã đến" (`/done`) tự chuyển yêu cầu `New/Contacted → Visited` trong cùng lần lưu (`AdmissionDAO.CompleteTourAsync`). `done`/`no-show` chỉ khi đã tới ngày tham quan; `confirm` chỉ khi chưa qua ngày.
+  - Không chặn Chủ Nhật (giờ thăm của cơ sở là hằng ngày). Buổi sáng 08:00–11:00, chiều 14:00–17:00 (nhãn ở FE + email).
+  - Đặt lịch tạo `Inquiry` + `TourBooking` trong **một** transaction Serializable (không còn yêu cầu "mồ côi" khi buổi đầy).
+  - Giới hạn form công khai cấu hình được: `RateLimit:PublicFormsPerMinute` (mặc định 5).
+  - `OperationsMapper` thành `partial`, phần của task ở `Helpers/OperationsMapper.Admissions.cs`.
+  - Sửa lỗi lõi: OData convention theo tên controller bắt nhầm `InvoicesController.Get(id)`/`CareTasksController.Get(id)` khi thêm entity set mới → `Program.cs` chỉ giữ attribute routing + `$metadata` (xem ARCHITECTURE mục 7).
+- DB dev đang có dữ liệu: chạy `.\Database\setup-local-db.ps1` (không `-Recreate`) để thêm 2 bảng + dữ liệu demo mục 10.1.
 
 ## 1. Database — `01_Schema.sql` mục 9
 

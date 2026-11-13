@@ -124,5 +124,63 @@ check('Webhook sai chữ ký -> 200 + REJECTED', forged.status === 200 && forged
 const dash = await call('GET', '/api/dashboard', accountant.accessToken);
 check('Dashboard', dash.status === 200, `collected=${dash.data.collected} debt=${dash.data.debt}`);
 
+// OData chỉ dùng attribute routing: controller REST trùng tên entity set (InvoicesController, CareTasksController) không được bắt nhầm.
+const odataInvoices = await call('GET', '/odata/Invoices?$count=true', accountant.accessToken);
+check('GET /odata/Invoices trả danh sách (không lạc sang InvoicesController.Get(id))', odataInvoices.status === 200 && odataInvoices.data['@odata.count'] >= 1);
+
+// ---- Sprint 3 · S3-V1: tiếp nhận & tham quan ----
+// Form công khai giới hạn 5 lần/phút/IP (RateLimit:PublicFormsPerMinute): mục này gọi đúng 4 lần trước phần kiểm 429.
+const plusDays = (n) => new Date(Date.now() + 7 * 3600e3 + n * 86400e3).toISOString().slice(0, 10); // ngày theo giờ VN
+const recep = await login('receptionist@nursinghome.local');
+const inq = await call('POST', '/api/public/inquiries', null, { fullName: 'Khách test', phone: '090 123 4567', careNeeds: 'Tư vấn gói cơ bản', interestedPackageId: 1 });
+check('Khách tạo yêu cầu tư vấn không cần đăng nhập', inq.status === 200, inq.data?.message);
+const newInquiries = await call('GET', "/odata/Inquiries?$filter=status eq 'New'&$count=true", recep.accessToken);
+check('Lễ tân thấy yêu cầu mới (OData)', newInquiries.data['@odata.count'] >= 2, `count=${newInquiries.data['@odata.count']}`);
+const mine = newInquiries.data.value.find((item) => item.fullName === 'Khách test');
+check('SĐT được chuẩn hóa, gói quan tâm có tên', mine?.phone === '0901234567' && mine?.interestedPackageName === 'Gói Cơ bản');
+check('Caregiver không xem được yêu cầu -> 403', (await call('GET', '/odata/Inquiries', caregiver.accessToken)).status === 403);
+check('Family không sửa được yêu cầu -> 403', (await call('PUT', `/api/inquiries/${mine.id}`, family2.accessToken, { status: 'Contacted' })).status === 403);
+const recepNotes = await call('GET', '/api/notifications', recep.accessToken);
+check('Lễ tân nhận thông báo yêu cầu mới', recepNotes.data.items.some((n) => n.title === 'Yêu cầu tư vấn mới'));
+
+const tourDate = plusDays(30);
+const freeSlots = await call('GET', `/api/public/tour-slots?from=${tourDate}&to=${tourDate}`);
+check('Xem chỗ trống buổi tham quan (ẩn danh)', freeSlots.status === 200 && freeSlots.data.length === 2 && freeSlots.data.every((s) => s.remaining === s.capacity));
+const tour1 = await call('POST', '/api/public/tour-bookings', null, { fullName: 'Khách tham quan 1', phone: '0912000111', email: 'khach1@example.com', visitDate: tourDate, timeSlot: 'Morning', guestCount: 3 });
+check('Đặt lịch tham quan 3 khách', tour1.status === 200, tour1.data?.message);
+const tour2 = await call('POST', '/api/public/tour-bookings', null, { fullName: 'Khách tham quan 2', phone: '0912000222', visitDate: tourDate, timeSlot: 'Morning', guestCount: 3 });
+check('Buổi không đủ chỗ (sức chứa 5) -> 400', tour2.status === 400, tour2.data?.message);
+const todayTour = await call('POST', '/api/public/tour-bookings', null, { fullName: 'Khách hôm nay', phone: '0912000333', visitDate: plusDays(0), timeSlot: 'Afternoon', guestCount: 1 });
+check('Không nhận đặt lịch cho hôm nay -> 400', todayTour.status === 400);
+const leftSlots = await call('GET', `/api/public/tour-slots?from=${tourDate}&to=${tourDate}`);
+check('Còn 2 chỗ buổi sáng', leftSlots.data.find((s) => s.slot === 'Morning')?.remaining === 2);
+
+const tourList = await call('GET', `/api/tour-bookings?from=${tourDate}&to=${tourDate}`, recep.accessToken);
+const booked = tourList.data.find((t) => t.fullName === 'Khách tham quan 1');
+check('Lễ tân thấy lịch tham quan', tourList.status === 200 && booked?.status === 'Requested');
+const confirmed = await call('POST', `/api/tour-bookings/${booked.id}/confirm`, recep.accessToken);
+check('Xác nhận lịch (chưa cấu hình SMTP vẫn xác nhận)', confirmed.status === 200 && confirmed.data.status === 'Confirmed' && confirmed.data.confirmedById === 2);
+check('Chưa đến ngày -> không đánh dấu đã đến', (await call('POST', `/api/tour-bookings/${booked.id}/done`, recep.accessToken)).status === 400);
+const seededDone = await call('POST', '/api/tour-bookings/1/no-show', recep.accessToken); // lịch seed ngày mai
+check('Lịch ngày mai chưa đánh dấu vắng được -> 400', seededDone.status === 400);
+
+const contacted = await call('PUT', `/api/inquiries/${mine.id}`, recep.accessToken, { status: 'Contacted', assignedToId: 2, notes: 'Đã gọi tư vấn' });
+check('Yêu cầu New -> Contacted, giao lễ tân', contacted.status === 200 && contacted.data.status === 'Contacted' && contacted.data.assignedToName);
+check('Không PUT thẳng sang Admitted -> 400', (await call('PUT', `/api/inquiries/${mine.id}`, recep.accessToken, { status: 'Admitted', assignedToId: 2 })).status === 400);
+check('Giao cho caregiver -> 400', (await call('PUT', `/api/inquiries/${mine.id}`, recep.accessToken, { status: 'Contacted', assignedToId: 6 })).status === 400);
+check('Chưa tham quan thì chưa nhập viện -> 400', (await call('POST', `/api/inquiries/${mine.id}/admit`, recep.accessToken, { residentId: 1 })).status === 400);
+await call('PUT', `/api/inquiries/${mine.id}`, recep.accessToken, { status: 'Visited', assignedToId: 2, notes: 'Đã tham quan' });
+const newResident = await call('POST', '/api/residents', recep.accessToken, { code: 'NH-T001', fullName: 'Cụ Khách Test', dateOfBirth: '1940-05-01', gender: 'Nam' });
+const admitted = await call('POST', `/api/inquiries/${mine.id}/admit`, recep.accessToken, { residentId: newResident.data?.id });
+check('Nhập viện từ yêu cầu -> Admitted + ResidentId', admitted.status === 200 && admitted.data.status === 'Admitted' && admitted.data.residentId === newResident.data.id,
+  JSON.stringify(admitted.data));
+check('Admitted là trạng thái cuối -> 400', (await call('PUT', `/api/inquiries/${mine.id}`, recep.accessToken, { status: 'Lost', assignedToId: 2 })).status === 400);
+
+let limited = false;
+for (let i = 0; i < 8 && !limited; i++) {
+  limited = (await call('POST', '/api/public/inquiries', null, { fullName: `Spam ${i}`, phone: '0900000000' })).status === 429;
+}
+check('Form công khai quá 5 lần/phút -> 429', limited);
+
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);
