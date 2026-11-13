@@ -1,4 +1,5 @@
 using NursingHome.BusinessObjects.Entities;
+using NursingHome.DataAccessObjects;
 
 namespace NursingHome.Repositories.Interfaces;
 
@@ -17,7 +18,7 @@ public interface IStaffingRepository
 
     Task<ShiftAssignment> AddAssignmentAsync(ShiftAssignment assignment);
 
-    Task DeleteAssignmentAsync(int id);
+    Task<List<LeaveRequest>> DeleteAssignmentAsync(int id, DateTime now);
 
     Task<(List<ShiftAssignment> Added, int Skipped)> CopyWeekAsync(DateOnly fromMonday, DateOnly toMonday, DateOnly earliest, int byAccountId, DateTime now);
 
@@ -32,4 +33,34 @@ public interface IStaffingRepository
     Task<bool> IsPrimaryCaregiverAsync(int residentId, int accountId, DateOnly today);
 
     Task<List<int>> PrimaryResidentIdsAsync(int accountId, DateOnly today);
+
+    // S3-V4 nghỉ phép/đổi ca & bàn giao ca
+    Task<List<LeaveRequest>> ListLeaveRequestsAsync(int? involvingAccountId, LeaveRequestStatus? status, int take);
+
+    Task<LeaveRequest?> GetLeaveRequestAsync(int id);
+
+    Task<bool> HasPendingSwapAsync(int assignmentId);
+
+    Task<bool> HasPendingLeaveOverlapAsync(int accountId, DateOnly from, DateOnly to);
+
+    Task<LeaveRequest> AddLeaveRequestAsync(LeaveRequest request);
+
+    Task SetLeaveStatusIfPendingAsync(int id, LeaveRequestStatus status, int? reviewerId, DateTime now, string? note);
+
+    Task<List<LeaveRequest>> ApproveSwapAsync(int id, int reviewerId, DateTime now, string? note);
+
+    Task<(List<ShiftAssignment> Removed, List<LeaveRequest> Cancelled)> ApproveLeaveAsync(
+        int id, int reviewerId, DateTime now, string? note, Func<ShiftAssignment, bool> canRemove);
+
+    Task<bool> HandoverExistsAsync(DateOnly workDate, int shiftId, int fromAccountId);
+
+    Task<ShiftHandover> AddHandoverAsync(ShiftHandover handover);
+
+    Task<ShiftHandover?> GetHandoverAsync(long id);
+
+    Task<List<ShiftHandover>> ListHandoversAsync(DateOnly from, DateOnly to, bool unreadOnly);
+
+    Task<bool> AcknowledgeHandoverAsync(long id, int accountId, DateTime now);
+
+    Task<HandoverDraftData> GetHandoverDraftDataAsync(DateTime startUtc, DateTime endUtc, IReadOnlyCollection<int>? residentIds);
 }

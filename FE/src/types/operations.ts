@@ -211,3 +211,97 @@ export interface CareAssignmentForm {
   shiftId?: number | null;
   startDate?: string;
 }
+
+// ---------------- S3-V4 nghỉ phép/đổi ca & bàn giao ca ----------------
+
+export type LeaveType = 'Leave' | 'Swap';
+export type LeaveStatus = 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
+
+/** Một ca trong đơn; null khi ca đã bị bỏ khỏi lịch sau khi tạo đơn. */
+export interface LeaveShift {
+  assignmentId: number;
+  workDate: string;
+  shiftName: string;
+  shiftCode: ShiftCode;
+}
+
+export interface LeaveRequest {
+  id: number;
+  accountId: number;
+  accountName: string;
+  role: string;
+  type: LeaveType;
+  fromDate: string;
+  toDate: string;
+  myShift?: LeaveShift | null;
+  swapWithAccountId?: number | null;
+  swapWithName?: string | null;
+  theirShift?: LeaveShift | null;
+  reason: string;
+  status: LeaveStatus;
+  reviewedByName?: string | null;
+  reviewedAt?: string | null;
+  reviewNote?: string | null;
+  createdAt: string;
+}
+
+export interface LeaveApproval {
+  request: LeaveRequest;
+  /** Ca đã bỏ khi duyệt nghỉ — Admin cần xếp người thay. */
+  vacatedShifts: LeaveShift[];
+}
+
+export interface LeaveRequestForm {
+  type: LeaveType;
+  fromDate?: string;
+  toDate?: string;
+  shiftAssignmentId?: number;
+  swapShiftAssignmentId?: number;
+  reason: string;
+}
+
+export type HandoverKind = 'Task' | 'Medication' | 'Vital' | 'Incident' | 'Note';
+
+export interface HandoverItem {
+  kind: HandoverKind;
+  residentId?: number | null;
+  residentName?: string | null;
+  text: string;
+}
+
+export interface HandoverDraft {
+  shiftId: number;
+  shiftName: string;
+  workDate: string;
+  startsAt: string;
+  endsAt: string;
+  items: HandoverItem[];
+}
+
+export interface Handover {
+  id: number;
+  shiftId: number;
+  shiftCode: ShiftCode;
+  shiftName: string;
+  workDate: string;
+  startsAt: string;
+  endsAt: string;
+  fromAccountId: number;
+  fromAccountName: string;
+  role: string;
+  summary: string;
+  highlights: HandoverItem[];
+  aiGenerated: boolean;
+  acknowledgedByName?: string | null;
+  acknowledgedAt?: string | null;
+  createdAt: string;
+  canAcknowledge: boolean;
+}
+
+export interface HandoverForm {
+  shiftId: number;
+  workDate: string;
+  summary: string;
+  highlights: HandoverItem[];
+  aiGenerated?: boolean;
+}

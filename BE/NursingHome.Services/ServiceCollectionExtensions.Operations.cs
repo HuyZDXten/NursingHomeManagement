@@ -16,9 +16,10 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IAdmissionRepository, AdmissionRepository>();
         services.AddScoped<IAdmissionService, AdmissionService>();
 
-        // S3-V2 ca trực & phân công phụ trách
+        // S3-V2 ca trực & phân công phụ trách (+ S3-V4 nghỉ phép/đổi ca, bàn giao ca)
         services.AddScoped<IStaffingRepository, StaffingRepository>();
         services.AddScoped<IStaffingService, StaffingService>();
+        services.AddScoped<IHandoverService, HandoverService>();
 
         // S3-V3 báo cáo
         services.AddScoped<IReportRepository, ReportRepository>();

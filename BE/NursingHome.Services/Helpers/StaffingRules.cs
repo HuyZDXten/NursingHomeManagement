@@ -22,6 +22,27 @@ public static class StaffingRules
     /// <summary>Thứ Hai của tuần chứa <paramref name="date"/>.</summary>
     public static DateOnly WeekStart(DateOnly date) => date.AddDays(-(((int)date.DayOfWeek + 6) % 7));
 
+    /// <summary>
+    /// Ca kế tiếp (S3-V4): ca bắt đầu đúng lúc ca này kết thúc — sáng → chiều → đêm → sáng hôm sau.
+    /// NULL khi danh mục ca có khoảng trống sau ca này.
+    /// </summary>
+    public static (DateOnly WorkDate, Shift Shift)? NextShift(DateOnly workDate, Shift shift, IEnumerable<Shift> shifts)
+    {
+        var endUtc = ShiftWindow(workDate, shift).EndUtc;
+        foreach (var candidate in shifts.Where(item => item.IsActive).OrderBy(item => item.StartTime))
+        {
+            foreach (var date in new[] { workDate, workDate.AddDays(1) })
+            {
+                if (ShiftWindow(date, candidate).StartUtc == endUtc)
+                {
+                    return (date, candidate);
+                }
+            }
+        }
+
+        return null;
+    }
+
     private static DateTime ToUtc(DateOnly date, TimeOnly time) =>
         DateTime.SpecifyKind(date.ToDateTime(time) - FacilityClock.Offset, DateTimeKind.Utc);
 }

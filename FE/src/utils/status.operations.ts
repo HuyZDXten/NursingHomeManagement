@@ -33,4 +33,22 @@ export const OPERATIONS_STATUS: Record<string, Record<string, StatusMeta>> = {
     AFTERNOON: { label: 'Ca chiều', color: 'blue' },
     NIGHT: { label: 'Ca đêm', color: 'purple' },
   },
+  // S3-V4 nghỉ phép/đổi ca & bàn giao ca
+  leave: {
+    Pending: { label: 'Chờ duyệt', color: 'warning' },
+    Approved: { label: 'Đã duyệt', color: 'success' },
+    Rejected: { label: 'Từ chối', color: 'error' },
+    Cancelled: { label: 'Đã hủy', color: 'default' },
+  },
+  leaveType: {
+    Leave: { label: 'Nghỉ phép', color: 'volcano' },
+    Swap: { label: 'Đổi ca', color: 'geekblue' },
+  },
+  handoverKind: {
+    Task: { label: 'Việc chưa xong', color: 'orange' },
+    Medication: { label: 'Thuốc', color: 'magenta' },
+    Vital: { label: 'Sinh hiệu', color: 'red' },
+    Incident: { label: 'Sự cố', color: 'volcano' },
+    Note: { label: 'Ghi chú', color: 'default' },
+  },
 };

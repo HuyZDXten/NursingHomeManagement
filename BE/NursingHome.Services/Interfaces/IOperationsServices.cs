@@ -77,3 +77,32 @@ public interface IReportService
 
     Task<ExportFile> ExportAdherenceAsync(DateOnly? from, DateOnly? to);
 }
+
+/// <summary>S3-V4 — UC-47 nghỉ phép/đổi ca (Admin duyệt), UC-49 bàn giao ca (gợi ý, xác nhận đã đọc).</summary>
+public interface IHandoverService
+{
+    /// <summary>Admin thấy mọi đơn; người khác chỉ đơn của mình hoặc đơn xin đổi ca với mình.</summary>
+    Task<List<LeaveRequestDto>> ListLeaveRequestsAsync(CurrentUser user, string? status);
+
+    Task<LeaveRequestDto> CreateLeaveRequestAsync(CurrentUser user, CreateLeaveRequest request);
+
+    /// <summary>Ca của đồng nghiệp cùng role đổi được lấy ca của mình (4 tuần tới).</summary>
+    Task<List<ShiftAssignmentDto>> SwapCandidatesAsync(CurrentUser user, int shiftAssignmentId);
+
+    /// <summary>Đổi ca: hoán 2 ca trong một transaction. Nghỉ: bỏ ca chưa bắt đầu trong khoảng, trả danh sách ca trống.</summary>
+    Task<LeaveApprovalDto> ApproveAsync(CurrentUser user, int id, string? note);
+
+    Task<LeaveRequestDto> RejectAsync(CurrentUser user, int id, string? note);
+
+    Task<LeaveRequestDto> CancelAsync(CurrentUser user, int id);
+
+    Task<HandoverDraftDto> GetDraftAsync(CurrentUser user, int shiftId, DateOnly? date);
+
+    Task<HandoverDto> CreateHandoverAsync(CurrentUser user, CreateHandoverRequest request);
+
+    Task<List<HandoverDto>> ListHandoversAsync(CurrentUser user, DateOnly? date);
+
+    Task<List<HandoverDto>> InboxAsync(CurrentUser user);
+
+    Task<HandoverDto> AcknowledgeAsync(CurrentUser user, long id);
+}

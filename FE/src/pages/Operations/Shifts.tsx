@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
-  App, Button, DatePicker, Form, List, Modal, Popconfirm, Popover, Select, Space, Switch, Table, Tabs, Tag, Typography,
+  App, Badge, Button, DatePicker, Form, List, Modal, Popconfirm, Popover, Select, Space, Switch, Table, Tabs, Tag, Typography,
 } from 'antd';
 import { CopyOutlined, LeftOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons';
 import type { Dayjs } from 'dayjs';
 import { accountsApi } from '../../api/accounts';
 import { extractErrorMessage } from '../../api/client';
-import { staffingApi } from '../../api/staffing';
+import { handoverApi, staffingApi } from '../../api/staffing';
 import { useAuth } from '../../auth/AuthContext';
 import { ADMIN_ONLY, CARE_PLANNERS, hasRole } from '../../auth/roles';
 import { AccountSelect, PageTitle, ResidentSelect } from '../../components/Common';
@@ -15,6 +15,7 @@ import { dateOnly, dayjs, hhmm, timeOf, todayVn } from '../../utils/format';
 import { ROLE_LABEL, statusMeta } from '../../utils/status';
 import type { Role } from '../../types';
 import type { CareAssignment, Shift, ShiftAssignment } from '../../types/operations';
+import { HandoverTab, LeaveTab } from './ShiftRequests';
 
 const ROLE_ORDER = ['Doctor', 'Nurse', 'Caregiver'];
 const TEAM_VIEWERS: Role[] = ['Admin', 'Nurse'];
@@ -25,24 +26,42 @@ interface Person {
   role: string;
 }
 
-/** UC-44 lịch ca tuần, UC-46 lịch ca của tôi, UC-45 phân công phụ trách cư dân. */
+const TAB_KEYS = ['week', 'mine', 'care', 'leave', 'handover'];
+
+/**
+ * UC-44 lịch ca tuần, UC-46 lịch ca của tôi, UC-45 phân công phụ trách cư dân (S3-V2);
+ * UC-47 nghỉ phép/đổi ca, UC-49 bàn giao ca (S3-V4). Tab đang mở nằm trên URL (?tab=) để thông báo trỏ thẳng vào.
+ */
 export default function Shifts() {
   const { user } = useAuth();
+  const [params, setParams] = useSearchParams();
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [inboxCount, setInboxCount] = useState(0);
   useEffect(() => {
     staffingApi.shifts().then(setShifts).catch(() => undefined);
+    handoverApi.inbox().then((items) => setInboxCount(items.length)).catch(() => undefined);
   }, []);
   const seesTeam = hasRole(user?.role, TEAM_VIEWERS);
+  const requested = params.get('tab');
+  const activeKey = requested && TAB_KEYS.includes(requested) ? requested : seesTeam ? 'week' : 'mine';
 
   return (
     <>
       <PageTitle title="Ca trực" />
       <Tabs
-        defaultActiveKey={seesTeam ? 'week' : 'mine'}
+        activeKey={activeKey}
+        onChange={(key) => setParams({ tab: key }, { replace: true })}
+        destroyOnHidden
         items={[
           { key: 'week', label: 'Lịch ca tuần', children: <WeekTab shifts={shifts} /> },
           { key: 'mine', label: 'Lịch ca của tôi', children: <MineTab /> },
           { key: 'care', label: 'Phân công phụ trách', children: <CareTab shifts={shifts} /> },
+          { key: 'leave', label: 'Nghỉ phép / đổi ca', children: <LeaveTab /> },
+          {
+            key: 'handover',
+            label: <Badge count={inboxCount} size="small" offset={[8, -2]}>Bàn giao ca</Badge>,
+            children: <HandoverTab shifts={shifts} onInboxChange={setInboxCount} />,
+          },
         ]}
       />
     </>

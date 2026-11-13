@@ -10,12 +10,27 @@ Nhân viên xin nghỉ hoặc xin đổi ca với đồng nghiệp, Admin duyệ
 
 ## Tiêu chí hoàn thành
 
-- [ ] Nhân viên tạo đơn **Nghỉ** (từ ngày–đến ngày, lý do) hoặc **Đổi ca** (chọn một ca của mình + đồng nghiệp + ca của đồng nghiệp).
-- [ ] Admin duyệt/từ chối có ghi chú. Duyệt đổi ca → hoán đổi `AccountId` của 2 `ShiftAssignments` trong **một transaction**. Duyệt nghỉ → xóa các ca của người đó trong khoảng ngày và báo Admin "cần xếp người thay" (kèm danh sách ca bị trống).
-- [ ] Người xin và đồng nghiệp (khi đổi ca) nhận thông báo kết quả.
-- [ ] "Bàn giao ca": chọn ngày + ca → nút **Lấy gợi ý** điền sẵn danh sách; người viết sửa/thêm nội dung; lưu.
-- [ ] Ca kế tiếp thấy bàn giao chưa đọc (badge), bấm "Đã đọc" thì lưu người + giờ.
-- [ ] Caregiver chỉ thấy đơn của mình; Family/Receptionist → 403.
+- [x] Nhân viên tạo đơn **Nghỉ** (từ ngày–đến ngày, lý do) hoặc **Đổi ca** (chọn một ca của mình + đồng nghiệp + ca của đồng nghiệp).
+- [x] Admin duyệt/từ chối có ghi chú. Duyệt đổi ca → hoán đổi `AccountId` của 2 `ShiftAssignments` trong **một transaction**. Duyệt nghỉ → xóa các ca của người đó trong khoảng ngày và báo Admin "cần xếp người thay" (kèm danh sách ca bị trống).
+- [x] Người xin và đồng nghiệp (khi đổi ca) nhận thông báo kết quả.
+- [x] "Bàn giao ca": chọn ngày + ca → nút **Lấy gợi ý** điền sẵn danh sách; người viết sửa/thêm nội dung; lưu.
+- [x] Ca kế tiếp thấy bàn giao chưa đọc (badge), bấm "Đã đọc" thì lưu người + giờ.
+- [x] Caregiver chỉ thấy đơn của mình; Family/Receptionist → 403.
+
+### Kết quả triển khai (13/11/2026)
+
+- Kiểm thử: smoke thêm 34 kiểm tra (tổng 128/128 PASS: đổi ca hoán đúng người, duyệt 2 lần bị chặn, duyệt nghỉ trả danh sách ca trống, gợi ý bàn giao lọc theo quyền, xác nhận đã đọc); unit thêm `HandoverRuleTests` (52/52).
+- Hai tab mới trong `/staff/shifts` build/lint sạch nhưng **chưa xem trên trình duyệt**. Tab đang mở nằm trên URL (`?tab=leave`, `?tab=handover`) để thông báo trỏ thẳng vào.
+- Quyết định khác/bổ sung so với đặc tả:
+  - Thêm `GET /api/leave-requests/swap-candidates?shiftAssignmentId=`: Caregiver/Doctor không xem được lịch của người khác, nên server trả sẵn các ca đổi được (cùng role, 4 tuần tới, chưa bắt đầu, không làm ai bị trùng ca).
+  - Danh sách đơn của người không phải Admin gồm cả đơn **đồng nghiệp xin đổi ca với mình** (để biết trước).
+  - Khi một ca bị bỏ (Admin bỏ ca, duyệt nghỉ) hoặc đã đổi theo đơn khác, các đơn đổi ca đang chờ có dính ca đó **tự hủy** và báo người liên quan; đơn cũ được gỡ tham chiếu tới ca đã xóa. Vì vậy `CK_LeaveRequests_Swap` chỉ bắt buộc đủ 2 ca khi đơn còn `Pending`.
+  - Duyệt nghỉ chỉ bỏ ca **chưa bắt đầu**; mỗi đơn nghỉ tối đa 31 ngày, không trùng đơn nghỉ đang chờ.
+  - Admin không có ca nên không tạo đơn, nhưng được viết bàn giao không cần ca (viết thay). Không tự xác nhận bàn giao của mình.
+  - "Ca kế tiếp" = ca bắt đầu đúng lúc ca này kết thúc (`StaffingRules.NextShift`: sáng → chiều → đêm → sáng hôm sau). Người được xác nhận: có ca kế tiếp, hoặc Admin/Nurse. Caregiver chỉ thấy bàn giao của mình hoặc bàn giao mình cần nhận.
+  - Thêm `GET /api/handovers/inbox` (chưa đọc 2 ngày gần nhất mà mình xác nhận được) cho badge ở tab "Bàn giao ca".
+  - Gợi ý bàn giao lọc theo cư dân người viết được xem (`IResidentAccessService.VisibleResidentIdsAsync`); mục **sự cố** chờ bảng `Incidents` của S3-H1 (đánh dấu sẵn trong `HandoverService.GetDraftAsync`).
+  - `HighlightsJson` lưu mảng `{kind, residentId, residentName, text}` (camelCase) — S4-V2 dùng làm đầu vào AI.
 
 ## 1. Database — `01_Schema.sql` mục 9
 
