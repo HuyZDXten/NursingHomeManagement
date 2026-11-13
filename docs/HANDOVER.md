@@ -106,7 +106,7 @@ Quyền theo từng cư dân (`ResidentAccessService`, chống IDOR) — **mọi
 | Admin | ✔ | ✔ | ✔ |
 | Receptionist, Accountant | ✔ | — | ✔ |
 | Doctor, Nurse | ✔ | ✔ | — |
-| Caregiver | chỉ cư dân đang có việc Pending/InProgress giao cho mình | như cột trái | — |
+| Caregiver | chỉ cư dân đang có việc Pending/InProgress giao cho mình **hoặc** mình đang là người phụ trách chính (S3-V2, `/staff/shifts` → Phân công phụ trách) | như cột trái | — |
 | Family | cư dân được liên kết | theo cờ `CanViewHealth/Care/Medication` + bản ghi có `ShareWithFamily` | theo `CanViewBilling`, không thấy Draft |
 
 > **Bẫy đã gặp:** `[Authorize(Policy=...)]` ở class **và** ở action là điều kiện **AND**. Nếu action cần mở rộng hơn class (ví dụ Family xem hóa đơn), để class chỉ `[Authorize]` và đặt policy trên từng action (xem `InvoicesController`, `AccountsController`).
@@ -291,5 +291,5 @@ git push -u origin feature/s3-h1-incidents   # rồi mở Pull Request vào deve
 | `GET /odata/X` trả 404 kiểu "Không tìm thấy ..." của một action `Get(id)` | Thiếu `[Route("odata/X")]` trên ODataController của entity set mới (OData chỉ dùng attribute routing, xem ARCHITECTURE mục 7) |
 | Pull code mới có bảng mới, API báo `Invalid object name` | Chạy `.\Database\setup-local-db.ps1` (không cần `-Recreate`: script tạo bảng còn thiếu và seed phần chưa có) |
 | payos-fake báo "Đơn thanh toán đã tồn tại" | Đã dựng lại DB (Id giao dịch bắt đầu lại từ 1): khởi động lại payos-fake |
-| Caregiver không thấy cư dân | Đúng thiết kế: chỉ thấy cư dân đang có việc Pending/InProgress giao cho mình |
+| Caregiver không thấy cư dân | Đúng thiết kế: chỉ thấy cư dân đang có việc Pending/InProgress giao cho mình hoặc đang được phân công phụ trách chính |
 | Tiếng Việt hiện `?` trong `sqlcmd` | Chỉ là console; dữ liệu đúng. Luôn chạy script với `-f 65001` (setup script đã có) |
