@@ -60,7 +60,7 @@ docs/                       SPRINTS.md (kế hoạch Scrum), HANDOVER.md (hướ
 
 ```powershell
 dotnet test BE/NursingHome.sln          # 11 unit test
-node scripts/smoke-test.mjs             # 31 kiểm tra end-to-end (xem điều kiện ở đầu file)
+.\scripts\run-smoke-isolated.ps1       # kiểm tra end-to-end trên DB/cổng riêng, không đụng bản dev đang chạy
 cd FE; npm run build; npm run lint
 ```
 

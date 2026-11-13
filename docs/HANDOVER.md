@@ -237,7 +237,8 @@ Webhook cần URL công khai (ngrok hoặc VS Dev Tunnels → `https://<tunnel>/
 | Loại | Lệnh | Ghi chú |
 | --- | --- | --- |
 | Unit | `dotnet test BE/NursingHome.sln` | 11 test: tính phí theo ngày, chữ ký PayOS, BCrypt, OTP, giờ VN, ngưỡng sinh hiệu |
-| End-to-end | `node scripts/smoke-test.mjs` | 31 kiểm tra; cần DB dựng mới, payos-fake mới khởi động, API chạy với `RateLimit__CredentialsPerMinute=200` (đọc đầu file) |
+| End-to-end | `.\scripts\run-smoke-isolated.ps1` | **Nên dùng**: tự dựng DB `NursingHomeDB_Test`, chạy API (5081) + PayOS giả (5198) riêng rồi chạy `smoke-test.mjs`; không đụng DB/API dev đang mở |
+| End-to-end (DB dev) | `node scripts/smoke-test.mjs` | Chạy trên DB/API dev (5080) — sẽ thay đổi dữ liệu; điều kiện ở đầu file |
 | FE | `npm run build`, `npm run lint` | TypeScript strict |
 
 Thử tay mỗi tính năng bằng ít nhất 2 role: một role được phép, một role bị chặn (phải ra 403/404, không lộ dữ liệu).

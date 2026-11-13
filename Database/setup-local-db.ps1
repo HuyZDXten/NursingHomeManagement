@@ -52,7 +52,14 @@ if ($Recreate) {
     if ($LASTEXITCODE -ne 0) { throw "Khong xoa duoc database $Database." }
 }
 
-Invoke-SqlFile "00_CreateDatabase.sql" "master"
+# Tao database theo tham so -Database (00_CreateDatabase.sql giu cho ai chay sqlcmd tay voi ten mac dinh).
+# Ten khac (vd. NursingHomeDB_Test) giup chay smoke test ma khong dung DB dang dev.
+Write-Host ">> Tao database $Database (neu chua co)" -ForegroundColor Cyan
+& sqlcmd @common -d master -Q "IF DB_ID(N'$Database') IS NULL CREATE DATABASE [$Database] COLLATE Vietnamese_CI_AS;"
+if ($LASTEXITCODE -ne 0) { throw "Khong tao duoc database $Database." }
+& sqlcmd @common -d master -Q "ALTER DATABASE [$Database] SET READ_COMMITTED_SNAPSHOT ON WITH ROLLBACK IMMEDIATE;"
+if ($LASTEXITCODE -ne 0) { throw "Khong bat duoc READ_COMMITTED_SNAPSHOT cho $Database." }
+
 Invoke-SqlFile "01_Schema.sql" $Database
 Invoke-SqlFile "02_Views_Functions.sql" $Database
 Invoke-SqlFile "03_StoredProcedures.sql" $Database

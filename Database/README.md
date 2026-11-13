@@ -10,6 +10,7 @@ Thư mục này là **nguồn sự thật duy nhất** của schema và dữ li�
 .\Database\setup-local-db.ps1 -Recreate    # xóa và dựng lại từ đầu (dừng API trước)
 .\Database\setup-local-db.ps1 -SkipDemoSeed
 .\Database\setup-local-db.ps1 -Server ".\SQLEXPRESS" -SqlUser sa -SqlPassword "..."
+.\Database\setup-local-db.ps1 -Database NursingHomeDB_Test -Recreate   # DB riêng để test, không đụng DB dev
 ```
 
 Cần `sqlcmd` (đi kèm SQL Server Management Studio hoặc gói *Microsoft Command Line Utilities*).

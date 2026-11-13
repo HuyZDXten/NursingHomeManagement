@@ -66,7 +66,7 @@ flowchart LR
 ## Bài khởi động cho Huy (14–15/11, không tính điểm)
 
 - [ ] Cài máy theo [HANDOVER.md](../HANDOVER.md) mục 1, đăng nhập được bằng 9 tài khoản demo.
-- [ ] Chạy `node scripts/smoke-test.mjs` → 31/31 PASS (đọc điều kiện ở đầu file).
+- [ ] Chạy `.\scripts\run-smoke-isolated.ps1` → "TẤT CẢ PASS".
 - [ ] Lần theo luồng "phân giường" ở [ARCHITECTURE.md](../ARCHITECTURE.md) mục 2 bằng breakpoint trong Visual Studio/Rider.
 - [ ] Đăng nhập `family2`, trả hóa đơn bằng VietQR qua `http://localhost:5199/dev`, xem chuông thông báo đổi realtime.
 - [ ] Thử sửa nhỏ để quen quy trình PR: thêm cột "SĐT" vào bảng Tài khoản (`FE/src/pages/Admin/Accounts.tsx`), mở PR vào `develop`, Viên review.
