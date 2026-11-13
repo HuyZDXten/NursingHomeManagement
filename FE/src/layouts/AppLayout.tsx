@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, Badge, Button, Dropdown, Empty, Layout, List, Menu, Popover, Typography } from 'antd';
 import { BellOutlined, HomeOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import { useAuth } from '../auth/AuthContext';
+import { PublicChatbot } from '../components/PublicChatbot';
 import { hasRole } from '../auth/roles';
 import { useNotifications } from '../hooks/useNotifications';
 import { dateTime } from '../utils/format';
@@ -109,6 +110,7 @@ export function PublicLayout() {
       </Layout.Header>
       <Layout.Content><Outlet /></Layout.Content>
       <Layout.Footer style={{ textAlign: 'center' }}>Nursing Home Management · PRN232</Layout.Footer>
+      <PublicChatbot />
     </Layout>
   );
 }

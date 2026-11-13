@@ -293,4 +293,7 @@ git push -u origin feature/s3-h1-incidents   # rồi mở Pull Request vào deve
 | Pull code mới có bảng mới, API báo `Invalid object name` | Chạy `.\Database\setup-local-db.ps1` (không cần `-Recreate`: script tạo bảng còn thiếu và seed phần chưa có) |
 | payos-fake báo "Đơn thanh toán đã tồn tại" | Đã dựng lại DB (Id giao dịch bắt đầu lại từ 1): khởi động lại payos-fake |
 | Caregiver không thấy cư dân | Đúng thiết kế: chỉ thấy cư dân đang có việc Pending/InProgress giao cho mình hoặc đang được phân công phụ trách chính |
+| Không thấy nút chatbot ở trang công khai / API AI trả 503 | `Ai:Enabled=false` (mặc định). Local: thêm `"Ai": { "Enabled": true, "Provider": "Fake" }` vào `appsettings.Development.json` (đã có trong file example). Gemini thật: `Provider=Gemini` + key/model ở user-secrets |
+| Chatbot trả "Xin lỗi, trợ lý đang bận…" | Provider lỗi hoặc quá `Ai:TimeoutSeconds`: thiếu `Ai:Gemini:ApiKey/Model`, sai key, hết hạn mức. Xem log cảnh báo "Provider AI … lỗi" (không ghi nội dung hội thoại) |
+| Thêm khoản phí / ghi dịch vụ phát sinh với số lẻ trả 500 (bản cũ) | `[Range(typeof(decimal), "0.01", …)]` parse theo culture vi-VN; dùng `ParseLimitsInInvariantCulture = true` (đã sửa ở S3-V5) |
 | Tiếng Việt hiện `?` trong `sqlcmd` | Chỉ là console; dữ liệu đúng. Luôn chạy script với `-f 65001` (setup script đã có) |

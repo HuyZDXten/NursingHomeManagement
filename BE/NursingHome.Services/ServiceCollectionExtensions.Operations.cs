@@ -50,5 +50,6 @@ public static partial class ServiceCollectionExtensions
             ? provider.GetRequiredService<FakeAiChatProvider>()
             : provider.GetRequiredService<GeminiChatProvider>());
         services.AddScoped<IAiChatEngine, AiChatEngine>();
+        services.AddScoped<IPublicChatbotService, PublicChatbotService>();
     }
 }

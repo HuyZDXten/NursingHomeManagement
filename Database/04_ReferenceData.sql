@@ -65,6 +65,43 @@ BEGIN
     SET IDENTITY_INSERT dbo.ExtraServices OFF;
 END;
 
+-- Tài liệu tri thức mẫu cho chatbot (S4-V1, tool search_knowledge). Admin sửa ở /staff/ai-knowledge.
+-- Giá gói và số giường KHÔNG ghi ở đây: chatbot lấy trực tiếp từ dữ liệu (list_packages, get_bed_availability).
+IF NOT EXISTS (SELECT 1 FROM dbo.AiKnowledgeDocs WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.AiKnowledgeDocs ON;
+    INSERT INTO dbo.AiKnowledgeDocs (Id, Title, Content, Tags, IsPublic, IsActive) VALUES
+    (1, N'Quy trình nhập viện',
+        N'Bước 1: gia đình gửi yêu cầu tư vấn hoặc đặt lịch tham quan. Bước 2: tham quan cơ sở, gặp điều dưỡng trưởng để trao đổi nhu cầu chăm sóc. '
+        + N'Bước 3: mang giấy tờ tùy thân của người cao tuổi, thẻ bảo hiểm y tế, giấy ra viện hoặc đơn thuốc gần nhất (nếu có). '
+        + N'Bước 4: bác sĩ của cơ sở đánh giá sức khỏe ban đầu. Bước 5: ký hợp đồng, chọn gói dịch vụ, nhận giường và bàn giao đồ dùng cá nhân.',
+        N'nhập viện, thủ tục, giấy tờ, hợp đồng, quy trình', 1, 1),
+    (2, N'Giờ thăm và quy định khi thăm',
+        N'Giờ thăm: 08:00–11:00 và 14:00–20:00 mỗi ngày. Mỗi lần tối đa 4 người thăm một cư dân; trẻ em dưới 12 tuổi đi cùng người lớn. '
+        + N'Vui lòng đăng ký tại quầy lễ tân, không mang đồ ăn khi chưa hỏi điều dưỡng (nhiều cư dân ăn kiêng), không hút thuốc trong khuôn viên. '
+        + N'Gia đình có thể đặt lịch thăm trước qua cổng gia đình để cơ sở chuẩn bị.',
+        N'giờ thăm, thăm, quy định, thăm nuôi, lịch thăm', 1, 1),
+    (3, N'Chính sách thanh toán',
+        N'Hóa đơn phát hành vào đầu tháng, tính theo số ngày lưu trú thực tế của gói đã đăng ký cộng dịch vụ phát sinh (giặt ủi, vật lý trị liệu, cắt tóc, đưa đón khám). '
+        + N'Hạn thanh toán ghi trên hóa đơn (thường ngày 10). Gia đình thanh toán bằng mã VietQR trên cổng gia đình, chuyển khoản hoặc tiền mặt tại quầy. '
+        + N'Hệ thống nhắc trước hạn 3 ngày và khi quá hạn.',
+        N'thanh toán, hóa đơn, chi phí, VietQR, chuyển khoản, tiền', 1, 1),
+    (4, N'Dịch vụ y tế tại cơ sở',
+        N'Có: bác sĩ khám định kỳ hàng tuần, điều dưỡng trực 24/7, theo dõi sinh hiệu hằng ngày, phát thuốc theo đơn của bác sĩ, vật lý trị liệu, đưa đón đi khám ngoài. '
+        + N'Không có: phẫu thuật, chạy thận, chăm sóc cấp cứu chuyên sâu — khi cần cơ sở chuyển cư dân đến bệnh viện gần nhất và báo gia đình ngay.',
+        N'y tế, bác sĩ, điều dưỡng, thuốc, cấp cứu, vật lý trị liệu, dịch vụ', 1, 1),
+    (5, N'Câu hỏi thường gặp',
+        N'Có thể mang đồ dùng cá nhân không? Có, nên ghi tên lên đồ dùng. Có wifi không? Có, miễn phí ở mọi tầng. '
+        + N'Gia đình xem tình hình người thân thế nào? Qua cổng gia đình: sức khỏe, việc chăm sóc, thuốc, hóa đơn theo quyền được cấp, và nhắn tin với cơ sở. '
+        + N'Có thể đổi gói dịch vụ không? Có, kết thúc gói cũ và đăng ký gói mới, tính tiền theo ngày.',
+        N'hỏi đáp, faq, đồ dùng, wifi, đổi gói, cổng gia đình', 1, 1),
+    (6, N'Quy trình nội bộ khi cư dân té ngã',
+        N'Không di chuyển cư dân nếu nghi gãy xương; gọi điều dưỡng trực; đo sinh hiệu; báo bác sĩ; ghi sự cố trong hệ thống trong vòng 1 giờ; báo gia đình. '
+        + N'Tài liệu nội bộ, chatbot công khai không dùng.',
+        N'té ngã, sự cố, nội bộ', 0, 1);
+    SET IDENTITY_INSERT dbo.AiKnowledgeDocs OFF;
+END;
+
 COMMIT TRANSACTION;
 PRINT N'04_ReferenceData.sql: xong.';
 GO

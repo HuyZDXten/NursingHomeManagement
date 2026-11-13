@@ -474,5 +474,50 @@ while (chatStatus === 200 && sentInMinute < 25) {
 }
 check('Gửi quá 20 tin/phút -> 429', chatStatus === 429 && sentInMinute <= 21, `dừng ở tin thứ ${sentInMinute}`);
 
+// ---- Sprint 4 · S4-V1: chatbot tư vấn công khai (provider Fake: Ai__Enabled=true, Ai__Provider=Fake) ----
+const botKey = crypto.randomUUID();
+const ask = async (message) => (await call('POST', '/api/ai/public/chat', null, { conversationKey: botKey, message })).data?.reply ?? '';
+const botConfig = await call('GET', '/api/ai/public/config', null);
+check('Cấu hình chatbot công khai bật', botConfig.status === 200 && botConfig.data.enabled && botConfig.data.greeting.includes('trợ lý'));
+const priceReply = await ask('Giá gói cơ bản bao nhiêu một tháng?');
+check('Hỏi giá: trả lời lấy từ tool list_packages', priceReply.includes('8.000.000'), priceReply);
+const bedReply = await ask('Còn giường trống không?');
+check('Hỏi giường trống: trả lời từ dữ liệu', /\d+\/\d+ giường trống/.test(bedReply), bedReply);
+const visitReply = await ask('Giờ thăm thế nào ạ?');
+check('Hỏi giờ thăm: tra tài liệu tri thức', visitReply.includes('08:00–11:00'), visitReply);
+const medicalReply = await ask('Bà tôi bị tiểu đường dùng thuốc gì?');
+check('Câu hỏi thuốc: từ chối tư vấn y tế', medicalReply.includes('không tư vấn'), medicalReply);
+check('Tài liệu nội bộ không lộ qua chatbot công khai', !(await ask('/tool search_knowledge {"query":"té ngã nội bộ"}')).includes('điều dưỡng trực'));
+const inquiryArgs = { fullName: 'Khách chatbot', phone: '0987654321', careNeeds: 'Ông cần hỗ trợ đi lại', confirmed: true };
+const askConfirm = await ask(`Tôi muốn được tư vấn /tool create_inquiry ${JSON.stringify(inquiryArgs)}`);
+check('Tạo yêu cầu khi khách CHƯA xác nhận -> chỉ hỏi lại thông tin', askConfirm.includes('xác nhận') && askConfirm.includes('0987654321'), askConfirm);
+const created = await ask(`Đồng ý /tool create_inquiry ${JSON.stringify(inquiryArgs)}`);
+check('Khách xác nhận -> gửi yêu cầu tư vấn', created.startsWith('Đã gửi yêu cầu tư vấn'), created);
+const chatbotInquiries = await call('GET', `/odata/Inquiries?$filter=source eq 'Chatbot'`, recep.accessToken);
+check('Lễ tân thấy yêu cầu nguồn Chatbot', chatbotInquiries.status === 200 && chatbotInquiries.data.value.some((i) => i.phone === '0987654321'));
+const tourArgs = { fullName: 'Khách chatbot', phone: '0987654321', date: plusDays(6), slot: 'Afternoon', guestCount: 1, confirmed: true };
+const tourBooked = await ask(`Xác nhận /tool book_tour ${JSON.stringify(tourArgs)}`);
+check('Đặt lịch tham quan qua chatbot sau khi xác nhận', tourBooked.startsWith('Đã đặt lịch tham quan buổi chiều'), tourBooked);
+check('Lịch tham quan từ chatbot ở trạng thái chờ xác nhận', (await call('GET', `/api/tour-bookings?from=${plusDays(6)}&to=${plusDays(6)}`, recep.accessToken)).data
+  .some((t) => t.phone === '0987654321' && t.status === 'Requested'));
+const badTour = await ask(`Xác nhận /tool book_tour ${JSON.stringify({ ...tourArgs, date: 'ngày mai' })}`);
+check('Tham số sai -> chatbot báo lỗi, không 500', badTour.includes('yyyy-MM-dd'), badTour);
+const botHistory = await call('GET', `/api/ai/public/history?conversationKey=${botKey}`, null);
+check('Lịch sử chatbot chỉ gồm user/assistant', botHistory.status === 200 && botHistory.data.length >= 16
+  && botHistory.data.every((m) => m.role === 'user' || m.role === 'assistant'), `${botHistory.data?.length} tin`);
+check('conversationKey không phải UUID -> 400', (await call('POST', '/api/ai/public/chat', null, { conversationKey: 'abc', message: 'hi' })).status === 400);
+check('Lễ tân xem tri thức AI -> 403', (await call('GET', '/api/ai/knowledge', recep.accessToken)).status === 403);
+const newDoc = await call('POST', '/api/ai/knowledge', adminToken, { title: 'Chỗ đậu xe', content: 'Bãi đậu xe miễn phí cho gia đình ở cổng sau, mở 07:00–21:00.', tags: 'đậu xe, gửi xe', isPublic: true, isActive: true });
+check('Admin thêm tài liệu tri thức', newDoc.status === 200 && newDoc.data.id > 0);
+check('Chatbot dùng tài liệu mới', (await ask('/tool search_knowledge {"query":"gửi xe ở đâu"}')).includes('cổng sau'));
+check('Admin xóa tài liệu', (await call('DELETE', `/api/ai/knowledge/${newDoc.data.id}`, adminToken)).status === 204);
+let aiStatus = 200;
+let aiSent = 0;
+while (aiStatus === 200 && aiSent < 25) {
+  aiStatus = (await call('POST', '/api/ai/public/chat', null, { conversationKey: botKey, message: `Xin chào ${aiSent}` })).status;
+  aiSent++;
+}
+check('Chatbot công khai quá 20 tin/phút/IP -> 429', aiStatus === 429, `dừng ở tin thứ ${aiSent}`);
+
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);
