@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NursingHome.Repositories.Implementations;
 using NursingHome.Repositories.Interfaces;
+using NursingHome.Services.Ai;
 using NursingHome.Services.Implementations;
 using NursingHome.Services.Interfaces;
 using NursingHome.Services.Options;
@@ -37,5 +39,16 @@ public static partial class ServiceCollectionExtensions
         // S3-V6 chat gia đình – nhân viên (IChatPublisher cài ở API: SignalRChatPublisher)
         services.AddScoped<IChatRepository, ChatRepository>();
         services.AddScoped<IChatService, ChatService>();
+
+        // S4-V1 hạ tầng AI dùng chung: Ai:Provider = "Fake" (không gọi mạng) hoặc "Gemini" (cần key ở user-secrets)
+        services.Configure<AiOptions>(configuration.GetSection(AiOptions.SectionName));
+        services.AddScoped<IAiRepository, AiRepository>();
+        services.AddHttpClient<GeminiChatProvider>((provider, client) =>
+            client.Timeout = TimeSpan.FromSeconds(Math.Clamp(provider.GetRequiredService<IOptions<AiOptions>>().Value.TimeoutSeconds, 5, 60)));
+        services.AddSingleton<FakeAiChatProvider>();
+        services.AddScoped<IAiChatProvider>(provider => provider.GetRequiredService<IOptions<AiOptions>>().Value.UsesFake
+            ? provider.GetRequiredService<FakeAiChatProvider>()
+            : provider.GetRequiredService<GeminiChatProvider>());
+        services.AddScoped<IAiChatEngine, AiChatEngine>();
     }
 }

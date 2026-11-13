@@ -11,11 +11,28 @@ Xây **hạ tầng AI dùng chung** cho cả nhóm (provider Gemini + provider g
 ## Tiêu chí hoàn thành
 
 PR 1 — hạ tầng:
-- [ ] `IAiChatProvider` với 2 cài đặt: `GeminiChatProvider` (REST, function calling) và `FakeAiChatProvider` (kịch bản cố định, dùng khi `Ai:Provider = "Fake"` hoặc `Ai:Enabled = false` ở Development/test).
-- [ ] `AiChatEngine`: nạp 20 tin gần nhất, gọi provider, thực thi tool (tối đa 3 vòng), lưu tin nhắn + số token, trả câu trả lời. Lỗi provider → câu trả lời lịch sự "Trợ lý đang bận, vui lòng thử lại hoặc gọi hotline …", không ném 500.
-- [ ] Interface `IAiTool` để mỗi người tự viết tool của module mình; tool nhận `CurrentUser?` và **tự kiểm quyền qua service có sẵn**.
-- [ ] Widget `ChatWidget` (nút nổi góc phải, khung chat, lịch sử, đang gõ…) nhận hàm `send`/`loadHistory` qua props để Huy dùng lại.
-- [ ] Unit test engine với `FakeAiChatProvider`: tool được gọi đúng tham số, kết quả tool được đưa lại cho model, tin nhắn được lưu.
+- [x] `IAiChatProvider` với 2 cài đặt: `GeminiChatProvider` (REST, function calling) và `FakeAiChatProvider` (kịch bản cố định, dùng khi `Ai:Provider = "Fake"` hoặc `Ai:Enabled = false` ở Development/test).
+- [x] `AiChatEngine`: nạp 20 tin gần nhất, gọi provider, thực thi tool (tối đa 3 vòng), lưu tin nhắn + số token, trả câu trả lời. Lỗi provider → câu trả lời lịch sự "Trợ lý đang bận, vui lòng thử lại hoặc gọi hotline …", không ném 500.
+- [x] Interface `IAiTool` để mỗi người tự viết tool của module mình; tool nhận `CurrentUser?` và **tự kiểm quyền qua service có sẵn**.
+- [x] Widget `ChatWidget` (nút nổi góc phải, khung chat, lịch sử, đang gõ…) nhận hàm `send`/`loadHistory` qua props để Huy dùng lại.
+- [x] Unit test engine với `FakeAiChatProvider`: tool được gọi đúng tham số, kết quả tool được đưa lại cho model, tin nhắn được lưu.
+
+### Kết quả PR 1 — hạ tầng (13/11/2026, nhánh `feature/s4-v1-ai-core`)
+
+- Unit thêm `AiEngineTests` (75/75): tool nhận đúng tham số và kết quả quay lại model, dừng mời tool sau 3 vòng, provider lỗi → câu xin lỗi có hotline, Fake từ chối câu hỏi thuốc, payload Gemini gửi lại nguyên `content` có `thoughtSignature`, đọc `functionCall` + bỏ phần "thought". Smoke 184/184 vẫn PASS. **Chưa gọi Gemini thật** (không có key trên máy test).
+- Khác đặc tả:
+  - Hợp đồng thêm `AiMessage.Native` / `AiChatResult.Native`: nội dung gốc lượt model gọi tool, engine gửi lại nguyên văn trong cùng request (Gemini 3 bắt buộc, giống StreetBiz). Lịch sử giữa các lượt chỉ gồm tin user/assistant (tool lưu DB để kiểm tra, không gửi lại).
+  - `Ai:Enabled = false` = **tắt AI** (không tự chuyển sang Fake, để môi trường thật không trả lời giả). Dev/test bật `Enabled = true, Provider = "Fake"` — đã thêm vào `appsettings.Development.example.json`.
+  - Thêm `Ai:TimeoutSeconds` (15). `Fallback` chỉ giữ chỗ cấu hình, chưa cài provider dự phòng.
+  - Thêm `IAiChatEngine.HistoryAsync` để khung chat hiện lại lịch sử; `UX_AiConversations_Account_Channel`: mỗi tài khoản một hội thoại mỗi kênh.
+  - Tìm tri thức: điểm = khớp tiêu đề ×3 + thẻ ×2 + nội dung ×1, lọc trong bộ nhớ (vài chục tài liệu).
+
+**Huy dùng hạ tầng cho S4-H1 (trợ lý gia đình) như sau:**
+
+1. Viết tool trong module Care, mỗi tool một lớp `IAiTool` (`Services/Ai/AiContracts.cs`): `Definition` dùng `AiToolJson.Schema(("residentId", "integer", "Mã cư dân", true))`; `ExecuteAsync(user, args)` đọc tham số bằng `AiToolJson.Int/String/Bool`, **gọi service có sẵn với `user`** (service tự kiểm `ResidentAccessService` → Family không xem được cư dân khác), trả `AiToolJson.Serialize(new { ..., summary = "câu tóm tắt tiếng Việt" })` — trường `summary` để provider Fake đọc khi demo.
+2. Service kênh Family: `engine.ChatAsync(AiChannels.Family, user, null, message, systemPrompt, tools)`; lịch sử: `engine.HistoryAsync(AiChannels.Family, user.AccountId, null)`.
+3. FE: `<ChatWidget title greeting send={(t) => api.chat(t)} loadHistory={...} disclaimer="..." />` (`src/components/ChatWidget.tsx`).
+4. Lỗi nghiệp vụ trong tool (`NotFound`, `Forbidden`, `BusinessRule`) tự thành `{"error": "..."}` cho model giải thích; không cần try/catch.
 
 PR 2 — chatbot công khai:
 - [ ] Widget trên mọi trang công khai; khách không đăng nhập; hội thoại gắn với `conversationKey` (UUID lưu `localStorage`).

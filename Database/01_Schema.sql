@@ -678,6 +678,57 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Messages_Unread')
     CREATE INDEX IX_Messages_Unread ON dbo.Messages (ConversationId, FromFamily) WHERE ReadAt IS NULL;
 GO
 
+/* ---- 9.6 Hạ tầng AI dùng chung (S4-V1: AI-01, UC-20). Huy dùng lại cho trợ lý gia đình (S4-H1) ---- */
+-- Hội thoại AI: Public gắn AnonymousKey (UUID lưu localStorage của khách), Family/Staff gắn AccountId.
+IF OBJECT_ID(N'dbo.AiConversations', N'U') IS NULL
+CREATE TABLE dbo.AiConversations (
+    Id            BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AiConversations PRIMARY KEY,
+    Channel       NVARCHAR(10)  NOT NULL,
+    AccountId     INT           NULL CONSTRAINT FK_AiConversations_Accounts REFERENCES dbo.Accounts (Id),
+    AnonymousKey  NVARCHAR(64)  NULL,
+    Title         NVARCHAR(200) NULL,
+    CreatedAt     DATETIME2     NOT NULL CONSTRAINT DF_AiConversations_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    LastMessageAt DATETIME2     NULL,
+    CONSTRAINT CK_AiConversations_Channel CHECK (Channel IN (N'Public', N'Family', N'Staff')),
+    CONSTRAINT CK_AiConversations_Owner CHECK (AccountId IS NOT NULL OR AnonymousKey IS NOT NULL)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_AiConversations_AnonymousKey')
+    CREATE UNIQUE INDEX UX_AiConversations_AnonymousKey ON dbo.AiConversations (AnonymousKey) WHERE AnonymousKey IS NOT NULL;
+GO
+-- Mỗi tài khoản một hội thoại cho mỗi kênh (Family, Staff).
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_AiConversations_Account_Channel')
+    CREATE UNIQUE INDEX UX_AiConversations_Account_Channel ON dbo.AiConversations (AccountId, Channel) WHERE AccountId IS NOT NULL;
+GO
+IF OBJECT_ID(N'dbo.AiMessages', N'U') IS NULL
+CREATE TABLE dbo.AiMessages (
+    Id             BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AiMessages PRIMARY KEY,
+    ConversationId BIGINT        NOT NULL CONSTRAINT FK_AiMessages_Conversations REFERENCES dbo.AiConversations (Id),
+    Role           NVARCHAR(10)  NOT NULL,                              -- user | assistant | tool (tool: kết quả JSON, để kiểm tra lại)
+    Content        NVARCHAR(MAX) NOT NULL,
+    ToolName       NVARCHAR(100) NULL,
+    InputTokens    INT           NULL,
+    OutputTokens   INT           NULL,
+    CreatedAt      DATETIME2     NOT NULL CONSTRAINT DF_AiMessages_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_AiMessages_Role CHECK (Role IN (N'user', N'assistant', N'tool'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_AiMessages_Conversation')
+    CREATE INDEX IX_AiMessages_Conversation ON dbo.AiMessages (ConversationId, Id);
+GO
+-- Tài liệu tri thức cho tool search_knowledge. IsPublic = 0: chỉ trợ lý nội bộ/gia đình được dùng.
+IF OBJECT_ID(N'dbo.AiKnowledgeDocs', N'U') IS NULL
+CREATE TABLE dbo.AiKnowledgeDocs (
+    Id        INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AiKnowledgeDocs PRIMARY KEY,
+    Title     NVARCHAR(200) NOT NULL,
+    Content   NVARCHAR(MAX) NOT NULL,
+    Tags      NVARCHAR(200) NULL,
+    IsPublic  BIT           NOT NULL CONSTRAINT DF_AiKnowledgeDocs_IsPublic DEFAULT (1),
+    IsActive  BIT           NOT NULL CONSTRAINT DF_AiKnowledgeDocs_IsActive DEFAULT (1),
+    UpdatedAt DATETIME2     NOT NULL CONSTRAINT DF_AiKnowledgeDocs_UpdatedAt DEFAULT (SYSUTCDATETIME())
+);
+GO
+
 /* ---- 9. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 
