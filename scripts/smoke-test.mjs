@@ -227,9 +227,14 @@ const nh3Assignments = await call('GET', '/api/care-assignments?residentId=3', n
 check('Danh sách phân công đang hiệu lực của NH-0003', nh3Assignments.data.length === 1 && nh3Assignments.data[0].accountName === 'Hoàng Văn Nam');
 const cg2Care = await call('GET', '/api/care-assignments', caregiver2.accessToken);
 check('Caregiver chỉ thấy phân công của chính mình', cg2Care.status === 200 && cg2Care.data.length === 1 && cg2Care.data.every((a) => a.accountId === 7));
-// (S3-V2 phần quyền) kiểm tra caregiver đọc hồ sơ NH-0003 nhờ phân công phụ trách: chèn tại đây.
+// Quyền: caregiver chưa có việc với NH-0003 nhưng là người phụ trách chính -> xem được hồ sơ (ResidentAccessService).
+check('Caregiver phụ trách NH-0003 xem được hồ sơ dù chưa có việc', (await call('GET', '/api/residents/3', caregiver.accessToken)).status === 200);
+check('Danh sách cư dân của caregiver có thêm NH-0003',
+  (await call('GET', '/odata/Residents', caregiver.accessToken)).data.value.map((r) => r.code).sort().join() === 'NH-0002,NH-0003');
+check('Phụ trách vẫn không xem được hóa đơn -> 403', (await call('GET', '/api/residents/3/subscriptions', caregiver.accessToken)).status === 403);
 const endedAssign = await call('POST', `/api/care-assignments/${careAssign.data.id}/end`, nurse.accessToken);
 check('Kết thúc phân công phụ trách', endedAssign.status === 200 && !endedAssign.data.isActive && !!endedAssign.data.endDate);
+check('Hết phân công -> caregiver lại không xem được NH-0003 (403)', (await call('GET', '/api/residents/3', caregiver.accessToken)).status === 403);
 check('Kết thúc lần hai -> 400', (await call('POST', `/api/care-assignments/${careAssign.data.id}/end`, nurse.accessToken)).status === 400);
 
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
