@@ -373,3 +373,30 @@ export interface InvoiceReminder {
   stage: ReminderStage;
   sentAt: string;
 }
+
+// ---------------- S3-V6 chat gia đình – nhân viên ----------------
+
+export interface Conversation {
+  id: number;
+  residentId: number;
+  residentCode: string;
+  residentName: string;
+  familyAccountId: number;
+  familyName: string;
+  lastMessage?: string | null;
+  lastMessageAt?: string | null;
+  /** Tin của bên kia mà mình chưa đọc. */
+  unread: number;
+}
+
+export interface ChatMessage {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  senderName: string;
+  senderRole: string;
+  fromFamily: boolean;
+  body: string;
+  sentAt: string;
+  readAt?: string | null;
+}

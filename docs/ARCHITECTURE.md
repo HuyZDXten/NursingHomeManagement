@@ -293,6 +293,9 @@ Sprint 3+ (module):
 | | `POST /api/invoices/batch`, `GET /api/invoices/{id}/reminders` | BillingStaff |
 | | `GET /api/invoices/{id}/pdf` (Family: như xem hóa đơn) | InvoiceReaders |
 | | `POST /api/invoices/reminders/run` (job `InvoiceReminderJob` cũng chạy mỗi giờ) | FinanceStaff |
+| Chat gia đình (S3-V6) | `GET /api/conversations`, `GET·POST /api/conversations/{id}/messages?beforeId&take` (gửi: rate limit `Chat` 20/phút/tài khoản), `POST /{id}/read` — quyền kiểm ở `ChatService` (Family: người thân được liên kết; Admin, Receptionist, Nurse; Caregiver phụ trách chính) | đăng nhập |
+| | `POST /api/conversations {residentId}` (mở hoặc lấy lại) | FamilyOnly |
+| | Sự kiện realtime `chat` (ChatMessageDto) trên hub `/hubs/notifications` | — |
 | Báo cáo (S3-V3) | `GET /api/reports/revenue?year` · `/revenue/export` (.xlsx) | FinanceStaff |
 | | `GET /api/reports/occupancy?year` · `/occupancy/export` | BillingStaff |
 | | `GET /api/reports/medication-adherence?from&to` · `/medication-adherence/export` | Prescribers |

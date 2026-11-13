@@ -56,6 +56,7 @@ builder.Services.AddOptions<JwtOptions>()
 // ---- Repositories + Services (NursingHome.Services/ServiceCollectionExtensions.cs) ----
 builder.Services.AddNursingHomeServices(builder.Configuration);
 builder.Services.AddSingleton<INotificationPublisher, SignalRNotificationPublisher>();
+builder.Services.AddSingleton<IChatPublisher, SignalRChatPublisher>(); // S3-V6 sự kiện "chat"
 builder.Services.AddSingleton<IUserIdProvider, SubjectUserIdProvider>();
 builder.Services.AddHostedService<PayOsSyncService>();
 builder.Services.AddHostedService<InvoiceReminderJob>(); // S3-V5 nhắc nợ mỗi giờ
@@ -121,6 +122,7 @@ foreach (var (policy, roles) in AuthPolicies.Map)
 // ---- Rate limit cho đăng nhập/OTP/đổi mật khẩu và form công khai ----
 int credentialsPerMinute = builder.Configuration.GetValue("RateLimit:CredentialsPerMinute", 10);
 int publicFormsPerMinute = builder.Configuration.GetValue("RateLimit:PublicFormsPerMinute", 5);
+int chatPerMinute = builder.Configuration.GetValue("RateLimit:ChatPerMinute", 20);
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -130,6 +132,10 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy(RateLimitPolicies.PublicForms, httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = publicFormsPerMinute, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    // S3-V6: theo tài khoản (claim sub) vì nhiều người dùng chung một IP (wifi của cơ sở).
+    options.AddPolicy(RateLimitPolicies.Chat, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.User.FindFirst("sub")?.Value ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = chatPerMinute, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.OnRejected = (context, _) => new ValueTask(ExceptionHandlingMiddleware.WriteErrorAsync(
         context.HttpContext.Response, StatusCodes.Status429TooManyRequests, "Thao tác quá nhiều lần. Vui lòng chờ một phút."));
 });

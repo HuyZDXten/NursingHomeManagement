@@ -644,6 +644,40 @@ CREATE TABLE dbo.InvoiceReminders (
 );
 GO
 
+/* ---- 9.5 Chat gia đình – nhân viên (S3-V6: UC-106) ---- */
+-- Mỗi (cư dân, tài khoản gia đình) một cuộc trò chuyện; mọi nhân viên được phép cùng trả lời trong đó.
+IF OBJECT_ID(N'dbo.Conversations', N'U') IS NULL
+CREATE TABLE dbo.Conversations (
+    Id              INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Conversations PRIMARY KEY,
+    ResidentId      INT       NOT NULL CONSTRAINT FK_Conversations_Residents REFERENCES dbo.Residents (Id),
+    FamilyAccountId INT       NOT NULL CONSTRAINT FK_Conversations_Accounts REFERENCES dbo.Accounts (Id),
+    CreatedAt       DATETIME2 NOT NULL CONSTRAINT DF_Conversations_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    LastMessageAt   DATETIME2 NULL,
+    CONSTRAINT UQ_Conversations UNIQUE (ResidentId, FamilyAccountId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Conversations_LastMessageAt')
+    CREATE INDEX IX_Conversations_LastMessageAt ON dbo.Conversations (LastMessageAt DESC) INCLUDE (ResidentId, FamilyAccountId);
+GO
+IF OBJECT_ID(N'dbo.Messages', N'U') IS NULL
+CREATE TABLE dbo.Messages (
+    Id             BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Messages PRIMARY KEY,
+    ConversationId INT            NOT NULL CONSTRAINT FK_Messages_Conversations REFERENCES dbo.Conversations (Id),
+    SenderId       INT            NOT NULL CONSTRAINT FK_Messages_Accounts REFERENCES dbo.Accounts (Id),
+    FromFamily     BIT            NOT NULL,
+    Body           NVARCHAR(2000) NOT NULL,
+    SentAt         DATETIME2      NOT NULL CONSTRAINT DF_Messages_SentAt DEFAULT (SYSUTCDATETIME()),
+    ReadAt         DATETIME2      NULL,                                 -- bên kia đã đọc
+    CONSTRAINT CK_Messages_Body CHECK (LEN(Body) > 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Messages_Conversation_SentAt')
+    CREATE INDEX IX_Messages_Conversation_SentAt ON dbo.Messages (ConversationId, SentAt DESC);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Messages_Unread')
+    CREATE INDEX IX_Messages_Unread ON dbo.Messages (ConversationId, FromFamily) WHERE ReadAt IS NULL;
+GO
+
 /* ---- 9. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 

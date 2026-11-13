@@ -35,10 +35,27 @@ public partial class NursingHomeContext
 
     public DbSet<InvoiceReminder> InvoiceReminders => Set<InvoiceReminder>();
 
+    // S3-V6 chat gia đình – nhân viên
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+
     partial void ConfigureOperations(ModelBuilder modelBuilder)
     {
         ConfigureStaffing(modelBuilder);
         ConfigureBillingExtras(modelBuilder);
+        modelBuilder.Entity<Conversation>(entity =>
+        {
+            entity.ToTable("Conversations");
+            entity.HasOne(e => e.Resident).WithMany().HasForeignKey(e => e.ResidentId);
+            entity.HasOne(e => e.FamilyAccount).WithMany().HasForeignKey(e => e.FamilyAccountId);
+            entity.HasMany(e => e.Messages).WithOne(e => e.Conversation).HasForeignKey(e => e.ConversationId);
+        });
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.ToTable("Messages");
+            entity.HasOne(e => e.Sender).WithMany().HasForeignKey(e => e.SenderId);
+        });
 
         modelBuilder.Entity<Inquiry>(entity =>
         {

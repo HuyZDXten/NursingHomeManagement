@@ -348,6 +348,22 @@ BEGIN
     SET IDENTITY_INSERT dbo.ServiceUsages OFF;
 END;
 
+/* ---- 10.6 Chat gia đình – nhân viên (S3-V6) ----
+   NH-0001 ↔ family (8): gia đình hỏi, điều dưỡng (5) trả lời (đã đọc), tin cuối của gia đình CHƯA đọc
+   → nhân viên thấy 1 tin chưa đọc. */
+IF NOT EXISTS (SELECT 1 FROM dbo.Conversations WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Conversations ON;
+    INSERT INTO dbo.Conversations (Id, ResidentId, FamilyAccountId, CreatedAt, LastMessageAt) VALUES
+    (1, 1, 8, DATEADD(HOUR, -26, @NowUtc), DATEADD(HOUR, -2, @NowUtc));
+    SET IDENTITY_INSERT dbo.Conversations OFF;
+
+    INSERT INTO dbo.Messages (ConversationId, SenderId, FromFamily, Body, SentAt, ReadAt) VALUES
+    (1, 8, 1, N'Chào cơ sở, hôm qua bố tôi ăn uống có ổn không ạ? Tuần này gia đình muốn mang thêm sữa vào.', DATEADD(HOUR, -26, @NowUtc), DATEADD(HOUR, -25, @NowUtc)),
+    (1, 5, 0, N'Chào chị, ông ăn hết suất cháo trưa và ngủ trưa tốt. Gia đình cứ mang sữa vào, gửi ở quầy lễ tân giúp em nhé.', DATEADD(HOUR, -25, @NowUtc), DATEADD(HOUR, -24, @NowUtc)),
+    (1, 8, 1, N'Cảm ơn em. Cuối tuần này 9h sáng gia đình vào thăm được không?', DATEADD(HOUR, -2, @NowUtc), NULL);
+END;
+
 /* ---- 10. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 
