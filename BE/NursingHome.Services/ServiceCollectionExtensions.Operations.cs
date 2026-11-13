@@ -33,5 +33,9 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IExtraServiceService, ExtraServiceService>();
         services.AddScoped<IInvoiceMailer, InvoiceMailer>();
         services.AddScoped<IInvoiceAutomationService, InvoiceAutomationService>();
+
+        // S3-V6 chat gia đình – nhân viên (IChatPublisher cài ở API: SignalRChatPublisher)
+        services.AddScoped<IChatRepository, ChatRepository>();
+        services.AddScoped<IChatService, ChatService>();
     }
 }

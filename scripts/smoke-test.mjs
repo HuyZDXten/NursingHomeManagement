@@ -407,5 +407,72 @@ await call('POST', `/api/invoices/${batch.data.created.find((i) => i.residentCod
 const nh3Usages = await call('GET', `/api/residents/3/service-usages?from=${thisMonth1}&to=${plusDays(0)}`, accountant.accessToken);
 check('Hủy hóa đơn trả dịch vụ phát sinh về "chưa tính"', nh3Usages.status === 200 && nh3Usages.data.length >= 1 && nh3Usages.data.every((u) => !u.invoiced));
 
+// ---- Sprint 3 · S3-V6: chat gia đình – nhân viên ----
+const family = await login('family@nursinghome.local');
+const famList = await call('GET', '/api/conversations', family.accessToken);
+check('Gia đình thấy cuộc trò chuyện demo về NH-0001', famList.status === 200 && famList.data.some((c) => c.id === 1 && c.residentCode === 'NH-0001' && c.unread === 0));
+const nurseList = await call('GET', '/api/conversations', nurse.accessToken);
+check('Điều dưỡng thấy 1 tin chưa đọc của gia đình', nurseList.status === 200 && nurseList.data.find((c) => c.id === 1)?.unread === 1);
+check('Kế toán dùng tin nhắn -> 403', (await call('GET', '/api/conversations', accountant.accessToken)).status === 403);
+check('Bác sĩ dùng tin nhắn -> 403', (await call('GET', '/api/conversations', doctor.accessToken)).status === 403);
+check('family2 đọc cuộc trò chuyện của family -> 404', (await call('GET', '/api/conversations/1/messages', family2.accessToken)).status === 404);
+check('family2 mở chat về cư dân không liên kết -> 404', (await call('POST', '/api/conversations', family2.accessToken, { residentId: 1 })).status === 404);
+check('Nhân viên không tự mở cuộc trò chuyện -> 403', (await call('POST', '/api/conversations', nurse.accessToken, { residentId: 1 })).status === 403);
+const history = await call('GET', '/api/conversations/1/messages', nurse.accessToken);
+check('Lịch sử 3 tin theo thứ tự thời gian, có vai trò người gửi', history.status === 200 && history.data.length === 3
+  && history.data[0].fromFamily && history.data[1].senderRole === 'Nurse' && Date.parse(history.data[0].sentAt) < Date.parse(history.data[2].sentAt));
+check('Mở cuộc trò chuyện -> đánh dấu đã đọc', (await call('POST', '/api/conversations/1/read', nurse.accessToken)).status === 200
+  && (await call('GET', '/api/conversations', nurse.accessToken)).data.find((c) => c.id === 1)?.unread === 0);
+
+const conv2 = await call('POST', '/api/conversations', family2.accessToken, { residentId: 2 });
+check('family2 mở cuộc trò chuyện về NH-0002', conv2.status === 200 && conv2.data.residentCode === 'NH-0002');
+check('Mở lại trả đúng cuộc trò chuyện cũ', (await call('POST', '/api/conversations', family2.accessToken, { residentId: 2 })).data.id === conv2.data.id);
+check('Tin rỗng -> 400', (await call('POST', `/api/conversations/${conv2.data.id}/messages`, family2.accessToken, { body: '   ' })).status === 400);
+check('Tin quá 2000 ký tự -> 400', (await call('POST', `/api/conversations/${conv2.data.id}/messages`, family2.accessToken, { body: 'a'.repeat(2001) })).status === 400);
+const fam2Msg = await call('POST', `/api/conversations/${conv2.data.id}/messages`, family2.accessToken, { body: 'Mẹ tôi hôm nay đã hết sốt chưa ạ?' });
+check('family2 gửi tin', fam2Msg.status === 200 && fam2Msg.data.fromFamily && fam2Msg.data.senderName === 'Trần Quốc Bảo');
+await call('POST', `/api/conversations/${conv2.data.id}/messages`, family2.accessToken, { body: 'Nhờ cơ sở nhắn giúp nhé.' });
+const cgChatNotes = (await call('GET', '/api/notifications', caregiver.accessToken)).data.items.filter((n) => n.title === 'Tin nhắn mới từ gia đình NH-0002');
+check('Người phụ trách chính nhận chuông 1 lần cho cả lượt tin chưa đọc', cgChatNotes.length === 1, `${cgChatNotes.length} thông báo`);
+const cgConvs = await call('GET', '/api/conversations', caregiver.accessToken);
+check('Caregiver chỉ thấy cuộc trò chuyện của cư dân mình phụ trách', cgConvs.status === 200
+  && cgConvs.data.some((c) => c.id === conv2.data.id && c.unread === 2) && !cgConvs.data.some((c) => c.id === 1));
+check('Caregiver đọc cuộc trò chuyện ngoài phạm vi -> 404', (await call('GET', '/api/conversations/1/messages', caregiver.accessToken)).status === 404);
+const cgReply = await call('POST', `/api/conversations/${conv2.data.id}/messages`, caregiver.accessToken, { body: 'Dạ bà đã hết sốt từ sáng, ăn được nửa bát cháo ạ.' });
+check('Caregiver trả lời gia đình', cgReply.status === 200 && !cgReply.data.fromFamily);
+check('Gia đình nhận chuông tin nhắn từ nhân viên', (await call('GET', '/api/notifications', family2.accessToken)).data.items.some((n) => n.title === 'Tin nhắn mới từ Hoàng Văn Nam'));
+check('Gia đình thấy 1 tin chưa đọc', (await call('GET', '/api/conversations', family2.accessToken)).data.find((c) => c.id === conv2.data.id)?.unread === 1);
+
+// Realtime: dùng client SignalR trong FE/node_modules (bỏ qua nếu chưa npm install ở FE).
+let signalR = null;
+try {
+  signalR = (await import('node:module')).createRequire(import.meta.url)('../FE/node_modules/@microsoft/signalr');
+} catch {
+  console.log('SKIP  Tin nhắn realtime (chưa cài FE/node_modules)');
+}
+if (signalR) {
+  const hub = new signalR.HubConnectionBuilder()
+    .withUrl(`${API}/hubs/notifications`, { accessTokenFactory: () => family.accessToken })
+    .configureLogging(signalR.LogLevel.None)
+    .build();
+  const pushed = new Promise((resolve) => {
+    hub.on('chat', (m) => resolve(m));
+    setTimeout(() => resolve(null), 5000);
+  });
+  await hub.start();
+  await call('POST', '/api/conversations/1/messages', nurse.accessToken, { body: 'Dạ cuối tuần 9h gia đình vào thăm được ạ.' });
+  const live = await pushed;
+  check('Gia đình nhận tin realtime (SignalR sự kiện "chat")', live?.body === 'Dạ cuối tuần 9h gia đình vào thăm được ạ.' && live.conversationId === 1);
+  await hub.stop();
+}
+
+let chatStatus = 200;
+let sentInMinute = 0;
+while (chatStatus === 200 && sentInMinute < 25) {
+  chatStatus = (await call('POST', `/api/conversations/${conv2.data.id}/messages`, family2.accessToken, { body: `Tin thử giới hạn ${sentInMinute}` })).status;
+  sentInMinute++;
+}
+check('Gửi quá 20 tin/phút -> 429', chatStatus === 429 && sentInMinute <= 21, `dừng ở tin thứ ${sentInMinute}`);
+
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);

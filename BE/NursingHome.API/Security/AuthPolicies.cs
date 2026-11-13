@@ -44,4 +44,7 @@ public static class RateLimitPolicies
 
     /// <summary>Form công khai không cần đăng nhập (tư vấn, đặt lịch tham quan): RateLimit:PublicFormsPerMinute.</summary>
     public const string PublicForms = nameof(PublicForms);
+
+    /// <summary>S3-V6: gửi tin nhắn — RateLimit:ChatPerMinute (mặc định 20) theo từng tài khoản.</summary>
+    public const string Chat = nameof(Chat);
 }

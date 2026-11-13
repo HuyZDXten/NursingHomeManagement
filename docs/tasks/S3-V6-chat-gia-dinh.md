@@ -10,12 +10,25 @@ Gia đình nhắn tin hỏi tình hình người thân, nhân viên (Admin, Rece
 
 ## Tiêu chí hoàn thành
 
-- [ ] Family mở "Tin nhắn", chọn người thân → thấy lịch sử, gửi tin; chỉ với cư dân mình được liên kết.
-- [ ] Nhân viên thấy danh sách cuộc trò chuyện sắp theo tin mới nhất, số chưa đọc, trả lời được.
-- [ ] Tin mới hiện ngay ở bên kia (không cần tải lại); mở cuộc trò chuyện thì đánh dấu đã đọc.
-- [ ] Chuông thông báo khi có tin mới nếu người nhận không mở cửa sổ chat.
-- [ ] Nội dung 1–2000 ký tự; gửi quá 20 tin/phút → 429.
-- [ ] Family A không đọc được cuộc trò chuyện của Family B (thử đổi id → 404).
+- [x] Family mở "Tin nhắn", chọn người thân → thấy lịch sử, gửi tin; chỉ với cư dân mình được liên kết.
+- [x] Nhân viên thấy danh sách cuộc trò chuyện sắp theo tin mới nhất, số chưa đọc, trả lời được.
+- [x] Tin mới hiện ngay ở bên kia (không cần tải lại); mở cuộc trò chuyện thì đánh dấu đã đọc.
+- [x] Chuông thông báo khi có tin mới nếu người nhận không mở cửa sổ chat.
+- [x] Nội dung 1–2000 ký tự; gửi quá 20 tin/phút → 429.
+- [x] Family A không đọc được cuộc trò chuyện của Family B (thử đổi id → 404).
+
+### Kết quả triển khai (13/11/2026)
+
+- Kiểm thử: smoke thêm 22 kiểm tra (tổng 184/184 PASS), trong đó có **nhận tin realtime thật qua SignalR** (smoke dùng client `@microsoft/signalr` trong `FE/node_modules`; chưa `npm install` ở FE thì bỏ qua kiểm tra đó). Unit thêm `ChatServiceTests` (69/69).
+- Trang `/staff/messages`, `/family/messages` build/lint sạch nhưng **chưa xem trên trình duyệt** — khi review mở 2 trình duyệt (`family` và `nurse`) để thử gửi qua lại.
+- Quyết định khác/bổ sung so với đặc tả:
+  - **Chuông chỉ báo tin mở đầu một lượt chưa đọc** (bên kia chưa đọc tin nào của mình) để không báo dồn dập từng tin; server không biết người nhận có đang mở cửa sổ chat hay không. Tin realtime (sự kiện `chat`) thì luôn gửi.
+  - Sự kiện `chat` gửi cho người nhận **và chính người gửi** (để các tab khác của người gửi cập nhật). Nhân viên không nằm trong danh sách nhận (ví dụ Admin đang xem) thấy tin mới sau tối đa 30 giây (trang tự tải lại danh sách) hoặc khi mở cuộc trò chuyện.
+  - Không có ai phụ trách / không điều dưỡng nào có ca hôm nay → báo mọi lễ tân (như đặc tả). Cuối tuần (không có lịch ca demo) tin của gia đình NH-0001 sẽ đến lễ tân.
+  - Family bị gỡ liên kết với cư dân thì cuộc trò chuyện cũ trả 404. Nhân viên không mở cuộc trò chuyện mới (403) — chỉ trả lời.
+  - Entity tên `ChatMessage` (bảng `dbo.Messages`) để tránh trùng tên với các lớp `Message` khác. DTO chỉ có tên + vai trò người gửi, không có email/SĐT.
+  - Rate limit `Chat` theo tài khoản (claim `sub`), `RateLimit:ChatPerMinute` = 20; tin bị từ chối vì lỗi dữ liệu cũng tính vào giới hạn.
+  - Nút "Nhắn tin cho cơ sở" trên thẻ người thân ở `FamilyHome` (file của Huy) **chưa thêm** — gia đình chọn người thân ngay trong trang Tin nhắn (menu "Tin nhắn với cơ sở"). Huy có thể thêm nút trỏ tới `/family/messages`.
 
 ## 1. Database — `01_Schema.sql` mục 9
 

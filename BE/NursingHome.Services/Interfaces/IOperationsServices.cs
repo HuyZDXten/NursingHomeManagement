@@ -1,6 +1,7 @@
 using NursingHome.BusinessObjects.Entities;
 using NursingHome.DTOs.Admissions;
 using NursingHome.DTOs.Billing;
+using NursingHome.DTOs.Chat;
 using NursingHome.DTOs.Common;
 using NursingHome.DTOs.Reports;
 using NursingHome.DTOs.Staffing;
@@ -142,4 +143,26 @@ public interface IInvoiceMailer
     Task<int> SendIssuedAsync(InvoiceListItemDto invoice);
 
     Task<int> SendReminderAsync(InvoiceListItemDto invoice, ReminderStage stage);
+}
+
+/// <summary>S3-V6 — UC-106 chat gia đình – nhân viên.</summary>
+public interface IChatService
+{
+    /// <summary>Family: cuộc trò chuyện của mình. Nhân viên: theo quyền (Caregiver chỉ cư dân phụ trách chính).</summary>
+    Task<List<ConversationDto>> ListAsync(CurrentUser user);
+
+    /// <summary>Family mở (hoặc lấy lại) cuộc trò chuyện về một người thân được liên kết.</summary>
+    Task<ConversationDto> OpenAsync(CurrentUser user, int residentId);
+
+    Task<List<ChatMessageDto>> MessagesAsync(CurrentUser user, int conversationId, long? beforeId, int take);
+
+    Task<ChatMessageDto> SendAsync(CurrentUser user, int conversationId, SendMessageRequest request);
+
+    Task<int> MarkReadAsync(CurrentUser user, int conversationId);
+}
+
+/// <summary>Đẩy tin nhắn realtime (sự kiện "chat" trên hub /hubs/notifications). API cài bằng SignalR.</summary>
+public interface IChatPublisher
+{
+    Task PublishMessageAsync(IReadOnlyCollection<int> accountIds, ChatMessageDto message);
 }
