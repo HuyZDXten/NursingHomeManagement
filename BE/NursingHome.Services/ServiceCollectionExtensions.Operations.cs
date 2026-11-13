@@ -19,5 +19,9 @@ public static partial class ServiceCollectionExtensions
         // S3-V2 ca trực & phân công phụ trách
         services.AddScoped<IStaffingRepository, StaffingRepository>();
         services.AddScoped<IStaffingService, StaffingService>();
+
+        // S3-V3 báo cáo
+        services.AddScoped<IReportRepository, ReportRepository>();
+        services.AddScoped<IReportService, ReportService>();
     }
 }

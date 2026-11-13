@@ -262,6 +262,51 @@ BEGIN
     SET IDENTITY_INSERT dbo.ResidentCareAssignments OFF;
 END;
 
+/* ---- 10.3 Lịch sử cho báo cáo (S3-V3) ----
+   Hóa đơn đã trả đủ 2–4 tháng trước (Id 100–104, cùng quy tắc số INV-yyyyMM-<mã cư dân 5 số>) để biểu đồ doanh thu
+   không trống, và nhật ký dùng thuốc 7 ngày qua (Taken/Missed/Refused lẫn lộn) cho báo cáo tuân thủ. */
+DECLARE @M2 DATE = DATEADD(MONTH, -2, @ThisMonth), @M3 DATE = DATEADD(MONTH, -3, @ThisMonth), @M4 DATE = DATEADD(MONTH, -4, @ThisMonth);
+IF NOT EXISTS (SELECT 1 FROM dbo.Invoices WHERE Id = 100)
+BEGIN
+    SET IDENTITY_INSERT dbo.Invoices ON;
+    INSERT INTO dbo.Invoices (Id, ResidentId, Number, BillingPeriod, IssuedAt, DueDate, Status)
+    SELECT v.Id, v.ResidentId, CONCAT(N'INV-', FORMAT(v.Period, 'yyyyMM'), N'-', FORMAT(v.ResidentId, '00000')), v.Period,
+           DATEADD(HOUR, -7, CAST(DATEADD(MONTH, 1, v.Period) AS DATETIME2)), DATEADD(DAY, 9, DATEADD(MONTH, 1, v.Period)), N'Paid'
+    FROM (VALUES (100, 3, @M4), (101, 3, @M3), (102, 3, @M2), (103, 1, @M3), (104, 1, @M2)) AS v (Id, ResidentId, Period);
+    SET IDENTITY_INSERT dbo.Invoices OFF;
+
+    INSERT INTO dbo.InvoiceItems (InvoiceId, Description, Quantity, UnitPrice) VALUES
+    (100, CONCAT(N'Gói Cao cấp: tháng ', FORMAT(@M4, 'MM/yyyy')), 1, 18000000),
+    (101, CONCAT(N'Gói Cao cấp: tháng ', FORMAT(@M3, 'MM/yyyy')), 1, 18000000),
+    (102, CONCAT(N'Gói Cao cấp: tháng ', FORMAT(@M2, 'MM/yyyy')), 1, 18000000),
+    (103, CONCAT(N'Gói Tiêu chuẩn: tháng ', FORMAT(@M3, 'MM/yyyy')), 1, 12000000),
+    (104, CONCAT(N'Gói Tiêu chuẩn: tháng ', FORMAT(@M2, 'MM/yyyy')), 1, 12000000);
+
+    SET IDENTITY_INSERT dbo.Payments ON;
+    INSERT INTO dbo.Payments (Id, InvoiceId, Amount, Method, PaidAt, Reference, RecordedById)
+    SELECT v.Id, v.InvoiceId, v.Amount, v.Method, DATEADD(DAY, v.AfterDays, i.IssuedAt), CONCAT(N'PT-DEMO-0', v.Id), 3
+    FROM (VALUES (100, 100, 18000000, N'BankTransfer', 3), (101, 101, 18000000, N'BankTransfer', 4), (102, 102, 18000000, N'Cash', 2),
+                 (103, 103, 12000000, N'Cash', 5), (104, 104, 12000000, N'BankTransfer', 6)) AS v (Id, InvoiceId, Amount, Method, AfterDays)
+    JOIN dbo.Invoices AS i ON i.Id = v.InvoiceId;
+    SET IDENTITY_INSERT dbo.Payments OFF;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.MedicationLogs WHERE ScheduledAt < DATEADD(DAY, -1, @TodayUtc))
+BEGIN
+    INSERT INTO dbo.MedicationLogs (MedicationScheduleId, ScheduledAt, RecordedAt, Status, RecordedById, Notes)
+    SELECT s.Id, x.ScheduledAt, DATEADD(MINUTE, 15, x.ScheduledAt),
+           CASE (d.n + s.Id) % 6 WHEN 0 THEN N'Missed' WHEN 3 THEN N'Refused' ELSE N'Taken' END,
+           CASE WHEN s.ResidentId IN (1, 2) THEN 6 ELSE 5 END,
+           CASE (d.n + s.Id) % 6 WHEN 0 THEN N'Ngủ quá giờ, đã báo điều dưỡng (mô phỏng).' WHEN 3 THEN N'Từ chối uống (mô phỏng).' END
+    FROM dbo.MedicationSchedules AS s
+    CROSS JOIN (VALUES (1), (2), (3), (4), (5), (6), (7)) AS d (n)
+    CROSS APPLY (SELECT DATEADD(HOUR, -7, DATEADD(MINUTE, DATEDIFF(MINUTE, CAST('00:00' AS TIME), s.ScheduledTime),
+                     CAST(DATEADD(DAY, -d.n, @Today) AS DATETIME2))) AS ScheduledAt) AS x
+    WHERE s.Id BETWEEN 1 AND 4
+      AND DATEADD(DAY, -d.n, @Today) >= s.StartDate
+      AND NOT EXISTS (SELECT 1 FROM dbo.MedicationLogs AS l WHERE l.MedicationScheduleId = s.Id AND l.ScheduledAt = x.ScheduledAt);
+END;
+
 /* ---- 10. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 

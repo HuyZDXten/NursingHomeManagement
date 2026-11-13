@@ -141,6 +141,70 @@ export interface CareAssignment {
   assignedByName: string;
 }
 
+// ---------------- S3-V3 báo cáo ----------------
+
+export interface RevenueMonth {
+  month: number;
+  collected: number;
+  collectedOnline: number;
+  collectedManual: number;
+  paymentCount: number;
+}
+
+export interface DebtRow {
+  invoiceId: number;
+  number: string;
+  residentCode: string;
+  residentName: string;
+  billingPeriod: string;
+  dueDate: string;
+  status: string;
+  total: number;
+  paid: number;
+  remaining: number;
+  daysOverdue: number;
+}
+
+export interface RevenueReport {
+  year: number;
+  months: RevenueMonth[];
+  totalCollected: number;
+  totalDebt: number;
+  debts: DebtRow[];
+}
+
+export interface OccupancyMonth {
+  month: number;
+  occupiedBedDays: number;
+  availableBedDays: number;
+  /** null = tháng chưa tới. */
+  percent?: number | null;
+}
+
+export interface OccupancyReport {
+  year: number;
+  months: OccupancyMonth[];
+  averagePercent?: number | null;
+}
+
+export interface AdherenceRow {
+  residentId: number;
+  code: string;
+  fullName: string;
+  taken: number;
+  missed: number;
+  refused: number;
+  total: number;
+  takenRate: number;
+}
+
+export interface AdherenceReport {
+  from: string;
+  to: string;
+  rows: AdherenceRow[];
+  overallTakenRate?: number | null;
+}
+
 export interface CareAssignmentForm {
   residentId: number;
   accountId: number;
