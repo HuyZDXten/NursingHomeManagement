@@ -1,12 +1,18 @@
-// Kiểm thử end-to-end các luồng Sprint 0–2 (auth, phân quyền theo cư dân, chăm sóc, thuốc, hóa đơn, PayOS).
-// Chuẩn bị (mỗi lần chạy cần dữ liệu sạch vì test thay đổi trạng thái):
-//   1. .\Database\setup-local-db.ps1 -Recreate
-//   2. node scripts/payos-fake/server.mjs                     (khởi động lại để xóa link cũ trong bộ nhớ)
-//   3. cd BE; $env:RateLimit__CredentialsPerMinute=200; dotnet run --project NursingHome.API --launch-profile http
-//   4. node scripts/smoke-test.mjs
+// Kiểm thử end-to-end (auth, phân quyền theo cư dân, chăm sóc, thuốc, hóa đơn, PayOS + các module Sprint 3+).
+// Mỗi lần chạy cần dữ liệu sạch vì test thay đổi trạng thái.
+//
+// Cách 1 — dùng DB/API dev thường ngày (sẽ XÓA dữ liệu dev):
+//   .\Database\setup-local-db.ps1 -Recreate
+//   node scripts/payos-fake/server.mjs                          (khởi động lại để xóa link cũ trong bộ nhớ)
+//   cd BE; $env:RateLimit__CredentialsPerMinute=200; dotnet run --project NursingHome.API --launch-profile http
+//   node scripts/smoke-test.mjs
+//
+// Cách 2 — CÔ LẬP, không đụng DB/API đang chạy (DB NursingHomeDB_Test, API cổng 5081, PayOS giả cổng 5198):
+//   .\scripts\run-smoke-isolated.ps1
+//
 // Thêm use case mới: thêm vài dòng check(...) vào cuối file.
-const API = 'http://localhost:5080';
-const FAKE = 'http://localhost:5199';
+const API = process.env.API_BASE ?? 'http://localhost:5080';
+const FAKE = process.env.PAYOS_FAKE_BASE ?? 'http://localhost:5199';
 let failures = 0;
 const check = (name, cond, extra = '') => { console.log(`${cond ? 'PASS' : 'FAIL'}  ${name} ${extra}`); if (!cond) failures++; };
 
