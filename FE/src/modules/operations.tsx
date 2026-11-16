@@ -6,8 +6,8 @@ import { ADMIN_ONLY, CLINICAL_STAFF, FRONT_DESK, STAFF } from '../auth/roles';
 import type { MenuEntry } from '../layouts/menu';
 import type { Role } from '../types';
 
-/** Ai có ít nhất một tab báo cáo (từng tab tự lọc role; thêm 'Nurse' khi có báo cáo sự cố UC-125 sau S3-H1). */
-const REPORT_VIEWERS: Role[] = ['Admin', 'Receptionist', 'Accountant', 'Doctor'];
+/** Ai có ít nhất một tab báo cáo (từng tab tự lọc role; Nurse xem báo cáo sự cố UC-125). */
+const REPORT_VIEWERS: Role[] = ['Admin', 'Receptionist', 'Accountant', 'Doctor', 'Nurse'];
 
 /** S3-V5: ai ghi được dịch vụ phát sinh (policy ServiceRecorders). */
 const SERVICE_RECORDERS: Role[] = ['Admin', 'Receptionist', 'Accountant', 'Nurse', 'Caregiver'];

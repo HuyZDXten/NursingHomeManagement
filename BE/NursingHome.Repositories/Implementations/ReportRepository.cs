@@ -13,5 +13,7 @@ public class ReportRepository : IReportRepository
 
     public Task<List<AdherenceRow>> MedicationAdherenceAsync(DateOnly from, DateOnly to) => Dao.MedicationAdherenceAsync(from, to);
 
+    public Task<List<IncidentSummaryRow>> IncidentSummaryAsync(DateOnly from, DateOnly to) => Dao.IncidentSummaryAsync(from, to);
+
     public Task<List<DebtRow>> OutstandingDebtsAsync() => Dao.OutstandingDebtsAsync();
 }

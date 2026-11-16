@@ -648,3 +648,26 @@ export interface MaintenanceForm {
   priority: 'Low' | 'Normal' | 'High';
   blocksBed: boolean;
 }
+
+// ---------------- UC-125 báo cáo sự cố ----------------
+
+export interface IncidentMonth {
+  year: number;
+  month: number;
+  label: string;
+  total: number;
+  closed: number;
+  byType: Record<'Fall' | 'Injury' | 'Behavior' | 'Other', number>;
+  bySeverity: Record<'Low' | 'Medium' | 'High', number>;
+}
+
+export interface IncidentReport {
+  from: string;
+  to: string;
+  months: IncidentMonth[];
+  totalByType: Record<string, number>;
+  totalBySeverity: Record<string, number>;
+  total: number;
+  closed: number;
+  closedRate?: number | null;
+}

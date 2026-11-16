@@ -1,4 +1,5 @@
 using NursingHome.BusinessObjects.Exceptions;
+using NursingHome.DataAccessObjects;
 using NursingHome.DTOs.Reports;
 using NursingHome.Repositories.Interfaces;
 using NursingHome.Services.Helpers;
@@ -7,7 +8,7 @@ using NursingHome.Services.Interfaces;
 namespace NursingHome.Services.Implementations;
 
 /// <summary>
-/// S3-V3 — UC-123 doanh thu &amp; công nợ, UC-122 công suất giường, UC-124 tuân thủ thuốc (UC-125 sự cố: sau S3-H1).
+/// S3-V3 — UC-123 doanh thu &amp; công nợ, UC-122 công suất giường, UC-124 tuân thủ thuốc và UC-125 sự cố.
 /// Số liệu lấy từ thủ tục SQL (Database/03_StoredProcedures.sql); service chỉ ghép đủ 12 tháng, tính %, ngày quá hạn.
 /// </summary>
 public class ReportService(IReportRepository reports, FacilityClock clock) : IReportService
@@ -188,6 +189,86 @@ public class ReportService(IReportRepository reports, FacilityClock clock) : IRe
                 new("Tỉ lệ đã dùng (%)", r => r.TakenRate, ExcelExporter.PercentFormat)
             ], "Dữ liệu thuốc trong hệ thống demo là mô phỏng.");
         return new ExportFile(excel.ToBytes(), $"tuan-thu-thuoc-{report.From:yyyyMMdd}-{report.To:yyyyMMdd}.xlsx");
+    }
+
+    // ---------------- UC-125 sự cố ----------------
+
+    private static readonly string[] IncidentTypes = ["Fall", "Injury", "Behavior", "Other"];
+    private static readonly string[] IncidentSeverities = ["Low", "Medium", "High"];
+
+    private static IReadOnlyDictionary<string, string> IncidentTypeLabels => IncidentLabels.Types;
+
+    private static IReadOnlyDictionary<string, string> IncidentSeverityLabels => IncidentLabels.Severities;
+
+    public async Task<IncidentReportDto> GetIncidentsAsync(DateOnly? from, DateOnly? to)
+    {
+        var end = to ?? clock.Today;
+        var start = from ?? new DateOnly(end.Year, end.Month, 1).AddMonths(-5);
+        if (end < start || end.DayNumber - start.DayNumber >= MaxAdherenceDays)
+        {
+            throw new BusinessRuleException($"Khoảng ngày không hợp lệ (tối đa {MaxAdherenceDays} ngày).");
+        }
+
+        return BuildIncidentReport(start, end, await reports.IncidentSummaryAsync(start, end));
+    }
+
+    public async Task<ExportFile> ExportIncidentsAsync(DateOnly? from, DateOnly? to)
+    {
+        var report = await GetIncidentsAsync(from, to);
+        using var excel = new ExcelExporter().AddSheet("Sự cố theo tháng",
+            $"Sự cố {report.From:dd/MM/yyyy} – {report.To:dd/MM/yyyy}", report.Months,
+            [
+                new("Tháng", r => r.Label),
+                new("Tổng", r => r.Total),
+                new("Đã đóng", r => r.Closed),
+                new(IncidentTypeLabels["Fall"], r => r.ByType["Fall"]),
+                new(IncidentTypeLabels["Injury"], r => r.ByType["Injury"]),
+                new(IncidentTypeLabels["Behavior"], r => r.ByType["Behavior"]),
+                new(IncidentTypeLabels["Other"], r => r.ByType["Other"]),
+                new(IncidentSeverityLabels["Low"], r => r.BySeverity["Low"]),
+                new(IncidentSeverityLabels["Medium"], r => r.BySeverity["Medium"]),
+                new(IncidentSeverityLabels["High"], r => r.BySeverity["High"])
+            ], "Sự cố là số liệu thật trong hệ thống; dữ liệu demo là mô phỏng.");
+        return new ExportFile(excel.ToBytes(), $"su-co-{report.From:yyyyMMdd}-{report.To:yyyyMMdd}.xlsx");
+    }
+
+    /// <summary>
+    /// Ghép các dòng (tháng, loại, mức) thành báo cáo: đủ MỌI tháng trong khoảng (tháng không có sự cố = 0),
+    /// mọi loại và mức độ đều có mặt (= 0 nếu không có). Loại/mức lạ (dữ liệu ngoài danh mục) bị bỏ qua khỏi tách loại
+    /// nhưng vẫn tính vào tổng, để tổng luôn khớp bảng Incidents.
+    /// </summary>
+    public static IncidentReportDto BuildIncidentReport(DateOnly from, DateOnly to, IEnumerable<IncidentSummaryRow> rows)
+    {
+        var list = rows.ToList();
+        var months = new List<IncidentMonthDto>();
+        for (var cursor = new DateOnly(from.Year, from.Month, 1); cursor <= to; cursor = cursor.AddMonths(1))
+        {
+            var inMonth = list.Where(row => row.Year == cursor.Year && row.Month == cursor.Month).ToList();
+            months.Add(new IncidentMonthDto
+            {
+                Year = cursor.Year,
+                Month = cursor.Month,
+                Label = $"{cursor.Month:00}/{cursor.Year}",
+                Total = inMonth.Sum(row => row.Total),
+                Closed = inMonth.Sum(row => row.Closed),
+                ByType = IncidentTypes.ToDictionary(type => type, type => inMonth.Where(row => row.Type == type).Sum(row => row.Total)),
+                BySeverity = IncidentSeverities.ToDictionary(level => level, level => inMonth.Where(row => row.Severity == level).Sum(row => row.Total))
+            });
+        }
+
+        int total = months.Sum(month => month.Total);
+        int closed = months.Sum(month => month.Closed);
+        return new IncidentReportDto
+        {
+            From = from,
+            To = to,
+            Months = months,
+            TotalByType = IncidentTypes.ToDictionary(type => type, type => months.Sum(month => month.ByType[type])),
+            TotalBySeverity = IncidentSeverities.ToDictionary(level => level, level => months.Sum(month => month.BySeverity[level])),
+            Total = total,
+            Closed = closed,
+            ClosedRate = Percent(closed, total)
+        };
     }
 
     // ---------------- Quy tắc (public static để unit test) ----------------

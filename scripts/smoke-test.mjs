@@ -1005,5 +1005,34 @@ check('Người báo nhận thông báo đã sửa xong', nurseNotesDone.data.it
 const openList = await call('GET', '/api/maintenance-requests?status=Open', caregiver.accessToken);
 check('Danh sách phiếu đang mở (seed: bóng đèn phòng 101)', openList.status === 200 && openList.data.some((m) => m.title.startsWith('Bóng đèn')));
 
+// ---- UC-125: báo cáo sự cố (bảng Incidents của S3-H1) + tool AI incident_summary + sự cố trong gợi ý bàn giao ----
+const incFrom = firstOfMonthPlus(-5);
+const incReport = await call('GET', `/api/reports/incidents?from=${incFrom}&to=${plusDays(0)}`, nurse.accessToken);
+check('Điều dưỡng xem báo cáo sự cố: đủ 6 tháng, có sự cố từ seed', incReport.status === 200 && incReport.data.months.length === 6
+  && incReport.data.total >= 3 && incReport.data.totalByType.Fall >= 1 && incReport.data.totalByType.Behavior >= 1 && incReport.data.closed >= 1,
+  `${incReport.data?.total} sự cố, ${incReport.data?.months?.length} tháng`);
+check('Tổng theo tháng khớp tổng theo loại và theo mức độ', incReport.data.months.reduce((n, m) => n + m.total, 0) === incReport.data.total
+  && Object.values(incReport.data.totalByType).reduce((n, v) => n + v, 0) === incReport.data.total
+  && Object.values(incReport.data.totalBySeverity).reduce((n, v) => n + v, 0) === incReport.data.total);
+const incList = await call('GET', '/api/incidents', adminToken);
+check('Tổng báo cáo khớp số sự cố trong danh sách (trong 6 tháng)', incList.status === 200 && incList.data.length === incReport.data.total, `${incList.data?.length} vs ${incReport.data?.total}`);
+const incXlsx = await download(`/api/reports/incidents/export?from=${incFrom}&to=${plusDays(0)}`, adminToken);
+check('Xuất Excel sự cố', incXlsx.status === 200 && incXlsx.zip && incXlsx.type.includes('spreadsheetml'));
+for (const [name, who] of [['Kế toán', accountant], ['Bác sĩ', doctor], ['Hộ lý', caregiver], ['Lễ tân', recep], ['Gia đình', family]]) {
+  check(`${name} xem báo cáo sự cố -> 403`, (await call('GET', '/api/reports/incidents', who.accessToken)).status === 403);
+}
+check('Khoảng ngày đảo ngược -> 400', (await call('GET', `/api/reports/incidents?from=${plusDays(0)}&to=${incFrom}`, adminToken)).status === 400);
+
+const incChat = (await call('POST', '/api/ai/staff/report-chat', adminToken, { message: 'Tháng này có bao nhiêu sự cố té ngã?' })).data?.reply ?? '';
+check('Admin hỏi AI về sự cố: trả lời bằng số liệu báo cáo', /\d+ sự cố/.test(incChat) && incChat.includes('té ngã'), incChat);
+const incDenied = (await call('POST', '/api/ai/staff/report-chat', accountant.accessToken, { message: 'Có sự cố nào không?' })).data?.reply ?? '';
+check('Kế toán hỏi AI về sự cố -> tool giữ quyền, không trả số liệu', incDenied.includes('không có quyền') && !/\d+ sự cố/.test(incDenied), incDenied);
+
+const nightDraft = await call('GET', `/api/handovers/draft?shiftId=${shiftOf('NIGHT')}&date=${plusDays(-1)}`, adminToken);
+const incItem = nightDraft.data?.items?.find((i) => i.kind === 'Incident' && i.residentName?.startsWith('NH-0001'));
+check('Gợi ý bàn giao ca đêm có sự cố hành vi NH-0001 chưa đóng (seed)', nightDraft.status === 200 && !!incItem && incItem.text.includes('hành vi') && incItem.text.includes('chưa đóng'), incItem?.text ?? nightDraft.data?.message);
+const cg2Night = await call('GET', `/api/handovers/draft?shiftId=${shiftOf('NIGHT')}&date=${plusDays(-1)}`, caregiver2.accessToken);
+check('Hộ lý chỉ thấy sự cố của cư dân mình được xem (không lộ NH-0001)', cg2Night.status === 200 && !cg2Night.data.items.some((i) => i.kind === 'Incident'));
+
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);

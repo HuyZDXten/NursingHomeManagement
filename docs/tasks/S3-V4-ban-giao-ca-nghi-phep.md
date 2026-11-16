@@ -29,7 +29,7 @@ Nhân viên xin nghỉ hoặc xin đổi ca với đồng nghiệp, Admin duyệ
   - Admin không có ca nên không tạo đơn, nhưng được viết bàn giao không cần ca (viết thay). Không tự xác nhận bàn giao của mình.
   - "Ca kế tiếp" = ca bắt đầu đúng lúc ca này kết thúc (`StaffingRules.NextShift`: sáng → chiều → đêm → sáng hôm sau). Người được xác nhận: có ca kế tiếp, hoặc Admin/Nurse. Caregiver chỉ thấy bàn giao của mình hoặc bàn giao mình cần nhận.
   - Thêm `GET /api/handovers/inbox` (chưa đọc 2 ngày gần nhất mà mình xác nhận được) cho badge ở tab "Bàn giao ca".
-  - Gợi ý bàn giao lọc theo cư dân người viết được xem (`IResidentAccessService.VisibleResidentIdsAsync`); mục **sự cố** chờ bảng `Incidents` của S3-H1 (đánh dấu sẵn trong `HandoverService.GetDraftAsync`).
+  - Gợi ý bàn giao lọc theo cư dân người viết được xem (`IResidentAccessService.VisibleResidentIdsAsync`); mục **sự cố** (Kind = Incident) đã thêm 17/11 từ bảng `Incidents` của S3-H1 qua `IIncidentService.ListAsync` (tự lọc theo cư dân người viết được xem; chỉ sự cố xảy ra trong khung giờ ca). Mục sinh hiệu dùng **ngưỡng riêng của cư dân** (S3-H5) nếu bác sĩ đã đặt, không thì ngưỡng mặc định của cơ sở.
   - `HighlightsJson` lưu mảng `{kind, residentId, residentName, text}` (camelCase) — S4-V2 dùng làm đầu vào AI.
 
 ## 1. Database — `01_Schema.sql` mục 9

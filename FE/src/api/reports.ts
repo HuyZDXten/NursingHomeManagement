@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { AdherenceReport, OccupancyReport, RevenueReport } from '../types/operations';
+import type { AdherenceReport, IncidentReport, OccupancyReport, RevenueReport } from '../types/operations';
 
 type Params = Record<string, string | number | undefined>;
 
@@ -16,7 +16,7 @@ export async function downloadFile(url: string, fileName: string, params?: Param
   setTimeout(() => URL.revokeObjectURL(href), 1000);
 }
 
-/** S3-V3 — UC-122, 123, 124 (UC-125 sự cố sau S3-H1). */
+/** S3-V3 — UC-122, 123, 124, 125. */
 export const reportsApi = {
   revenue: (year: number) => apiClient.get<RevenueReport>('/api/reports/revenue', { params: { year } }).then((r) => r.data),
   exportRevenue: (year: number) => downloadFile('/api/reports/revenue/export', `doanh-thu-${year}.xlsx`, { year }),
@@ -28,4 +28,9 @@ export const reportsApi = {
     apiClient.get<AdherenceReport>('/api/reports/medication-adherence', { params: { from, to } }).then((r) => r.data),
   exportAdherence: (from: string, to: string) =>
     downloadFile('/api/reports/medication-adherence/export', `tuan-thu-thuoc-${from.replaceAll('-', '')}-${to.replaceAll('-', '')}.xlsx`, { from, to }),
+
+  incidents: (from: string, to: string) =>
+    apiClient.get<IncidentReport>('/api/reports/incidents', { params: { from, to } }).then((r) => r.data),
+  exportIncidents: (from: string, to: string) =>
+    downloadFile('/api/reports/incidents/export', `su-co-${from.replaceAll('-', '')}-${to.replaceAll('-', '')}.xlsx`, { from, to }),
 };

@@ -86,7 +86,24 @@ BEGIN
 END;
 GO
 
--- UC-125 (sau khi S3-H1 có bảng Incidents): dbo.sp_IncidentSummary @From, @To — xem docs/tasks/S3-V3-bao-cao.md.
+-- UC-125: sự cố theo tháng × loại × mức độ trong [@From, @To] (ngày xảy ra theo giờ cơ sở). Cột theo bảng Incidents của S3-H1.
+CREATE OR ALTER PROCEDURE dbo.sp_IncidentSummary
+    @From DATE,
+    @To DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT YEAR(DATEADD(HOUR, 7, i.OccurredAt)) AS [Year],
+           MONTH(DATEADD(HOUR, 7, i.OccurredAt)) AS [Month],
+           i.Type, i.Severity,
+           COUNT(*) AS Total,
+           SUM(CASE WHEN i.Status = N'Closed' THEN 1 ELSE 0 END) AS Closed
+    FROM dbo.Incidents AS i
+    WHERE CAST(DATEADD(HOUR, 7, i.OccurredAt) AS DATE) BETWEEN @From AND @To
+    GROUP BY YEAR(DATEADD(HOUR, 7, i.OccurredAt)), MONTH(DATEADD(HOUR, 7, i.OccurredAt)), i.Type, i.Severity
+    ORDER BY [Year], [Month], i.Type, i.Severity;
+END;
+GO
 
 PRINT N'03_StoredProcedures.sql: xong.';
 GO

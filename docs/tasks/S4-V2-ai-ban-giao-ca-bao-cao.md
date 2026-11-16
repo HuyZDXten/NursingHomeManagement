@@ -24,7 +24,7 @@ Nút **"Viết tóm tắt bằng AI"** trong màn bàn giao ca: AI đọc dữ l
   - Thêm `AiChatRequest.Temperature` (tùy chọn) để gọi tóm tắt với 0.2. Với model `gemini-3*` không gửi temperature (để mặc định của model, như StreetBiz).
   - `IReportService` không nhận `CurrentUser`, nên mỗi tool tự kiểm role theo policy của báo cáo tương ứng (doanh thu: FinanceStaff; công suất: BillingStaff; tuân thủ thuốc: Prescribers). Kế toán hỏi tuân thủ thuốc → model nhận `{"error": "không có quyền"}`.
   - Endpoint hỏi đáp: `POST /api/ai/staff/report-chat` + `GET .../history` (FinanceStaff, rate limit `Chat` theo tài khoản). Provider Fake nhận các từ khóa "doanh thu", "công suất", "tuân thủ/uống thuốc".
-  - `incident_summary` thêm khi S3-H1 (bảng `Incidents`) merge — cùng chỗ với UC-125 của S3-V3.
+  - `incident_summary(from, to)` đã thêm 17/11 (S3-H1 đã vào `develop`): gọi `IReportService.GetIncidentsAsync`, tự kiểm role Admin/Điều dưỡng như báo cáo sự cố; Kế toán hỏi thì nhận "không có quyền". Provider Fake nhận từ khóa "sự cố", "té ngã".
 
 ## 1. Database
 

@@ -22,7 +22,9 @@ public class HandoverService(
     IResidentAccessService access,
     INotificationService notifications,
     IOptions<FacilityOptions> facility,
-    FacilityClock clock) : IHandoverService
+    FacilityClock clock,
+    IClinicalRepository clinical,
+    IIncidentService incidents) : IHandoverService
 {
     public const int MaxLeaveDays = 31;
     private const int SwapHorizonDays = 28;
@@ -160,6 +162,17 @@ public class HandoverService(
 
     // ---------------- Bàn giao ca ----------------
 
+    /// <summary>Ngưỡng riêng của cư dân (S3-H5) → tùy chọn cảnh báo; null khi chưa đặt ngưỡng riêng.</summary>
+    internal static VitalAlertOptions? ToLimits(VitalThreshold? custom) => custom is null ? null : new VitalAlertOptions
+    {
+        SystolicHigh = custom.SystolicHigh,
+        SystolicLow = custom.SystolicLow,
+        HeartRateHigh = custom.HeartRateHigh,
+        HeartRateLow = custom.HeartRateLow,
+        TemperatureHigh = custom.TemperatureHigh,
+        SpO2Low = custom.SpO2Low
+    };
+
     public async Task<HandoverDraftDto> GetDraftAsync(CurrentUser user, int shiftId, DateOnly? date)
     {
         var shift = await RequireShiftAsync(shiftId);
@@ -185,8 +198,16 @@ public class HandoverService(
                 + (log.Status == MedicationStatus.Refused ? "từ chối" : "bỏ lỡ")
                 + (string.IsNullOrWhiteSpace(log.Notes) ? "." : $": {log.Notes.Trim()}")
         })));
+        var limitsByResident = new Dictionary<int, VitalAlertOptions>();
         foreach (var vital in data.Vitals)
         {
+            // Ngưỡng riêng của cư dân (S3-H5) nếu bác sĩ đã đặt, không thì ngưỡng mặc định của cơ sở.
+            if (!limitsByResident.TryGetValue(vital.ResidentId, out var residentLimits))
+            {
+                residentLimits = ToLimits(await clinical.GetThresholdAsync(vital.ResidentId)) ?? limits;
+                limitsByResident[vital.ResidentId] = residentLimits;
+            }
+
             var alerts = HealthService.OutOfRange(new RecordVitalSignRequest
             {
                 ResidentId = vital.ResidentId,
@@ -195,7 +216,7 @@ public class HandoverService(
                 HeartRate = vital.HeartRate,
                 Temperature = vital.Temperature,
                 SpO2 = vital.SpO2
-            }, limits);
+            }, residentLimits);
             if (alerts.Count == 0)
             {
                 continue;
@@ -211,7 +232,25 @@ public class HandoverService(
             }));
         }
 
-        // Sự cố trong ca (Kind = "Incident") thêm khi bảng Incidents của S3-H1 đã merge.
+        // Sự cố xảy ra trong ca (bảng Incidents của S3-H1). IIncidentService đã lọc theo cư dân người viết được xem.
+        var shiftEnd = endUtc.AddMinutes(-1);
+        foreach (var incident in await incidents.ListAsync(user, null, null, null, FacilityClock.ToLocalDate(startUtc), FacilityClock.ToLocalDate(shiftEnd)))
+        {
+            if (incident.OccurredAt < startUtc || incident.OccurredAt >= endUtc)
+            {
+                continue;
+            }
+
+            string description = incident.Description.Length <= 160 ? incident.Description : incident.Description[..160] + "…";
+            items.Add((incident.OccurredAt, new HandoverItemDto
+            {
+                Kind = "Incident",
+                ResidentId = incident.ResidentId,
+                ResidentName = $"{incident.ResidentCode} · {incident.ResidentName}",
+                Text = $"Sự cố {IncidentLabels.Type(incident.Type).ToLowerInvariant()} mức {IncidentLabels.Severity(incident.Severity).ToLowerInvariant()} lúc {Local(incident.OccurredAt)}: {description}"
+                    + (incident.Status == "Closed" ? " (đã đóng)." : " (chưa đóng, cần theo dõi).")
+            }));
+        }
 
         return new HandoverDraftDto
         {

@@ -32,6 +32,7 @@ public sealed partial class FakeAiChatProvider : IAiChatProvider
         (["doanh thu", "thu được", "công nợ"], "revenue"),
         (["công suất", "lấp đầy"], "occupancy"),
         (["tuân thủ", "uống thuốc", "bỏ liều"], "medication_adherence"),
+        (["sự cố", "té ngã"], "incident_summary"),
         // S4-H1 kênh gia đình
         (["người thân", "danh sách người thân"], "list_my_residents"),
         (["nhật ký", "ăn uống", "hôm nay", "hôm qua"], "get_day_summary"),
