@@ -86,3 +86,37 @@ public class AdherenceReportDto
     public List<AdherenceRowDto> Rows { get; set; } = [];
     public decimal? OverallTakenRate { get; set; }
 }
+
+/// <summary>UC-125: số sự cố của một tháng, tách theo loại và theo mức độ (các loại/mức không có sự cố vẫn có mặt, = 0).</summary>
+public class IncidentMonthDto
+{
+    public int Year { get; set; }
+    public int Month { get; set; }
+
+    /// <summary>"MM/yyyy" để vẽ trục.</summary>
+    public string Label { get; set; } = "";
+
+    public int Total { get; set; }
+    public int Closed { get; set; }
+
+    /// <summary>Fall | Injury | Behavior | Other → số sự cố.</summary>
+    public Dictionary<string, int> ByType { get; set; } = [];
+
+    /// <summary>Low | Medium | High → số sự cố.</summary>
+    public Dictionary<string, int> BySeverity { get; set; } = [];
+}
+
+/// <summary>UC-125: sự cố theo tháng × loại × mức độ trong khoảng ngày.</summary>
+public class IncidentReportDto
+{
+    public DateOnly From { get; set; }
+    public DateOnly To { get; set; }
+    public List<IncidentMonthDto> Months { get; set; } = [];
+    public Dictionary<string, int> TotalByType { get; set; } = [];
+    public Dictionary<string, int> TotalBySeverity { get; set; } = [];
+    public int Total { get; set; }
+    public int Closed { get; set; }
+
+    /// <summary>% đã đóng / tổng, 1 chữ số; null khi không có sự cố.</summary>
+    public decimal? ClosedRate { get; set; }
+}

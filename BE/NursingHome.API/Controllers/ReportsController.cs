@@ -43,5 +43,16 @@ public class ReportsController(IReportService reports) : ControllerBase
     public async Task<IActionResult> ExportAdherence([FromQuery] DateOnly? from, [FromQuery] DateOnly? to) =>
         ToFile(await reports.ExportAdherenceAsync(from, to));
 
+    /// <summary>UC-125: sự cố theo tháng × loại × mức độ. Điều dưỡng, Admin (policy CarePlanners).</summary>
+    [HttpGet("incidents")]
+    [Authorize(Policy = AuthPolicies.CarePlanners)]
+    public async Task<ActionResult<IncidentReportDto>> Incidents([FromQuery] DateOnly? from, [FromQuery] DateOnly? to) =>
+        Ok(await reports.GetIncidentsAsync(from, to));
+
+    [HttpGet("incidents/export")]
+    [Authorize(Policy = AuthPolicies.CarePlanners)]
+    public async Task<IActionResult> ExportIncidents([FromQuery] DateOnly? from, [FromQuery] DateOnly? to) =>
+        ToFile(await reports.ExportIncidentsAsync(from, to));
+
     private FileContentResult ToFile(ExportFile file) => File(file.Content, ExportFile.ContentType, file.FileName);
 }

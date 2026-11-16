@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Viên | Must (UC-123) / Should | 5 | 3.1 (doanh thu, công suất) – 3.2 (thuốc, sự cố) | UC-125 cần bảng `Incidents` của S3-H1 | `feature/reports` |
+| Viên | Must (UC-123) / Should | 5 | 3.1 (doanh thu, công suất) – 3.2 (thuốc, sự cố) | UC-125 dùng bảng `Incidents` của S3-H1 (đã có từ 17/11) | `feature/reports` |
 
 ## Mục tiêu
 
@@ -13,7 +13,7 @@ Màn "Báo cáo" có 4 báo cáo truy vấn SQL thật, có biểu đồ và nú
 - [x] **Doanh thu & công nợ** (UC-123, Must): chọn năm → cột thực thu theo tháng (tách PayOS/thủ công), bảng công nợ các hóa đơn còn nợ (cư dân, số, kỳ, hạn, còn nợ, số ngày quá hạn).
 - [x] **Công suất giường** (UC-122): chọn năm → % công suất theo tháng = số giường-ngày có người / số giường-ngày khả dụng.
 - [x] **Tuân thủ thuốc** (UC-124): khoảng ngày → theo cư dân: số liều Taken/Missed/Refused, tỉ lệ Taken.
-- [ ] **Sự cố** (UC-125, làm sau khi S3-H1 merge): khoảng ngày → số sự cố theo loại × mức độ, theo tháng. *(chờ bảng `Incidents` của Huy)*
+- [x] **Sự cố** (UC-125, làm ngày 17/11 sau khi S3-H1 vào `develop`): khoảng ngày → số sự cố theo loại × mức độ, theo tháng; `GET /api/reports/incidents` + `/export` (policy CarePlanners = Admin, Điều dưỡng); tab "Sự cố" ở trang Báo cáo (cột chồng theo mức độ, bảng theo loại, xuất Excel). Điều dưỡng giờ có menu Báo cáo.
 - [x] Mỗi báo cáo có nút **Xuất Excel** (`.xlsx`, tiêu đề tiếng Việt, định dạng tiền `#,##0`).
 - [x] Phân quyền đúng từng báo cáo; Caregiver/Family → 403.
 
@@ -28,7 +28,7 @@ Màn "Báo cáo" có 4 báo cáo truy vấn SQL thật, có biểu đồ và nú
   - Menu "Báo cáo" cho Admin, Receptionist, Accountant, Doctor (mỗi tab tự lọc role). Thêm Nurse khi có tab sự cố.
   - Màu biểu đồ theo skill dataviz, đã chạy `validate_palette.js`: nguồn thu xanh `#2a78d6`/cam `#eb6834`; liều thuốc dùng màu trạng thái good/warning/critical, luôn kèm legend + bảng (màu warning dưới 3:1 theo thiết kế). Mỗi biểu đồ có nút chuyển "Bảng".
   - Dữ liệu demo mục 10.3: hóa đơn đã trả 2–4 tháng trước (Id 100–104) + nhật ký thuốc 7 ngày.
-- Việc còn lại (UC-125): thêm `dbo.sp_IncidentSummary` vào `03_StoredProcedures.sql` (chỗ đánh dấu sẵn), `IncidentSummaryRow` trong `ReportDAO`, action `incidents` (CarePlanners) và tab thứ 4.
+- Đã làm UC-125 (17/11): thêm `dbo.sp_IncidentSummary` vào `03_StoredProcedures.sql` (chỗ đánh dấu sẵn), `IncidentSummaryRow` trong `ReportDAO`, action `incidents` (CarePlanners) và tab thứ 4.
 
 ## 1. Database — `03_StoredProcedures.sql` (file của Viên)
 

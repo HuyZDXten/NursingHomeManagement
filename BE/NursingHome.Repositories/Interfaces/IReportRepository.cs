@@ -11,5 +11,7 @@ public interface IReportRepository
 
     Task<List<AdherenceRow>> MedicationAdherenceAsync(DateOnly from, DateOnly to);
 
+    Task<List<IncidentSummaryRow>> IncidentSummaryAsync(DateOnly from, DateOnly to);
+
     Task<List<DebtRow>> OutstandingDebtsAsync();
 }

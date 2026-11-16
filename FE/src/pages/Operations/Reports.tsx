@@ -12,11 +12,11 @@ import { extractErrorMessage } from '../../api/client';
 import { aiApi } from '../../api/ai';
 import { reportsApi } from '../../api/reports';
 import { useAuth } from '../../auth/AuthContext';
-import { BILLING_STAFF, FINANCE_STAFF, PRESCRIBERS, hasRole } from '../../auth/roles';
+import { BILLING_STAFF, CARE_PLANNERS, FINANCE_STAFF, PRESCRIBERS, hasRole } from '../../auth/roles';
 import { ChatWidget } from '../../components/ChatWidget';
 import { PageTitle, StatusTag } from '../../components/Common';
 import { dateOnly, dayjs, money, monthOf, todayVn } from '../../utils/format';
-import type { AdherenceReport, OccupancyReport, RevenueReport } from '../../types/operations';
+import type { AdherenceReport, IncidentReport, OccupancyReport, RevenueReport } from '../../types/operations';
 
 // Màu theo skill dataviz (đã chạy validate_palette.js, nền sáng):
 // - 2 nguồn thu: categorical slot 1–2 (xanh / cam) — đạt mọi kiểm tra CVD, tương phản.
@@ -29,6 +29,10 @@ const STATUS_CRITICAL = '#d03b3b';
 const SURFACE = '#ffffff'; // nền Card: khe 2px giữa các đoạn cột chồng
 const GRID = '#f0f0f0';
 const AXIS = { fontSize: 12, fill: '#52514e' };
+// Mức độ sự cố là đại lượng có thứ tự → một màu (xanh) đậm dần: nhẹ → trung bình → nặng. Luôn kèm legend + bảng.
+const SEVERITY_LOW = '#6aa6e8';
+const SEVERITY_MEDIUM = SERIES_1;
+const SEVERITY_HIGH = '#12427f';
 
 const millions = (v: number) => `${(v / 1_000_000).toLocaleString('vi-VN')} tr`;
 const yearOptions = () => {
@@ -36,13 +40,14 @@ const yearOptions = () => {
   return Array.from({ length: 5 }, (_, i) => ({ value: current - i, label: `Năm ${current - i}` }));
 };
 
-/** UC-122 công suất giường, UC-123 doanh thu & công nợ, UC-124 tuân thủ thuốc. Mỗi tab chỉ hiện với role được xem. */
+/** UC-122 công suất giường, UC-123 doanh thu & công nợ, UC-124 tuân thủ thuốc, UC-125 sự cố. Mỗi tab chỉ hiện với role được xem. */
 export default function Reports() {
   const { user } = useAuth();
   const tabs = [
     hasRole(user?.role, FINANCE_STAFF) && { key: 'revenue', label: 'Doanh thu & công nợ', children: <RevenueTab /> },
     hasRole(user?.role, BILLING_STAFF) && { key: 'occupancy', label: 'Công suất giường', children: <OccupancyTab /> },
     hasRole(user?.role, PRESCRIBERS) && { key: 'adherence', label: 'Tuân thủ thuốc', children: <AdherenceTab /> },
+    hasRole(user?.role, CARE_PLANNERS) && { key: 'incidents', label: 'Sự cố', children: <IncidentsTab /> },
   ].filter((tab) => !!tab);
 
   return (
@@ -274,6 +279,84 @@ function AdherenceTab() {
                   render: (v: number) => <Typography.Text strong={v < 80}>{v.toLocaleString('vi-VN')}%</Typography.Text>,
                 },
               ]} />
+          </Card>
+        </Col>
+      </Row>
+    </>
+  );
+}
+
+// ======================= UC-125 sự cố =======================
+function IncidentsTab() {
+  const { message } = App.useApp();
+  const [range, setRange] = useState<[Dayjs, Dayjs]>(() => [dayjs(todayVn()).startOf('month').subtract(5, 'month'), dayjs(todayVn())]);
+  const [data, setData] = useState<IncidentReport>();
+  const from = range[0].format('YYYY-MM-DD');
+  const to = range[1].format('YYYY-MM-DD');
+
+  const load = useCallback(async () => {
+    try {
+      setData(await reportsApi.incidents(from, to));
+    } catch (e) {
+      message.error(extractErrorMessage(e));
+    }
+  }, [from, to, message]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const months = data?.months ?? [];
+  const chart = months.map((m) => ({ label: m.label, low: m.bySeverity.Low, medium: m.bySeverity.Medium, high: m.bySeverity.High }));
+
+  return (
+    <>
+      <Space style={{ marginBottom: 16 }} wrap>
+        <DatePicker.RangePicker value={range} format="DD/MM/YYYY" allowClear={false}
+          onChange={(v) => { if (v?.[0] && v[1]) setRange([v[0], v[1]]); }}
+          disabledDate={(d) => d.isAfter(dayjs(todayVn()), 'day')} />
+        <ExportButton onExport={() => reportsApi.exportIncidents(from, to)} />
+      </Space>
+      <Row gutter={[16, 16]}>
+        <Col xs={12} md={6}><Card><Statistic title="Tổng sự cố" value={data?.total ?? '—'} /></Card></Col>
+        <Col xs={12} md={6}><Card><Statistic title="Mức nặng" value={data?.totalBySeverity?.High ?? '—'} valueStyle={{ color: data?.totalBySeverity?.High ? STATUS_CRITICAL : undefined }} /></Card></Col>
+        <Col xs={12} md={6}><Card><Statistic title="Đã đóng" value={data?.closed ?? '—'} /></Card></Col>
+        <Col xs={12} md={6}><Card><Statistic title="Tỉ lệ đã đóng" value={data?.closedRate ?? '—'} suffix={data?.closedRate != null ? '%' : undefined} /></Card></Col>
+        <Col span={24}>
+          <Card title="Sự cố theo tháng và mức độ">
+            {data?.total === 0 ? <Empty description="Không có sự cố nào trong khoảng này." /> : (
+              <div style={{ height: 300 }}>
+                <ResponsiveContainer>
+                  <BarChart data={chart} maxBarSize={44}>
+                    <CartesianGrid stroke={GRID} vertical={false} />
+                    <XAxis dataKey="label" tick={AXIS} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={AXIS} axisLine={false} tickLine={false} />
+                    <Tooltip formatter={(v, name) => [`${v} sự cố`, name]} cursor={{ fill: 'rgba(0,0,0,0.04)' }} />
+                    <Legend />
+                    <Bar dataKey="low" name="Nhẹ" stackId="s" fill={SEVERITY_LOW} stroke={SURFACE} strokeWidth={2} />
+                    <Bar dataKey="medium" name="Trung bình" stackId="s" fill={SEVERITY_MEDIUM} stroke={SURFACE} strokeWidth={2} />
+                    <Bar dataKey="high" name="Nặng" stackId="s" fill={SEVERITY_HIGH} stroke={SURFACE} strokeWidth={2} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </Card>
+        </Col>
+        <Col span={24}>
+          <Card title="Chi tiết theo tháng và loại">
+            <Table rowKey="label" size="small" dataSource={months} pagination={false} scroll={{ x: 700 }}
+              columns={[
+                { title: 'Tháng', dataIndex: 'label' },
+                { title: 'Té ngã', align: 'right', render: (_, m) => m.byType.Fall },
+                { title: 'Chấn thương', align: 'right', render: (_, m) => m.byType.Injury },
+                { title: 'Hành vi', align: 'right', render: (_, m) => m.byType.Behavior },
+                { title: 'Khác', align: 'right', render: (_, m) => m.byType.Other },
+                { title: 'Tổng', dataIndex: 'total', align: 'right', render: (v: number) => <Typography.Text strong>{v}</Typography.Text> },
+                { title: 'Đã đóng', dataIndex: 'closed', align: 'right' },
+              ]} />
+            <Typography.Paragraph type="secondary" style={{ marginTop: 8 }}>
+              Chi tiết từng sự cố xem ở hồ sơ cư dân, tab Sự cố, hoặc trang <Link to="/staff/incidents">Sự cố</Link>.
+            </Typography.Paragraph>
           </Card>
         </Col>
       </Row>

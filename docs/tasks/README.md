@@ -33,7 +33,7 @@ Task S3-V1 → S4-V2 của Viên đã merge thẳng vào `develop` ngày 16/11, 
 | S3-00 | Điểm mở rộng 2 module (partial file, vùng SQL, `src/modules`) | — | (đã làm) | — | — | — | — | Xong |
 | [S3-V1](S3-V1-tiep-nhan-tham-quan.md) | Tiếp nhận & đặt lịch tham quan | UC-17, 18, 21, 22 | Viên | Must | 5 | 3.1 | — | Đã merge 16/11, chưa review |
 | [S3-V2](S3-V2-ca-truc-phu-trach.md) | Ca trực & phân công phụ trách | UC-44, 45, 46 | Viên | Must | 5 | 3.1 | — | Đã merge 16/11, chưa review |
-| [S3-V3](S3-V3-bao-cao.md) | Báo cáo + xuất Excel | UC-122, 123, 124, 125, 128 | Viên | Must/Should | 5 | 3.1–3.2 | UC-125 cần S3-H1 | Đã merge 16/11, chưa review (UC-125 chờ S3-H1) |
+| [S3-V3](S3-V3-bao-cao.md) | Báo cáo + xuất Excel | UC-122, 123, 124, 125, 128 | Viên | Must/Should | 5 | 3.1–3.2 | UC-125 dùng `Incidents` của S3-H1 | Đã merge 16/11, chưa review (UC-125 xong 17/11) |
 | [S3-V4](S3-V4-ban-giao-ca-nghi-phep.md) | Nghỉ phép/đổi ca & bàn giao ca | UC-47, 49 | Viên | Should | 5 | 3.2 | S3-V2 | Đã merge 16/11, chưa review |
 | [S3-V5](S3-V5-tai-chinh-mo-rong.md) | Dịch vụ phát sinh, hóa đơn hàng loạt, PDF, nhắc nợ, email | UC-85, 86, 88, 97, 98, 118 | Viên | Should | 8 | 3.2 | — | Đã merge 16/11, chưa review |
 | [S3-V6](S3-V6-chat-gia-dinh.md) | Chat gia đình – nhân viên | UC-106 | Viên | Should | 5 | 3.2 | — | Đã merge 16/11, chưa review |
@@ -44,7 +44,7 @@ Task S3-V1 → S4-V2 của Viên đã merge thẳng vào `develop` ngày 16/11, 
 | [S3-H5](S3-H5-danh-gia-phieu-kham-nguong.md) | Đánh giá định kỳ, phiếu khám, ngưỡng sinh hiệu riêng | UC-64, 67, 68 | Huy | Should | 5 | 3.2 | — | Chờ review |
 | [S3-H6](S3-H6-nhat-ky-phan-hoi-gia-dinh.md) | Nhật ký hằng ngày cho gia đình & phản hồi | UC-108, 109, 110 | Huy | Should | 5 | 3.2 | S3-H1, S3-H4 | Chờ review |
 | [S4-V1](S4-V1-ai-ha-tang-chatbot.md) | Hạ tầng AI + chatbot tư vấn công khai | AI-01, UC-20 | Viên | Must | 8 | 4 | S3-V1 | Đã merge 16/11, chưa review |
-| [S4-V2](S4-V2-ai-ban-giao-ca-bao-cao.md) | AI tóm tắt bàn giao ca (+ hỏi đáp báo cáo) | AI-04, AI-12 | Viên | Should | 5 | 4 | S3-V4, S3-V3, S4-V1 | Đã merge 16/11, chưa review (tool sự cố chờ S3-H1) |
+| [S4-V2](S4-V2-ai-ban-giao-ca-bao-cao.md) | AI tóm tắt bàn giao ca (+ hỏi đáp báo cáo) | AI-04, AI-12 | Viên | Should | 5 | 4 | S3-V4, S3-V3, S4-V1 | Đã merge 16/11, chưa review (tool sự cố xong 17/11) |
 | [S4-H1](S4-H1-ai-tro-ly-gia-dinh.md) | Trợ lý AI cho gia đình | AI-02 | Huy | Must | 5 | 4 | S4-V1 (phần 1) | Chờ review |
 | [S4-H2](S4-H2-ai-nhat-ky-sinh-hieu.md) | Nhật ký hằng ngày bằng AI + diễn giải sinh hiệu | AI-03, AI-06 | Huy | Should | 5 | 4 | S3-H4, S3-H5, S3-H6, S4-V1 | Chờ review |
 | [S5-V1](S5-V1-hoan-thien.md) | Hoàn thiện module Vận hành & Tài chính, slide, kịch bản demo | — | Viên | Must | 5 | 5 | tất cả | Chưa làm |

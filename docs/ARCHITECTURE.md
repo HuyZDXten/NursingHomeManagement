@@ -325,6 +325,7 @@ Sprint 3+ (module):
 | Báo cáo (S3-V3) | `GET /api/reports/revenue?year` · `/revenue/export` (.xlsx) | FinanceStaff |
 | | `GET /api/reports/occupancy?year` · `/occupancy/export` | BillingStaff |
 | | `GET /api/reports/medication-adherence?from&to` · `/medication-adherence/export` | Prescribers |
+| | `GET /api/reports/incidents?from&to` · `/incidents/export` (sự cố theo tháng × loại × mức độ, thủ tục `sp_IncidentSummary`) | CarePlanners (Admin, Nurse) |
 | Tài khoản & ảnh (BL-V1) | `GET /api/auth/config` (Client ID Google, rỗng = ẩn nút), `POST /api/auth/google {idToken}` (chỉ tài khoản đã có cùng email; rate limit `Credentials`) | ẩn danh |
 | | `POST·DELETE /api/auth/me/avatar` (multipart `file`, JPG/PNG/WebP ≤ 5 MB, kiểm chữ ký file) | đăng nhập |
 | | `POST·DELETE /api/residents/{id}/photo` | FrontDesk |

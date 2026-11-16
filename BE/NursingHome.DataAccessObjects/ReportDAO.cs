@@ -12,6 +12,9 @@ public sealed record OccupancyRow(int Month, int AvailableBedDays, int OccupiedB
 
 public sealed record AdherenceRow(int ResidentId, string Code, string FullName, int Taken, int Missed, int Refused);
 
+/// <summary>UC-125: số sự cố của một (tháng, loại, mức độ); Closed = đã đóng.</summary>
+public sealed record IncidentSummaryRow(int Year, int Month, string Type, string Severity, int Total, int Closed);
+
 public sealed record DebtRow(
     int InvoiceId,
     string Number,
@@ -57,6 +60,14 @@ public sealed class ReportDAO
     }
 
     /// <summary>Hóa đơn đã phát hành còn nợ (vw_InvoiceBalances).</summary>
+    public async Task<List<IncidentSummaryRow>> IncidentSummaryAsync(DateOnly from, DateOnly to)
+    {
+        await using var context = new NursingHomeContext();
+        return await context.Database
+            .SqlQuery<IncidentSummaryRow>($"EXEC dbo.sp_IncidentSummary @From = {from}, @To = {to}")
+            .ToListAsync();
+    }
+
     public async Task<List<DebtRow>> OutstandingDebtsAsync()
     {
         await using var context = new NursingHomeContext();

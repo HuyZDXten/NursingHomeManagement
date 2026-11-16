@@ -208,6 +208,11 @@ public interface IReportService
     Task<AdherenceReportDto> GetAdherenceAsync(DateOnly? from, DateOnly? to);
 
     Task<ExportFile> ExportAdherenceAsync(DateOnly? from, DateOnly? to);
+
+    /// <summary>UC-125: sự cố theo tháng × loại × mức độ (khoảng ngày mặc định 6 tháng gần nhất, tối đa 366 ngày).</summary>
+    Task<IncidentReportDto> GetIncidentsAsync(DateOnly? from, DateOnly? to);
+
+    Task<ExportFile> ExportIncidentsAsync(DateOnly? from, DateOnly? to);
 }
 
 /// <summary>S3-V4 — UC-47 nghỉ phép/đổi ca (Admin duyệt), UC-49 bàn giao ca (gợi ý, xác nhận đã đọc).</summary>

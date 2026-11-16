@@ -3,6 +3,7 @@ using System.Text.Json;
 using NursingHome.BusinessObjects.Enums;
 using NursingHome.BusinessObjects.Exceptions;
 using NursingHome.DTOs.Common;
+using NursingHome.Services.Helpers;
 using NursingHome.Services.Interfaces;
 
 namespace NursingHome.Services.Ai.Tools;
@@ -15,7 +16,7 @@ namespace NursingHome.Services.Ai.Tools;
 public static class ReportTools
 {
     public static IReadOnlyList<IAiTool> Create(IReportService reports) =>
-        [new RevenueTool(reports), new OccupancyTool(reports), new AdherenceTool(reports)];
+        [new RevenueTool(reports), new OccupancyTool(reports), new AdherenceTool(reports), new IncidentTool(reports)];
 
     internal static void Require(CurrentUser? user, params string[] roles)
     {
@@ -95,6 +96,39 @@ public sealed class AdherenceTool(IReportService reports) : IAiTool
             report.OverallTakenRate,
             summary = $"Từ {report.From:dd/MM} đến {report.To:dd/MM/yyyy}: tỉ lệ đã uống chung {ReportTools.Percent(report.OverallTakenRate)}"
                 + (lowest is null ? "." : $", thấp nhất {lowest.Code} ({ReportTools.Percent(lowest.TakenRate)}).")
+        });
+    }
+}
+
+public sealed class IncidentTool(IReportService reports) : IAiTool
+{
+    public AiToolDefinition Definition { get; } = new("incident_summary",
+        "Số sự cố của cư dân theo tháng, theo loại (té ngã, chấn thương, hành vi, khác) và mức độ (nhẹ, trung bình, nặng) trong một khoảng ngày.",
+        AiToolJson.Schema(
+            ("from", "string", "Ngày bắt đầu yyyy-MM-dd (mặc định 6 tháng gần nhất)", false),
+            ("to", "string", "Ngày kết thúc yyyy-MM-dd (mặc định hôm nay)", false)));
+
+    public async Task<string> ExecuteAsync(CurrentUser? user, JsonElement arguments, CancellationToken cancellationToken = default)
+    {
+        ReportTools.Require(user, Roles.Admin, Roles.Nurse); // policy CarePlanners của báo cáo sự cố
+        DateOnly? from = DateOnly.TryParse(AiToolJson.String(arguments, "from"), CultureInfo.InvariantCulture, out var start) ? start : null;
+        DateOnly? to = DateOnly.TryParse(AiToolJson.String(arguments, "to"), CultureInfo.InvariantCulture, out var end) ? end : null;
+        var report = await reports.GetIncidentsAsync(from, to);
+        var worst = report.Months.MaxBy(month => month.Total);
+        string types = string.Join(", ", report.TotalByType.Where(pair => pair.Value > 0).Select(pair => $"{IncidentLabels.Type(pair.Key).ToLowerInvariant()} {pair.Value}"));
+        return AiToolJson.Serialize(new
+        {
+            from = report.From.ToString("yyyy-MM-dd"),
+            to = report.To.ToString("yyyy-MM-dd"),
+            months = report.Months.Select(month => new { month = month.Label, month.Total, month.Closed, month.ByType, month.BySeverity }),
+            report.Total,
+            report.Closed,
+            report.TotalByType,
+            report.TotalBySeverity,
+            summary = report.Total == 0
+                ? $"Từ {report.From:dd/MM} đến {report.To:dd/MM/yyyy}: không có sự cố nào."
+                : $"Từ {report.From:dd/MM} đến {report.To:dd/MM/yyyy}: {report.Total} sự cố ({types}), {report.TotalBySeverity["High"]} nặng, đã đóng {report.Closed}."
+                    + (worst is { Total: > 0 } ? $" Nhiều nhất tháng {worst.Label} ({worst.Total})." : "")
         });
     }
 }
