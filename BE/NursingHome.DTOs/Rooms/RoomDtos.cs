@@ -9,6 +9,11 @@ public class RoomDto
     public int? Floor { get; set; }
     public string? Description { get; set; }
     public bool IsActive { get; set; }
+
+    /// <summary>BL-V3, UC-36: loại phòng + phụ thu/ngày (null = không phụ thu).</summary>
+    public int? RoomTypeId { get; set; }
+    public string? RoomTypeName { get; set; }
+    public decimal DailySurcharge { get; set; }
     public List<BedDto> Beds { get; set; } = [];
 }
 
@@ -21,6 +26,10 @@ public class BedDto
     public int? ResidentId { get; set; }
     public string? ResidentName { get; set; }
     public string? ResidentCode { get; set; }
+
+    /// <summary>BL-V3, UC-41: giường đang được giữ (còn hạn) cho ai, đến khi nào.</summary>
+    public string? ReservedFor { get; set; }
+    public DateTime? ReservedUntil { get; set; }
 }
 
 public class SaveRoomRequest
@@ -35,6 +44,9 @@ public class SaveRoomRequest
     public string? Description { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    /// <summary>BL-V3, UC-36: loại phòng (bỏ trống = không phụ thu).</summary>
+    public int? RoomTypeId { get; set; }
 }
 
 public class SaveBedRequest

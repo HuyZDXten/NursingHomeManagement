@@ -84,4 +84,22 @@ export const OPERATIONS_STATUS: Record<string, Record<string, StatusMeta>> = {
     Cash: { label: 'Tiền mặt', color: 'gold' },
     BankTransfer: { label: 'Chuyển khoản', color: 'geekblue' },
   },
+  // BL-V3 phòng & giường mở rộng
+  reservation: {
+    Active: { label: 'Đang giữ', color: 'purple' },
+    Expired: { label: 'Hết hạn', color: 'default' },
+    Converted: { label: 'Đã nhập viện', color: 'success' },
+    Released: { label: 'Đã hủy', color: 'default' },
+  },
+  maintenance: {
+    Open: { label: 'Mới báo', color: 'orange' },
+    InProgress: { label: 'Đang sửa', color: 'processing' },
+    Done: { label: 'Đã xong', color: 'success' },
+    Cancelled: { label: 'Đã hủy', color: 'default' },
+  },
+  priority: {
+    Low: { label: 'Thấp', color: 'default' },
+    Normal: { label: 'Bình thường', color: 'blue' },
+    High: { label: 'Khẩn', color: 'red' },
+  },
 };

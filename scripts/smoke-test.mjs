@@ -672,7 +672,7 @@ const dep1 = await call('GET', '/api/residents/1/deposits', accountant.accessTok
 const held1 = dep1.data.deposits.find((d) => d.held);
 check('Hoàn cọc khi cư dân còn ở -> 400', (await call('POST', `/api/deposits/${held1.id}/refund`, accountant.accessToken, { amount: 1000 })).status === 400);
 
-const freeBed = (await call('GET', '/api/rooms', adminToken)).data.filter((r) => r.isActive).flatMap((r) => r.beds).find((b) => b.status === 'Available');
+const freeBed = (await call('GET', '/api/rooms', adminToken)).data.filter((r) => r.isActive).flatMap((r) => r.beds).find((b) => b.status === 'Available' && !b.reservedFor);
 const readmitted = await call('POST', '/api/residents/5/readmit', recep.accessToken, { bedId: freeBed?.id, servicePackageId: 1, startDate: plusDays(0) });
 check('Tái nhập viện NH-0005 (giường trống, gói mới)', readmitted.status === 200 && readmitted.data.status === 'Active' && !!readmitted.data.bedLabel, readmitted.data?.message);
 const stays = await call('GET', '/api/residents/5/stays', recep.accessToken);
@@ -681,6 +681,59 @@ check('Tái nhập viện lần nữa khi đang ở -> 400', (await call('POST',
 const newDeposit = await call('POST', '/api/residents/5/deposits', accountant.accessToken, { amount: 10000000, method: 'BankTransfer', reference: 'CK-COC-0005-2' });
 check('Thu cọc mới sau tái nhập viện', newDeposit.status === 200 && newDeposit.data.heldAmount === 10000000, newDeposit.data?.message);
 check('Thu cọc lần hai khi còn giữ -> 409', (await call('POST', '/api/residents/5/deposits', accountant.accessToken, { amount: 1000, method: 'Cash' })).status === 409);
+
+// ---- Backlog · BL-V3: loại phòng & phụ thu (UC-36), giữ giường (UC-41), báo hỏng & sửa chữa (UC-42) ----
+const roomTypes = await call('GET', '/api/room-types', caregiver.accessToken);
+check('Danh mục loại phòng (seed 3 loại)', roomTypes.status === 200 && roomTypes.data.some((t) => t.name === 'Phòng đơn VIP' && t.dailySurcharge === 150000));
+check('Lễ tân thêm loại phòng -> 403', (await call('POST', '/api/room-types', recep.accessToken, { name: 'X', dailySurcharge: 0 })).status === 403);
+const newType = await call('POST', '/api/room-types', adminToken, { name: 'Phòng hướng vườn', dailySurcharge: 30000, description: 'Cửa sổ nhìn ra vườn' });
+check('Admin thêm loại phòng', newType.status === 200 && newType.data.dailySurcharge === 30000, newType.data?.message);
+check('Trùng tên loại phòng -> 409', (await call('POST', '/api/room-types', adminToken, { name: 'Phòng hướng vườn', dailySurcharge: 1 })).status === 409);
+
+const roomsNow = (await call('GET', '/api/rooms', recep.accessToken)).data;
+const vipRoom = roomsNow.find((r) => r.number === '202');
+const seededHold = vipRoom?.beds.find((b) => b.number === 'B');
+check('Phòng 202 là Phòng đơn VIP, giường 202-B đang được giữ (seed)', vipRoom?.roomTypeName === 'Phòng đơn VIP' && vipRoom.dailySurcharge === 150000 && !!seededHold?.reservedFor,
+  `${vipRoom?.roomTypeName} / ${seededHold?.reservedFor}`);
+const bed6 = vipRoom.beds.find((b) => b.number === 'A');
+const hold = await call('POST', '/api/bed-reservations', recep.accessToken, { bedId: bed6.id, holderName: 'Ông Phạm Văn Lộc (khách lẻ)', phone: '0905123456', expiresOn: plusDays(2) });
+check('Lễ tân giữ giường 202-A', hold.status === 200 && hold.data.status === 'Active', hold.data?.message);
+check('Giữ lại giường đang được giữ -> 409', (await call('POST', '/api/bed-reservations', recep.accessToken, { bedId: bed6.id, holderName: 'Khác', expiresOn: plusDays(1) })).status === 409);
+check('Giữ giường đang có người -> 400', (await call('POST', '/api/bed-reservations', recep.accessToken, { bedId: 1, holderName: 'Khác', expiresOn: plusDays(1) })).status === 400);
+check('Giữ quá 7 ngày -> 400', (await call('POST', '/api/bed-reservations', recep.accessToken, { bedId: 4, holderName: 'Khác', expiresOn: plusDays(9) })).status === 400);
+check('Caregiver giữ giường -> 403', (await call('POST', '/api/bed-reservations', caregiver.accessToken, { bedId: bed6.id, holderName: 'X', expiresOn: plusDays(1) })).status === 403);
+const blockedMove = await call('POST', '/api/bed-assignments', recep.accessToken, { residentId: 5, bedId: bed6.id });
+check('Xếp người khác vào giường đang giữ -> 400', blockedMove.status === 400 && blockedMove.data.message.includes('đang được giữ'), blockedMove.data?.message);
+const released = await call('POST', `/api/bed-reservations/${hold.data.id}/release`, recep.accessToken);
+check('Hủy giữ giường', released.status === 200 && released.data.status === 'Released');
+const moveToVip = await call('POST', '/api/bed-assignments', recep.accessToken, { residentId: 5, bedId: bed6.id });
+check('Hủy giữ xong thì chuyển NH-0005 sang phòng VIP được', moveToVip.status === 200 || moveToVip.status === 204, moveToVip.data?.message);
+
+const vipPeriod = firstOfMonthPlus(2);
+const vipInvoice = await call('POST', '/api/invoices', accountant.accessToken, { residentId: 5, billingPeriod: vipPeriod, dueDate: vipPeriod.replace(/01$/, '10') });
+const vipLine = vipInvoice.data?.items?.find((i) => i.description.startsWith('Phụ thu Phòng đơn VIP (phòng 202)'));
+const daysInPeriod = new Date(Number(vipPeriod.slice(0, 4)), Number(vipPeriod.slice(5, 7)), 0).getDate();
+check('Hóa đơn tháng có dòng phụ thu VIP theo số ngày', vipInvoice.status === 200 && vipLine?.quantity === daysInPeriod && vipLine.unitPrice === 150000,
+  vipLine?.description ?? vipInvoice.data?.message);
+
+const urgent = await call('POST', '/api/maintenance-requests', nurse.accessToken,
+  { roomId: roomsNow.find((r) => r.beds.some((b) => b.id === 4)).id, bedId: 4, title: 'Thanh chắn giường gãy', priority: 'High', blocksBed: true });
+check('Điều dưỡng báo hỏng khẩn, khóa giường trống', urgent.status === 200 && urgent.data.status === 'Open' && urgent.data.blocksBed, urgent.data?.message);
+const bed4After = (await call('GET', '/api/rooms', recep.accessToken)).data.flatMap((r) => r.beds).find((b) => b.id === 4);
+check('Giường bị khóa chuyển sang Bảo trì', bed4After?.status === 'Maintenance');
+const adminNotes = await call('GET', '/api/notifications', adminToken);
+check('Admin nhận thông báo báo hỏng khẩn', adminNotes.data.items.some((n) => n.title.startsWith('Báo hỏng khẩn')));
+check('Caregiver đổi trạng thái phiếu -> 403', (await call('POST', `/api/maintenance-requests/${urgent.data.id}/status`, caregiver.accessToken, { status: 'Done' })).status === 403);
+const inProgress = await call('POST', `/api/maintenance-requests/${urgent.data.id}/status`, adminToken, { status: 'InProgress', assignedTo: 'Đội kỹ thuật' });
+check('Admin nhận sửa', inProgress.status === 200 && inProgress.data.status === 'InProgress' && inProgress.data.assignedTo === 'Đội kỹ thuật');
+const done = await call('POST', `/api/maintenance-requests/${urgent.data.id}/status`, adminToken, { status: 'Done', resolutionNote: 'Đã thay thanh chắn mới' });
+const bed4Done = (await call('GET', '/api/rooms', recep.accessToken)).data.flatMap((r) => r.beds).find((b) => b.id === 4);
+check('Sửa xong: phiếu Done, giường trống lại', done.status === 200 && done.data.status === 'Done' && bed4Done?.status === 'Available');
+check('Mở lại phiếu đã xong -> 400', (await call('POST', `/api/maintenance-requests/${urgent.data.id}/status`, adminToken, { status: 'InProgress' })).status === 400);
+const nurseNotesDone = await call('GET', '/api/notifications', nurse.accessToken);
+check('Người báo nhận thông báo đã sửa xong', nurseNotesDone.data.items.some((n) => n.title === 'Đã sửa xong: Thanh chắn giường gãy'));
+const openList = await call('GET', '/api/maintenance-requests?status=Open', caregiver.accessToken);
+check('Danh sách phiếu đang mở (seed: bóng đèn phòng 101)', openList.status === 200 && openList.data.some((m) => m.title.startsWith('Bóng đèn')));
 
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);

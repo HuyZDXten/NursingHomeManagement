@@ -870,6 +870,78 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Deposits_Held' AND ob
 CREATE UNIQUE INDEX UX_Deposits_Held ON dbo.Deposits (ResidentId) WHERE RefundedAt IS NULL;
 GO
 
+/* ---- 9.9 Phòng & giường mở rộng (BL-V3: UC-36 loại phòng & phụ thu, UC-41 giữ giường, UC-42 báo hỏng & sửa chữa) ----
+   Rooms.RoomTypeId thêm bằng ALTER có kiểm tra (bảng lõi mục 3 tạo trước RoomTypes) → chạy được cho cả DB mới và DB đang có dữ liệu. */
+IF OBJECT_ID(N'dbo.RoomTypes', N'U') IS NULL
+CREATE TABLE dbo.RoomTypes (
+    Id             INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_RoomTypes PRIMARY KEY,
+    Name           NVARCHAR(100) NOT NULL CONSTRAINT UQ_RoomTypes_Name UNIQUE,
+    DailySurcharge DECIMAL(18,0) NOT NULL CONSTRAINT DF_RoomTypes_Surcharge DEFAULT (0),
+    Description    NVARCHAR(300) NULL,
+    IsActive       BIT           NOT NULL CONSTRAINT DF_RoomTypes_IsActive DEFAULT (1),
+    CreatedAt      DATETIME2     NOT NULL CONSTRAINT DF_RoomTypes_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt      DATETIME2     NULL,
+    CONSTRAINT CK_RoomTypes_Surcharge CHECK (DailySurcharge >= 0)
+);
+GO
+
+IF COL_LENGTH(N'dbo.Rooms', N'RoomTypeId') IS NULL
+    ALTER TABLE dbo.Rooms ADD RoomTypeId INT NULL CONSTRAINT FK_Rooms_RoomTypes REFERENCES dbo.RoomTypes (Id);
+GO
+
+-- Giữ giường cho khách sắp nhập viện. Status: Active (đang giữ) | Converted (đã xếp đúng người) | Released (hủy/hết hạn).
+-- Active quá ExpiresAt được coi là hết hạn ngay khi đọc; lần xếp/giữ kế tiếp tự chuyển thành Released.
+IF OBJECT_ID(N'dbo.BedReservations', N'U') IS NULL
+CREATE TABLE dbo.BedReservations (
+    Id           INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_BedReservations PRIMARY KEY,
+    BedId        INT           NOT NULL CONSTRAINT FK_BedReservations_Beds REFERENCES dbo.Beds (Id),
+    InquiryId    INT           NULL CONSTRAINT FK_BedReservations_Inquiries REFERENCES dbo.Inquiries (Id),
+    HolderName   NVARCHAR(150) NOT NULL,
+    Phone        NVARCHAR(30)  NULL,
+    Note         NVARCHAR(500) NULL,
+    Status       NVARCHAR(20)  NOT NULL CONSTRAINT DF_BedReservations_Status DEFAULT (N'Active'),
+    ReservedById INT           NOT NULL CONSTRAINT FK_BedReservations_Reserver REFERENCES dbo.Accounts (Id),
+    ReservedAt   DATETIME2     NOT NULL CONSTRAINT DF_BedReservations_ReservedAt DEFAULT (SYSUTCDATETIME()),
+    ExpiresAt    DATETIME2     NOT NULL,
+    ClosedAt     DATETIME2     NULL,
+    ClosedById   INT           NULL CONSTRAINT FK_BedReservations_Closer REFERENCES dbo.Accounts (Id),
+    ResidentId   INT           NULL CONSTRAINT FK_BedReservations_Residents REFERENCES dbo.Residents (Id),
+    CONSTRAINT CK_BedReservations_Status CHECK (Status IN (N'Active', N'Converted', N'Released')),
+    CONSTRAINT CK_BedReservations_Expiry CHECK (ExpiresAt > ReservedAt)
+);
+GO
+
+-- Mỗi giường tối đa một lượt giữ đang Active.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_BedReservations_ActiveBed' AND object_id = OBJECT_ID(N'dbo.BedReservations'))
+CREATE UNIQUE INDEX UX_BedReservations_ActiveBed ON dbo.BedReservations (BedId) WHERE Status = N'Active';
+GO
+
+IF OBJECT_ID(N'dbo.MaintenanceRequests', N'U') IS NULL
+CREATE TABLE dbo.MaintenanceRequests (
+    Id             INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_MaintenanceRequests PRIMARY KEY,
+    RoomId         INT            NOT NULL CONSTRAINT FK_MaintenanceRequests_Rooms REFERENCES dbo.Rooms (Id),
+    BedId          INT            NULL CONSTRAINT FK_MaintenanceRequests_Beds REFERENCES dbo.Beds (Id),
+    Title          NVARCHAR(200)  NOT NULL,
+    Description    NVARCHAR(1000) NULL,
+    Priority       NVARCHAR(20)   NOT NULL CONSTRAINT DF_MaintenanceRequests_Priority DEFAULT (N'Normal'),
+    Status         NVARCHAR(20)   NOT NULL CONSTRAINT DF_MaintenanceRequests_Status DEFAULT (N'Open'),
+    BlocksBed      BIT            NOT NULL CONSTRAINT DF_MaintenanceRequests_BlocksBed DEFAULT (0),
+    ReportedById   INT            NOT NULL CONSTRAINT FK_MaintenanceRequests_Reporter REFERENCES dbo.Accounts (Id),
+    ReportedAt     DATETIME2      NOT NULL CONSTRAINT DF_MaintenanceRequests_ReportedAt DEFAULT (SYSUTCDATETIME()),
+    AssignedTo     NVARCHAR(150)  NULL,
+    ResolvedAt     DATETIME2      NULL,
+    ResolvedById   INT            NULL CONSTRAINT FK_MaintenanceRequests_Resolver REFERENCES dbo.Accounts (Id),
+    ResolutionNote NVARCHAR(500)  NULL,
+    CONSTRAINT CK_MaintenanceRequests_Priority CHECK (Priority IN (N'Low', N'Normal', N'High')),
+    CONSTRAINT CK_MaintenanceRequests_Status CHECK (Status IN (N'Open', N'InProgress', N'Done', N'Cancelled')),
+    CONSTRAINT CK_MaintenanceRequests_BlocksBed CHECK (BlocksBed = 0 OR BedId IS NOT NULL)
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_MaintenanceRequests_Status' AND object_id = OBJECT_ID(N'dbo.MaintenanceRequests'))
+CREATE INDEX IX_MaintenanceRequests_Status ON dbo.MaintenanceRequests (Status, ReportedAt DESC);
+GO
+
 /* ---- 9. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 

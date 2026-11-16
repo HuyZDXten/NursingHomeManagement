@@ -100,6 +100,9 @@ export interface Bed {
   residentId?: number | null;
   residentName?: string | null;
   residentCode?: string | null;
+  /** BL-V3: giường đang được giữ (còn hạn). */
+  reservedFor?: string | null;
+  reservedUntil?: string | null;
 }
 
 export interface Room {
@@ -108,6 +111,10 @@ export interface Room {
   floor?: number | null;
   description?: string | null;
   isActive: boolean;
+  /** BL-V3: loại phòng + phụ thu/ngày. */
+  roomTypeId?: number | null;
+  roomTypeName?: string | null;
+  dailySurcharge: number;
   beds: Bed[];
 }
 

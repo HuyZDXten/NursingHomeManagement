@@ -412,6 +412,32 @@ BEGIN
     SET IDENTITY_INSERT dbo.Deposits OFF;
 END;
 
+/* ---- 10.9 Phòng & giường mở rộng (BL-V3) ----
+   Mọi phòng chưa có loại = Tiêu chuẩn (không phụ thu, hóa đơn cũ không đổi). Phòng 202 (đang trống) = Phòng đơn VIP.
+   Giữ giường 202-B cho yêu cầu tư vấn số 3 (đã tham quan) 5 ngày. Một phiếu báo hỏng đang mở ở phòng 101. */
+UPDATE dbo.Rooms SET RoomTypeId = 1 WHERE RoomTypeId IS NULL AND Number <> N'202';
+UPDATE dbo.Rooms SET RoomTypeId = 3 WHERE RoomTypeId IS NULL AND Number = N'202';
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BedReservations WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.BedReservations ON;
+    INSERT INTO dbo.BedReservations (Id, BedId, InquiryId, HolderName, Phone, Note, Status, ReservedById, ReservedAt, ExpiresAt)
+    SELECT 1, b.Id, i.Id, i.FullName, i.Phone, N'Gia đình hẹn làm thủ tục nhập viện cuối tuần.', N'Active', 2, @NowUtc, DATEADD(DAY, 5, @NowUtc)
+    FROM dbo.Beds AS b JOIN dbo.Rooms AS r ON r.Id = b.RoomId
+    CROSS JOIN (SELECT Id, FullName, Phone FROM dbo.Inquiries WHERE Id = 3) AS i
+    WHERE r.Number = N'202' AND b.Number = N'B' AND b.Status = N'Available';
+    SET IDENTITY_INSERT dbo.BedReservations OFF;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.MaintenanceRequests WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.MaintenanceRequests ON;
+    INSERT INTO dbo.MaintenanceRequests (Id, RoomId, Title, Description, Priority, Status, ReportedById, ReportedAt)
+    SELECT 1, r.Id, N'Bóng đèn nhà vệ sinh chập chờn', N'Ban đêm cư dân đi vệ sinh dễ té ngã, cần thay sớm.', N'Normal', N'Open', 6, DATEADD(HOUR, -3, @NowUtc)
+    FROM dbo.Rooms AS r WHERE r.Number = N'101';
+    SET IDENTITY_INSERT dbo.MaintenanceRequests OFF;
+END;
+
 /* ---- 10. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 

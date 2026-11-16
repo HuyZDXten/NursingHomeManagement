@@ -583,3 +583,68 @@ export interface DepositSummary {
   outstanding: number;
   deposits: Deposit[];
 }
+
+// ---------------- BL-V3 phòng & giường mở rộng ----------------
+
+export interface RoomType {
+  id: number;
+  name: string;
+  dailySurcharge: number;
+  description?: string | null;
+  isActive: boolean;
+}
+
+export type RoomTypeForm = Omit<RoomType, 'id'>;
+
+export interface BedReservation {
+  id: number;
+  bedId: number;
+  bedLabel: string;
+  inquiryId?: number | null;
+  holderName: string;
+  phone?: string | null;
+  note?: string | null;
+  status: 'Active' | 'Expired' | 'Converted' | 'Released';
+  reservedByName?: string | null;
+  reservedAt: string;
+  expiresAt: string;
+  closedAt?: string | null;
+}
+
+export interface BedReservationForm {
+  bedId: number;
+  inquiryId?: number | null;
+  holderName: string;
+  phone?: string | null;
+  note?: string | null;
+  expiresOn: string;
+}
+
+export type MaintenanceStatus = 'Open' | 'InProgress' | 'Done' | 'Cancelled';
+
+export interface MaintenanceRequest {
+  id: number;
+  roomId: number;
+  roomNumber: string;
+  bedId?: number | null;
+  bedNumber?: string | null;
+  title: string;
+  description?: string | null;
+  priority: 'Low' | 'Normal' | 'High';
+  status: MaintenanceStatus;
+  blocksBed: boolean;
+  reportedByName?: string | null;
+  reportedAt: string;
+  assignedTo?: string | null;
+  resolvedAt?: string | null;
+  resolutionNote?: string | null;
+}
+
+export interface MaintenanceForm {
+  roomId: number;
+  bedId?: number | null;
+  title: string;
+  description?: string | null;
+  priority: 'Low' | 'Normal' | 'High';
+  blocksBed: boolean;
+}

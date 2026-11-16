@@ -102,6 +102,17 @@ BEGIN
     SET IDENTITY_INSERT dbo.AiKnowledgeDocs OFF;
 END;
 
+-- BL-V3 (UC-36): loại phòng + phụ thu theo ngày (cộng vào hóa đơn tháng theo số ngày ở phòng đó).
+IF NOT EXISTS (SELECT 1 FROM dbo.RoomTypes WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.RoomTypes ON;
+    INSERT INTO dbo.RoomTypes (Id, Name, DailySurcharge, Description) VALUES
+    (1, N'Tiêu chuẩn', 0, N'Phòng 2–3 giường, giá đã gồm trong gói dịch vụ.'),
+    (2, N'Phòng đôi tiện nghi', 50000, N'Phòng 2 giường, có ban công và tủ lạnh riêng.'),
+    (3, N'Phòng đơn VIP', 150000, N'Phòng riêng, nhà vệ sinh riêng, tivi, người nhà ở lại được.');
+    SET IDENTITY_INSERT dbo.RoomTypes OFF;
+END;
+
 COMMIT TRANSACTION;
 PRINT N'04_ReferenceData.sql: xong.';
 GO

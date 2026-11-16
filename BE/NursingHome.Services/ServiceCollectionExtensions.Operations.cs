@@ -68,5 +68,9 @@ public static partial class ServiceCollectionExtensions
         // BL-V2 hồ sơ lưu trú: giấy tờ, hợp đồng, tạm vắng, tái nhập viện, tiền cọc (IDocumentStorage cài ở API).
         services.AddScoped<IResidentRecordsRepository, ResidentRecordsRepository>();
         services.AddScoped<IResidentRecordsService, ResidentRecordsService>();
+
+        // BL-V3 loại phòng & phụ thu (BillingService, RoomService dùng IRoomOpsRepository), giữ giường, báo hỏng.
+        services.AddScoped<IRoomOpsRepository, RoomOpsRepository>();
+        services.AddScoped<IRoomOpsService, RoomOpsService>();
     }
 }

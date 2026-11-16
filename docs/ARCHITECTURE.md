@@ -318,6 +318,9 @@ Sprint 3+ (module):
 | | `GET /api/residents/{id}/stays`, `POST /api/residents/{id}/readmit {bedId, servicePackageId, agreedMonthlyPrice?, startDate}` | FrontDesk |
 | | `GET /api/residents/{id}/deposits` (cọc + công nợ) | BillingStaff |
 | | `POST /api/residents/{id}/deposits {amount, method, reference}`, `POST /api/deposits/{id}/refund {amount, note}` (chỉ sau ngừng lưu trú) | FinanceStaff |
+| Vận hành phòng (BL-V3) | `GET /api/room-types` (Staff), `POST·PUT /api/room-types` (AdminOnly). Phụ thu/ngày cộng vào hóa đơn tháng theo số ngày ở phòng loại đó (`RoomRules.SurchargeLines`); `GET /api/rooms` trả thêm loại phòng + giường đang giữ | Staff / AdminOnly |
+| | `GET·POST /api/bed-reservations`, `POST /{id}/release` (tối đa 7 ngày; giường đang giữ chỉ xếp cho cư dân nhập viện từ đúng yêu cầu tư vấn — `BedReservationGuard` trong transaction xếp giường) | FrontDesk |
+| | `GET·POST /api/maintenance-requests` (khóa giường trống khi `blocksBed`; mức Khẩn báo Admin), `POST /{id}/status {status, assignedTo, resolutionNote}` | Staff / AdminOnly |
 
 **OData chỉ dùng attribute routing** (`Program.cs` bỏ các convention theo tên controller): mỗi entity set cần một `ODataController` có `[Route("odata/TenEntitySet")]`. Controller REST trùng tên entity set (vd. `InvoicesController`) không còn bị OData bắt nhầm.
 

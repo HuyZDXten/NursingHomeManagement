@@ -21,7 +21,8 @@ public class BillingService(
     IResidentAccessService access,
     INotificationService notifications,
     IInvoiceMailer mailer,
-    FacilityClock clock) : IBillingService
+    FacilityClock clock,
+    IRoomOpsRepository roomOps) : IBillingService
 {
     // ---------------- Gói dịch vụ ----------------
 
@@ -143,6 +144,19 @@ public class BillingService(
         if (invoice.Items.Count == 0)
         {
             throw new BusinessRuleException("Không có đăng ký gói và ngày lưu trú phù hợp trong kỳ này.");
+        }
+
+        // BL-V3, UC-36: phụ thu loại phòng theo số ngày ở phòng có phụ thu trong kỳ (giá lấy lúc lập hóa đơn).
+        var stays = await roomOps.SurchargeStaysAsync(resident.Id, clock.StartOfDayUtc(request.BillingPeriod), clock.StartOfDayUtc(periodEnd.AddDays(1)));
+        foreach (var line in RoomRules.SurchargeLines(request.BillingPeriod, periodEnd, stays))
+        {
+            invoice.Items.Add(new InvoiceItem
+            {
+                Description = line.Description,
+                Quantity = line.Days,
+                UnitPrice = line.DailySurcharge,
+                CreatedAt = clock.UtcNow
+            });
         }
 
         var created = await billing.CreateInvoiceAsync(invoice);

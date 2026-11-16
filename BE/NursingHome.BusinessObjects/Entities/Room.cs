@@ -18,6 +18,11 @@ public class Room
 
     public DateTime? UpdatedAt { get; set; }
 
+    /// <summary>BL-V3, UC-36: loại phòng (phụ thu theo ngày). Null = không phụ thu.</summary>
+    public int? RoomTypeId { get; set; }
+
+    public RoomType? RoomType { get; set; }
+
     public ICollection<Bed> Beds { get; set; } = new List<Bed>();
 }
 

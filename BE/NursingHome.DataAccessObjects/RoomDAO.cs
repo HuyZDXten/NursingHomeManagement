@@ -19,6 +19,7 @@ public sealed class RoomDAO : GenericDAO<Room>
     {
         await using var context = CreateContext();
         return await context.Rooms.AsNoTracking()
+            .Include(room => room.RoomType)
             .Include(room => room.Beds)
             .ThenInclude(bed => bed.Assignments.Where(assignment => assignment.EndedAt == null))
             .ThenInclude(assignment => assignment.Resident)
@@ -30,6 +31,7 @@ public sealed class RoomDAO : GenericDAO<Room>
     {
         await using var context = CreateContext();
         return await context.Rooms.AsNoTracking()
+            .Include(room => room.RoomType)
             .Include(room => room.Beds)
             .ThenInclude(bed => bed.Assignments.Where(assignment => assignment.EndedAt == null))
             .ThenInclude(assignment => assignment.Resident)
@@ -128,6 +130,9 @@ public sealed class RoomDAO : GenericDAO<Room>
         {
             throw new BusinessRuleException("Cư dân phải đang lưu trú và giường mới phải còn trống trong phòng đang sử dụng.");
         }
+
+        // BL-V3, UC-41: giường đang được giữ chỉ xếp cho đúng người đã giữ.
+        await BedReservationGuard.EnsureAssignableAsync(context, bedId, residentId, now);
 
         var previous = await context.BedAssignments.Include(assignment => assignment.Bed)
             .FirstOrDefaultAsync(assignment => assignment.ResidentId == residentId && assignment.EndedAt == null);

@@ -177,6 +177,9 @@ public sealed class ResidentRecordsDAO : GenericDAO<ResidentDocument>
             throw new BusinessRuleException("Giường không trống. Chọn giường khác.");
         }
 
+        // BL-V3, UC-41: giường đang được giữ chỉ xếp cho đúng người đã giữ.
+        await BedReservationGuard.EnsureAssignableAsync(context, bedId, residentId, now);
+
         var package = await context.ServicePackages.FindAsync(packageId);
         if (package is null || !package.IsActive)
         {

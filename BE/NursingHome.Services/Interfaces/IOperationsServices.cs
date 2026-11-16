@@ -116,6 +116,28 @@ public interface IResidentRecordsService
     Task<DepositSummaryDto> RefundDepositAsync(CurrentUser user, int depositId, RefundDepositRequest request);
 }
 
+// ======================= BL-V3: phòng & giường mở rộng =======================
+
+/// <summary>UC-36 loại phòng & phụ thu, UC-41 giữ giường, UC-42 báo hỏng & sửa chữa.</summary>
+public interface IRoomOpsService
+{
+    Task<List<NursingHome.DTOs.Rooms.RoomTypeDto>> ListTypesAsync(bool activeOnly);
+
+    Task<NursingHome.DTOs.Rooms.RoomTypeDto> SaveTypeAsync(int? id, NursingHome.DTOs.Rooms.SaveRoomTypeRequest request);
+
+    Task<List<NursingHome.DTOs.Rooms.BedReservationDto>> ListReservationsAsync(bool activeOnly);
+
+    Task<NursingHome.DTOs.Rooms.BedReservationDto> CreateReservationAsync(CurrentUser user, NursingHome.DTOs.Rooms.CreateBedReservationRequest request);
+
+    Task<NursingHome.DTOs.Rooms.BedReservationDto> ReleaseReservationAsync(CurrentUser user, int id);
+
+    Task<List<NursingHome.DTOs.Rooms.MaintenanceRequestDto>> ListMaintenanceAsync(string? status, int? roomId);
+
+    Task<NursingHome.DTOs.Rooms.MaintenanceRequestDto> CreateMaintenanceAsync(CurrentUser user, NursingHome.DTOs.Rooms.CreateMaintenanceRequest request);
+
+    Task<NursingHome.DTOs.Rooms.MaintenanceRequestDto> UpdateMaintenanceAsync(CurrentUser user, int id, NursingHome.DTOs.Rooms.UpdateMaintenanceRequest request);
+}
+
 // MODULE VẬN HÀNH & TÀI CHÍNH (Viên): khai báo interface service của module ở file này
 // (không thêm vào IServices.cs của phần lõi).
 

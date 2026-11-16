@@ -940,6 +940,78 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Deposits_Held' AND ob
 CREATE UNIQUE INDEX UX_Deposits_Held ON dbo.Deposits (ResidentId) WHERE RefundedAt IS NULL;
 GO
 
+/* ---- 9.9 Phòng & giường mở rộng (BL-V3: UC-36 loại phòng & phụ thu, UC-41 giữ giường, UC-42 báo hỏng & sửa chữa) ----
+   Rooms.RoomTypeId thêm bằng ALTER có kiểm tra (bảng lõi mục 3 tạo trước RoomTypes) → chạy được cho cả DB mới và DB đang có dữ liệu. */
+IF OBJECT_ID(N'dbo.RoomTypes', N'U') IS NULL
+CREATE TABLE dbo.RoomTypes (
+    Id             INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_RoomTypes PRIMARY KEY,
+    Name           NVARCHAR(100) NOT NULL CONSTRAINT UQ_RoomTypes_Name UNIQUE,
+    DailySurcharge DECIMAL(18,0) NOT NULL CONSTRAINT DF_RoomTypes_Surcharge DEFAULT (0),
+    Description    NVARCHAR(300) NULL,
+    IsActive       BIT           NOT NULL CONSTRAINT DF_RoomTypes_IsActive DEFAULT (1),
+    CreatedAt      DATETIME2     NOT NULL CONSTRAINT DF_RoomTypes_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt      DATETIME2     NULL,
+    CONSTRAINT CK_RoomTypes_Surcharge CHECK (DailySurcharge >= 0)
+);
+GO
+
+IF COL_LENGTH(N'dbo.Rooms', N'RoomTypeId') IS NULL
+    ALTER TABLE dbo.Rooms ADD RoomTypeId INT NULL CONSTRAINT FK_Rooms_RoomTypes REFERENCES dbo.RoomTypes (Id);
+GO
+
+-- Giữ giường cho khách sắp nhập viện. Status: Active (đang giữ) | Converted (đã xếp đúng người) | Released (hủy/hết hạn).
+-- Active quá ExpiresAt được coi là hết hạn ngay khi đọc; lần xếp/giữ kế tiếp tự chuyển thành Released.
+IF OBJECT_ID(N'dbo.BedReservations', N'U') IS NULL
+CREATE TABLE dbo.BedReservations (
+    Id           INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_BedReservations PRIMARY KEY,
+    BedId        INT           NOT NULL CONSTRAINT FK_BedReservations_Beds REFERENCES dbo.Beds (Id),
+    InquiryId    INT           NULL CONSTRAINT FK_BedReservations_Inquiries REFERENCES dbo.Inquiries (Id),
+    HolderName   NVARCHAR(150) NOT NULL,
+    Phone        NVARCHAR(30)  NULL,
+    Note         NVARCHAR(500) NULL,
+    Status       NVARCHAR(20)  NOT NULL CONSTRAINT DF_BedReservations_Status DEFAULT (N'Active'),
+    ReservedById INT           NOT NULL CONSTRAINT FK_BedReservations_Reserver REFERENCES dbo.Accounts (Id),
+    ReservedAt   DATETIME2     NOT NULL CONSTRAINT DF_BedReservations_ReservedAt DEFAULT (SYSUTCDATETIME()),
+    ExpiresAt    DATETIME2     NOT NULL,
+    ClosedAt     DATETIME2     NULL,
+    ClosedById   INT           NULL CONSTRAINT FK_BedReservations_Closer REFERENCES dbo.Accounts (Id),
+    ResidentId   INT           NULL CONSTRAINT FK_BedReservations_Residents REFERENCES dbo.Residents (Id),
+    CONSTRAINT CK_BedReservations_Status CHECK (Status IN (N'Active', N'Converted', N'Released')),
+    CONSTRAINT CK_BedReservations_Expiry CHECK (ExpiresAt > ReservedAt)
+);
+GO
+
+-- Mỗi giường tối đa một lượt giữ đang Active.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_BedReservations_ActiveBed' AND object_id = OBJECT_ID(N'dbo.BedReservations'))
+CREATE UNIQUE INDEX UX_BedReservations_ActiveBed ON dbo.BedReservations (BedId) WHERE Status = N'Active';
+GO
+
+IF OBJECT_ID(N'dbo.MaintenanceRequests', N'U') IS NULL
+CREATE TABLE dbo.MaintenanceRequests (
+    Id             INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_MaintenanceRequests PRIMARY KEY,
+    RoomId         INT            NOT NULL CONSTRAINT FK_MaintenanceRequests_Rooms REFERENCES dbo.Rooms (Id),
+    BedId          INT            NULL CONSTRAINT FK_MaintenanceRequests_Beds REFERENCES dbo.Beds (Id),
+    Title          NVARCHAR(200)  NOT NULL,
+    Description    NVARCHAR(1000) NULL,
+    Priority       NVARCHAR(20)   NOT NULL CONSTRAINT DF_MaintenanceRequests_Priority DEFAULT (N'Normal'),
+    Status         NVARCHAR(20)   NOT NULL CONSTRAINT DF_MaintenanceRequests_Status DEFAULT (N'Open'),
+    BlocksBed      BIT            NOT NULL CONSTRAINT DF_MaintenanceRequests_BlocksBed DEFAULT (0),
+    ReportedById   INT            NOT NULL CONSTRAINT FK_MaintenanceRequests_Reporter REFERENCES dbo.Accounts (Id),
+    ReportedAt     DATETIME2      NOT NULL CONSTRAINT DF_MaintenanceRequests_ReportedAt DEFAULT (SYSUTCDATETIME()),
+    AssignedTo     NVARCHAR(150)  NULL,
+    ResolvedAt     DATETIME2      NULL,
+    ResolvedById   INT            NULL CONSTRAINT FK_MaintenanceRequests_Resolver REFERENCES dbo.Accounts (Id),
+    ResolutionNote NVARCHAR(500)  NULL,
+    CONSTRAINT CK_MaintenanceRequests_Priority CHECK (Priority IN (N'Low', N'Normal', N'High')),
+    CONSTRAINT CK_MaintenanceRequests_Status CHECK (Status IN (N'Open', N'InProgress', N'Done', N'Cancelled')),
+    CONSTRAINT CK_MaintenanceRequests_BlocksBed CHECK (BlocksBed = 0 OR BedId IS NOT NULL)
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_MaintenanceRequests_Status' AND object_id = OBJECT_ID(N'dbo.MaintenanceRequests'))
+CREATE INDEX IX_MaintenanceRequests_Status ON dbo.MaintenanceRequests (Status, ReportedAt DESC);
+GO
+
 /* ---- 9. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 
@@ -1217,6 +1289,17 @@ BEGIN
         + N'Tài liệu nội bộ, chatbot công khai không dùng.',
         N'té ngã, sự cố, nội bộ', 0, 1);
     SET IDENTITY_INSERT dbo.AiKnowledgeDocs OFF;
+END;
+
+-- BL-V3 (UC-36): loại phòng + phụ thu theo ngày (cộng vào hóa đơn tháng theo số ngày ở phòng đó).
+IF NOT EXISTS (SELECT 1 FROM dbo.RoomTypes WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.RoomTypes ON;
+    INSERT INTO dbo.RoomTypes (Id, Name, DailySurcharge, Description) VALUES
+    (1, N'Tiêu chuẩn', 0, N'Phòng 2–3 giường, giá đã gồm trong gói dịch vụ.'),
+    (2, N'Phòng đôi tiện nghi', 50000, N'Phòng 2 giường, có ban công và tủ lạnh riêng.'),
+    (3, N'Phòng đơn VIP', 150000, N'Phòng riêng, nhà vệ sinh riêng, tivi, người nhà ở lại được.');
+    SET IDENTITY_INSERT dbo.RoomTypes OFF;
 END;
 
 COMMIT TRANSACTION;
@@ -1641,6 +1724,32 @@ BEGIN
     UNION ALL
     SELECT 2, 5, 8000000, N'BankTransfer', N'CK-COC-0005', r.AdmittedAt, 3 FROM dbo.Residents AS r WHERE r.Id = 5;
     SET IDENTITY_INSERT dbo.Deposits OFF;
+END;
+
+/* ---- 10.9 Phòng & giường mở rộng (BL-V3) ----
+   Mọi phòng chưa có loại = Tiêu chuẩn (không phụ thu, hóa đơn cũ không đổi). Phòng 202 (đang trống) = Phòng đơn VIP.
+   Giữ giường 202-B cho yêu cầu tư vấn số 3 (đã tham quan) 5 ngày. Một phiếu báo hỏng đang mở ở phòng 101. */
+UPDATE dbo.Rooms SET RoomTypeId = 1 WHERE RoomTypeId IS NULL AND Number <> N'202';
+UPDATE dbo.Rooms SET RoomTypeId = 3 WHERE RoomTypeId IS NULL AND Number = N'202';
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BedReservations WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.BedReservations ON;
+    INSERT INTO dbo.BedReservations (Id, BedId, InquiryId, HolderName, Phone, Note, Status, ReservedById, ReservedAt, ExpiresAt)
+    SELECT 1, b.Id, i.Id, i.FullName, i.Phone, N'Gia đình hẹn làm thủ tục nhập viện cuối tuần.', N'Active', 2, @NowUtc, DATEADD(DAY, 5, @NowUtc)
+    FROM dbo.Beds AS b JOIN dbo.Rooms AS r ON r.Id = b.RoomId
+    CROSS JOIN (SELECT Id, FullName, Phone FROM dbo.Inquiries WHERE Id = 3) AS i
+    WHERE r.Number = N'202' AND b.Number = N'B' AND b.Status = N'Available';
+    SET IDENTITY_INSERT dbo.BedReservations OFF;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.MaintenanceRequests WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.MaintenanceRequests ON;
+    INSERT INTO dbo.MaintenanceRequests (Id, RoomId, Title, Description, Priority, Status, ReportedById, ReportedAt)
+    SELECT 1, r.Id, N'Bóng đèn nhà vệ sinh chập chờn', N'Ban đêm cư dân đi vệ sinh dễ té ngã, cần thay sớm.', N'Normal', N'Open', 6, DATEADD(HOUR, -3, @NowUtc)
+    FROM dbo.Rooms AS r WHERE r.Number = N'101';
+    SET IDENTITY_INSERT dbo.MaintenanceRequests OFF;
 END;
 
 /* ---- 10. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
