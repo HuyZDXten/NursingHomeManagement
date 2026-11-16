@@ -57,4 +57,49 @@ export const OPERATIONS_STATUS: Record<string, Record<string, StatusMeta>> = {
     Overdue: { label: 'Quá hạn', color: 'orange' },
     Overdue7: { label: 'Quá hạn ≥ 7 ngày', color: 'red' },
   },
+  // BL-V1 mã mời tài khoản gia đình
+  invitation: {
+    Pending: { label: 'Đang chờ', color: 'processing' },
+    Used: { label: 'Đã kích hoạt', color: 'success' },
+    Expired: { label: 'Hết hạn', color: 'default' },
+    Revoked: { label: 'Đã thu hồi', color: 'error' },
+  },
+  // BL-V2 hồ sơ lưu trú
+  documentKind: {
+    IdCard: { label: 'CCCD/CMND', color: 'blue' },
+    Insurance: { label: 'Thẻ BHYT', color: 'cyan' },
+    Medical: { label: 'Giấy tờ y tế', color: 'purple' },
+    Other: { label: 'Khác', color: 'default' },
+  },
+  contract: {
+    Active: { label: 'Đang hiệu lực', color: 'success' },
+    Ended: { label: 'Đã kết thúc', color: 'default' },
+  },
+  leaveKind: {
+    Home: { label: 'Về nhà', color: 'blue' },
+    Hospital: { label: 'Nằm viện', color: 'volcano' },
+    Other: { label: 'Khác', color: 'default' },
+  },
+  depositMethod: {
+    Cash: { label: 'Tiền mặt', color: 'gold' },
+    BankTransfer: { label: 'Chuyển khoản', color: 'geekblue' },
+  },
+  // BL-V3 phòng & giường mở rộng
+  reservation: {
+    Active: { label: 'Đang giữ', color: 'purple' },
+    Expired: { label: 'Hết hạn', color: 'default' },
+    Converted: { label: 'Đã nhập viện', color: 'success' },
+    Released: { label: 'Đã hủy', color: 'default' },
+  },
+  maintenance: {
+    Open: { label: 'Mới báo', color: 'orange' },
+    InProgress: { label: 'Đang sửa', color: 'processing' },
+    Done: { label: 'Đã xong', color: 'success' },
+    Cancelled: { label: 'Đã hủy', color: 'default' },
+  },
+  priority: {
+    Low: { label: 'Thấp', color: 'default' },
+    Normal: { label: 'Bình thường', color: 'blue' },
+    High: { label: 'Khẩn', color: 'red' },
+  },
 };

@@ -55,5 +55,22 @@ public static partial class ServiceCollectionExtensions
         // S4-V2 AI tóm tắt bàn giao ca (AI-04) + hỏi đáp báo cáo (AI-12)
         services.AddScoped<IHandoverAiService, HandoverAiService>();
         services.AddScoped<IReportAssistantService, ReportAssistantService>();
+
+        // BL-V1 ảnh (UC-07, UC-24), đăng nhập Google (UC-02), mã mời gia đình (UC-08).
+        // IImageStorage chọn ở API (AddImageStorage): Cloudinary khi đủ 3 khóa, không thì wwwroot/uploads.
+        services.Configure<CloudinaryOptions>(configuration.GetSection(CloudinaryOptions.SectionName));
+        services.Configure<GoogleOptions>(configuration.GetSection(GoogleOptions.SectionName));
+        services.AddSingleton<IGoogleTokenValidator, GoogleTokenValidator>();
+        services.AddScoped<IMediaService, MediaService>();
+        services.AddScoped<IFamilyInvitationRepository, FamilyInvitationRepository>();
+        services.AddScoped<IFamilyInvitationService, FamilyInvitationService>();
+
+        // BL-V2 hồ sơ lưu trú: giấy tờ, hợp đồng, tạm vắng, tái nhập viện, tiền cọc (IDocumentStorage cài ở API).
+        services.AddScoped<IResidentRecordsRepository, ResidentRecordsRepository>();
+        services.AddScoped<IResidentRecordsService, ResidentRecordsService>();
+
+        // BL-V3 loại phòng & phụ thu (BillingService, RoomService dùng IRoomOpsRepository), giữ giường, báo hỏng.
+        services.AddScoped<IRoomOpsRepository, RoomOpsRepository>();
+        services.AddScoped<IRoomOpsService, RoomOpsService>();
     }
 }

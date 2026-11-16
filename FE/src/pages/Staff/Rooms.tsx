@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { App, Button, Card, Checkbox, Col, Empty, Form, Input, InputNumber, Modal, Popconfirm, Row, Space, Switch, Tag, Typography } from 'antd';
+import { App, Button, Card, Checkbox, Col, Empty, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Switch, Tag, Tooltip, Typography } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { extractErrorMessage } from '../../api/client';
+import { roomOpsApi } from '../../api/roomOps';
 import { roomsApi, type RoomForm } from '../../api/rooms';
 import { useAuth } from '../../auth/AuthContext';
 import { FRONT_DESK, hasRole } from '../../auth/roles';
 import { PageTitle, StatusTag } from '../../components/Common';
+import { dateTime, money } from '../../utils/format';
 import type { Bed, Room } from '../../types';
+import type { RoomType } from '../../types/operations';
 
 /** UC-34, UC-35, UC-40: sơ đồ phòng/giường theo tầng + quản lý phòng, giường. */
 export default function Rooms() {
@@ -20,9 +23,12 @@ export default function Rooms() {
   const [roomForm] = Form.useForm<RoomForm>();
   const [bedForm] = Form.useForm<{ number: string; maintenance: boolean }>();
 
+  const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
+
   const load = useCallback(() => roomsApi.list().then(setRooms).catch((e) => message.error(extractErrorMessage(e))), [message]);
   useEffect(() => {
     void load();
+    roomOpsApi.roomTypes(true).then(setRoomTypes).catch(() => undefined); // BL-V3: chọn loại phòng trong form
   }, [load]);
 
   const run = async (action: () => Promise<unknown>) => {
@@ -59,7 +65,10 @@ export default function Rooms() {
               <Col xs={24} md={12} xl={8} key={room.id}>
                 <Card
                   size="small"
-                  title={<>Phòng {room.number} {!room.isActive && <Tag>Ngừng sử dụng</Tag>}</>}
+                  title={<>
+                    Phòng {room.number} {!room.isActive && <Tag>Ngừng sử dụng</Tag>}
+                    {room.roomTypeName && <Tag color={room.dailySurcharge > 0 ? 'gold' : 'default'}>{room.roomTypeName}{room.dailySurcharge > 0 && ` +${money(room.dailySurcharge)}/ngày`}</Tag>}
+                  </>}
                   extra={canEdit && (
                     <Space size={4}>
                       <Button size="small" icon={<PlusOutlined />} onClick={() => { bedForm.resetFields(); bedForm.setFieldsValue({ maintenance: false }); setBedEditing({ room }); }}>Giường</Button>
@@ -84,6 +93,9 @@ export default function Rooms() {
                           {bed.residentId
                             ? <Link to={`/staff/residents/${bed.residentId}`}>{bed.residentCode} · {bed.residentName}</Link>
                             : <StatusTag kind="bed" value={bed.status} />}
+                          {!bed.residentId && bed.reservedFor && (
+                            <Tooltip title={`Giữ đến ${dateTime(bed.reservedUntil)}`}><Tag color="purple">Đang giữ: {bed.reservedFor}</Tag></Tooltip>
+                          )}
                         </div>
                       </Col>
                     ))}
@@ -111,6 +123,10 @@ export default function Rooms() {
           <Form.Item name="number" label="Số phòng" rules={[{ required: true, max: 30 }]}><Input /></Form.Item>
           <Form.Item name="floor" label="Tầng"><InputNumber min={-5} max={200} /></Form.Item>
           <Form.Item name="description" label="Mô tả"><Input /></Form.Item>
+          <Form.Item name="roomTypeId" label="Loại phòng (phụ thu/ngày cộng vào hóa đơn)">
+            <Select allowClear placeholder="Không phụ thu"
+              options={roomTypes.map((t) => ({ value: t.id, label: `${t.name}${t.dailySurcharge > 0 ? ` — +${money(t.dailySurcharge)}/ngày` : ''}` }))} />
+          </Form.Item>
           <Form.Item name="isActive" label="Đang sử dụng" valuePropName="checked"><Switch /></Form.Item>
         </Form>
       </Modal>

@@ -1,12 +1,142 @@
 using NursingHome.BusinessObjects.Entities;
+using NursingHome.DTOs.Accounts;
 using NursingHome.DTOs.Admissions;
+using NursingHome.DTOs.Auth;
 using NursingHome.DTOs.Billing;
 using NursingHome.DTOs.Chat;
 using NursingHome.DTOs.Common;
 using NursingHome.DTOs.Reports;
+using NursingHome.DTOs.Residents;
 using NursingHome.DTOs.Staffing;
 
 namespace NursingHome.Services.Interfaces;
+
+// ======================= BL-V1: ảnh, đăng nhập Google, mã mời gia đình =======================
+
+/// <summary>
+/// Nơi lưu ảnh: Cloudinary (đủ 3 khóa) hoặc thư mục wwwroot/uploads của API (cài ở API, vì cần môi trường web).
+/// Trả URL tuyệt đối (Cloudinary) hoặc đường dẫn "/uploads/..." (FE ghép địa chỉ API).
+/// </summary>
+public interface IImageStorage
+{
+    Task<string> SaveAsync(Stream content, string extension, string folder, CancellationToken cancellationToken = default);
+}
+
+/// <param name="EmailVerified">Google chỉ bảo đảm email khi cờ này = true.</param>
+public sealed record GoogleIdentity(string Subject, string Email, bool EmailVerified, string? Name);
+
+public interface IGoogleTokenValidator
+{
+    /// <summary>Kiểm chữ ký, hạn, issuer và audience = Client ID của mình. Sai → 401; chưa cấu hình → 503.</summary>
+    Task<GoogleIdentity> ValidateAsync(string idToken);
+}
+
+/// <summary>UC-07 ảnh đại diện, UC-24 ảnh chân dung cư dân, ảnh dùng chung (Huy dùng cho UC-60).</summary>
+public interface IMediaService
+{
+    Task<UploadedImageDto> UploadImageAsync(Stream content, string? fileName, long length, string folder);
+
+    Task<ProfileDto> SetMyAvatarAsync(CurrentUser user, Stream content, string? fileName, long length);
+
+    Task<ProfileDto> RemoveMyAvatarAsync(CurrentUser user);
+
+    Task<ResidentDetailDto> SetResidentPhotoAsync(CurrentUser user, int residentId, Stream content, string? fileName, long length);
+
+    Task<ResidentDetailDto> RemoveResidentPhotoAsync(CurrentUser user, int residentId);
+}
+
+/// <summary>UC-08: lễ tân mời người thân; người thân tự đặt mật khẩu qua /kich-hoat?code=.</summary>
+public interface IFamilyInvitationService
+{
+    Task<FamilyInvitationCreatedDto> CreateAsync(CurrentUser user, CreateFamilyInvitationRequest request);
+
+    Task<List<FamilyInvitationDto>> ListAsync(int? residentId);
+
+    Task<FamilyInvitationDto> RevokeAsync(int id);
+
+    Task<InvitationLookupDto> LookupAsync(string code);
+
+    /// <summary>Tạo tài khoản Family + liên kết cư dân, rồi đăng nhập luôn.</summary>
+    Task<LoginResponse> AcceptAsync(AcceptInvitationRequest request);
+}
+
+// ======================= BL-V2: hồ sơ lưu trú =======================
+
+/// <summary>File giấy tờ/hợp đồng: lưu RIÊNG TƯ (không phục vụ tĩnh), chỉ đọc qua endpoint có kiểm quyền. Cài ở API.</summary>
+public interface IDocumentStorage
+{
+    /// <summary>Trả tên lưu (GUID + đuôi).</summary>
+    Task<string> SaveAsync(Stream content, string extension, CancellationToken cancellationToken = default);
+
+    Stream OpenRead(string storedName);
+
+    void Delete(string storedName);
+}
+
+/// <summary>Nội dung file trả về cho controller (FileStreamResult).</summary>
+public sealed record StoredFile(Stream Content, string ContentType, string FileName);
+
+/// <summary>UC-29 giấy tờ, UC-30 hợp đồng, UC-31 tạm vắng, UC-33 tái nhập viện, UC-99 tiền cọc.</summary>
+public interface IResidentRecordsService
+{
+    Task<List<ResidentDocumentDto>> ListDocumentsAsync(int residentId);
+
+    Task<ResidentDocumentDto> UploadDocumentAsync(CurrentUser user, int residentId, UploadDocumentRequest request, Stream content, string? fileName, long length);
+
+    Task<StoredFile> OpenDocumentAsync(int residentId, int documentId);
+
+    Task DeleteDocumentAsync(int residentId, int documentId);
+
+    /// <summary>Kiểm phần Billing của cư dân: lễ tân, kế toán, Admin, gia đình có quyền xem hóa đơn.</summary>
+    Task<List<ResidentContractDto>> ListContractsAsync(CurrentUser user, int residentId);
+
+    Task<ResidentContractDto> CreateContractAsync(CurrentUser user, int residentId, CreateContractRequest request, Stream? content, string? fileName, long length);
+
+    Task<ResidentContractDto> EndContractAsync(int residentId, int contractId, EndContractRequest request);
+
+    Task<StoredFile> OpenContractFileAsync(CurrentUser user, int residentId, int contractId);
+
+    Task<List<ResidentLeaveDto>> ListLeavesAsync(CurrentUser user, int residentId);
+
+    /// <summary>Cư dân đang tạm vắng (lọc theo cư dân người xem được).</summary>
+    Task<List<ResidentLeaveDto>> OpenLeavesAsync(CurrentUser user);
+
+    Task<ResidentLeaveDto> StartLeaveAsync(CurrentUser user, int residentId, StartLeaveRequest request);
+
+    Task<ResidentLeaveDto> ReturnFromLeaveAsync(CurrentUser user, int residentId, int leaveId, ReturnLeaveRequest request);
+
+    Task<List<ResidentStayDto>> ListStaysAsync(int residentId);
+
+    Task<ResidentDetailDto> ReadmitAsync(CurrentUser user, int residentId, ReadmitRequest request);
+
+    Task<DepositSummaryDto> DepositsAsync(int residentId);
+
+    Task<DepositSummaryDto> CreateDepositAsync(CurrentUser user, int residentId, CreateDepositRequest request);
+
+    Task<DepositSummaryDto> RefundDepositAsync(CurrentUser user, int depositId, RefundDepositRequest request);
+}
+
+// ======================= BL-V3: phòng & giường mở rộng =======================
+
+/// <summary>UC-36 loại phòng & phụ thu, UC-41 giữ giường, UC-42 báo hỏng & sửa chữa.</summary>
+public interface IRoomOpsService
+{
+    Task<List<NursingHome.DTOs.Rooms.RoomTypeDto>> ListTypesAsync(bool activeOnly);
+
+    Task<NursingHome.DTOs.Rooms.RoomTypeDto> SaveTypeAsync(int? id, NursingHome.DTOs.Rooms.SaveRoomTypeRequest request);
+
+    Task<List<NursingHome.DTOs.Rooms.BedReservationDto>> ListReservationsAsync(bool activeOnly);
+
+    Task<NursingHome.DTOs.Rooms.BedReservationDto> CreateReservationAsync(CurrentUser user, NursingHome.DTOs.Rooms.CreateBedReservationRequest request);
+
+    Task<NursingHome.DTOs.Rooms.BedReservationDto> ReleaseReservationAsync(CurrentUser user, int id);
+
+    Task<List<NursingHome.DTOs.Rooms.MaintenanceRequestDto>> ListMaintenanceAsync(string? status, int? roomId);
+
+    Task<NursingHome.DTOs.Rooms.MaintenanceRequestDto> CreateMaintenanceAsync(CurrentUser user, NursingHome.DTOs.Rooms.CreateMaintenanceRequest request);
+
+    Task<NursingHome.DTOs.Rooms.MaintenanceRequestDto> UpdateMaintenanceAsync(CurrentUser user, int id, NursingHome.DTOs.Rooms.UpdateMaintenanceRequest request);
+}
 
 // MODULE VẬN HÀNH & TÀI CHÍNH (Viên): khai báo interface service của module ở file này
 // (không thêm vào IServices.cs của phần lõi).

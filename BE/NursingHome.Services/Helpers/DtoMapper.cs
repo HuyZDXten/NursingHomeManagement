@@ -105,6 +105,9 @@ public static class DtoMapper
         Floor = room.Floor,
         Description = room.Description,
         IsActive = room.IsActive,
+        RoomTypeId = room.RoomTypeId,
+        RoomTypeName = room.RoomType?.Name,
+        DailySurcharge = room.RoomType?.DailySurcharge ?? 0,
         Beds = room.Beds.OrderBy(bed => bed.Number).Select(ToDto).ToList()
     };
 

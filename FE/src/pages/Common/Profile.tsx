@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { App, Button, Card, Col, Descriptions, Form, Input, Row } from 'antd';
 import type { Rule } from 'antd/es/form';
 import { authApi } from '../../api/auth';
 import { extractErrorMessage } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
+import { PhotoPicker } from '../../components/PhotoPicker';
 import { ROLE_LABEL } from '../../utils/status';
 
 // Khớp PasswordRules.Pattern ở API.
@@ -20,9 +21,13 @@ export default function Profile() {
   const { user, applySession } = useAuth();
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>();
 
   useEffect(() => {
-    authApi.me().then((p) => profileForm.setFieldsValue(p)).catch(() => undefined);
+    authApi.me().then((p) => {
+      profileForm.setFieldsValue(p);
+      setAvatarUrl(p.avatarUrl);
+    }).catch(() => undefined);
   }, [profileForm]);
 
   const saveProfile = async (values: { fullName: string; phone?: string }) => {
@@ -48,6 +53,14 @@ export default function Profile() {
     <Row gutter={[16, 16]}>
       <Col xs={24} lg={12}>
         <Card title="Hồ sơ cá nhân">
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <PhotoPicker
+              alt={user?.name ?? 'Ảnh đại diện'}
+              url={avatarUrl}
+              onUpload={async (file) => setAvatarUrl((await authApi.uploadAvatar(file)).avatarUrl)}
+              onRemove={async () => setAvatarUrl((await authApi.removeAvatar()).avatarUrl)}
+            />
+          </div>
           <Descriptions column={1} size="small" style={{ marginBottom: 16 }}>
             <Descriptions.Item label="Email">{user?.email}</Descriptions.Item>
             <Descriptions.Item label="Vai trò">{user ? ROLE_LABEL[user.role] : ''}</Descriptions.Item>

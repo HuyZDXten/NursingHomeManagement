@@ -36,6 +36,9 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
                 ForbiddenException => (HttpStatusCode.Forbidden, ex.Message),
                 TooManyRequestsException => (HttpStatusCode.TooManyRequests, ex.Message),
                 ServiceUnavailableException => (HttpStatusCode.ServiceUnavailable, ex.Message),
+                // Upload vượt RequestSizeLimit (413) hoặc form multipart hỏng (400) — trước đây rơi xuống 500.
+                Microsoft.AspNetCore.Http.BadHttpRequestException bad => ((HttpStatusCode)bad.StatusCode,
+                    bad.StatusCode == StatusCodes.Status413PayloadTooLarge ? "Tệp tải lên quá lớn." : "Yêu cầu không hợp lệ."),
                 DbUpdateConcurrencyException => (HttpStatusCode.Conflict, "Dữ liệu vừa được người khác cập nhật. Vui lòng tải lại và thử lại."),
                 DbUpdateException { InnerException: SqlException sql } => MapSql(sql),
                 SqlException sql => MapSql(sql),

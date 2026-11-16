@@ -9,12 +9,29 @@ using NursingHome.Services.Interfaces;
 namespace NursingHome.Services.Implementations;
 
 /// <summary>UC-34..UC-40: phòng, giường, phân/chuyển/trả giường, lịch sử, sơ đồ phòng.</summary>
-public class RoomService(IRoomRepository rooms, FacilityClock clock) : IRoomService
+public class RoomService(IRoomRepository rooms, IRoomOpsRepository roomOps, FacilityClock clock) : IRoomService
 {
-    public async Task<List<RoomDto>> ListAsync() => (await rooms.ListAsync()).Select(room => room.ToDto()).ToList();
+    public async Task<List<RoomDto>> ListAsync() =>
+        await WithReservationsAsync((await rooms.ListAsync()).Select(room => room.ToDto()).ToList());
 
     public async Task<RoomDto> GetAsync(int id) =>
-        (await rooms.GetDetailAsync(id) ?? throw new NotFoundException("Không tìm thấy phòng.")).ToDto();
+        (await WithReservationsAsync([(await rooms.GetDetailAsync(id) ?? throw new NotFoundException("Không tìm thấy phòng.")).ToDto()]))[0];
+
+    /// <summary>BL-V3, UC-41: gắn "đang giữ cho ai, đến khi nào" vào giường có lượt giữ còn hạn.</summary>
+    private async Task<List<RoomDto>> WithReservationsAsync(List<RoomDto> list)
+    {
+        var active = (await roomOps.ListReservationsAsync(activeOnly: true, clock.UtcNow)).ToDictionary(item => item.BedId);
+        foreach (var bed in list.SelectMany(room => room.Beds))
+        {
+            if (active.TryGetValue(bed.Id, out var reservation))
+            {
+                bed.ReservedFor = reservation.HolderName;
+                bed.ReservedUntil = reservation.ExpiresAt;
+            }
+        }
+
+        return list;
+    }
 
     public async Task<RoomDto> SaveAsync(int? id, SaveRoomRequest request)
     {
@@ -22,6 +39,11 @@ public class RoomService(IRoomRepository rooms, FacilityClock clock) : IRoomServ
         if (await rooms.NumberExistsAsync(number, id))
         {
             throw new ConflictException("Số phòng đã tồn tại.");
+        }
+
+        if (request.RoomTypeId is { } typeId && await roomOps.GetTypeAsync(typeId) is not { IsActive: true })
+        {
+            throw new BusinessRuleException("Loại phòng không tồn tại hoặc đã ngừng dùng.");
         }
 
         if (id.HasValue)
@@ -36,6 +58,7 @@ public class RoomService(IRoomRepository rooms, FacilityClock clock) : IRoomServ
             room.Floor = request.Floor;
             room.Description = request.Description?.Trim();
             room.IsActive = request.IsActive;
+            room.RoomTypeId = request.RoomTypeId;
             room.UpdatedAt = clock.UtcNow;
             await rooms.UpdateAsync(room);
             return await GetAsync(id.Value);
@@ -47,6 +70,7 @@ public class RoomService(IRoomRepository rooms, FacilityClock clock) : IRoomServ
             Floor = request.Floor,
             Description = request.Description?.Trim(),
             IsActive = request.IsActive,
+            RoomTypeId = request.RoomTypeId,
             CreatedAt = clock.UtcNow
         });
         return await GetAsync(created.Id);

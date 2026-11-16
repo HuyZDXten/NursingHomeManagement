@@ -47,10 +47,41 @@ public partial class NursingHomeContext
 
     public DbSet<AiKnowledgeDoc> AiKnowledgeDocs => Set<AiKnowledgeDoc>();
 
+    // BL-V1 mã mời tài khoản gia đình
+    public DbSet<FamilyInvitation> FamilyInvitations => Set<FamilyInvitation>();
+
+    // BL-V2 hồ sơ lưu trú
+    public DbSet<ResidentDocument> ResidentDocuments => Set<ResidentDocument>();
+
+    public DbSet<ResidentContract> ResidentContracts => Set<ResidentContract>();
+
+    public DbSet<ResidentLeave> ResidentLeaves => Set<ResidentLeave>();
+
+    public DbSet<ResidentStay> ResidentStays => Set<ResidentStay>();
+
+    public DbSet<Deposit> Deposits => Set<Deposit>();
+
+    // BL-V3 phòng & giường mở rộng
+    public DbSet<RoomType> RoomTypes => Set<RoomType>();
+
+    public DbSet<BedReservation> BedReservations => Set<BedReservation>();
+
+    public DbSet<MaintenanceRequest> MaintenanceRequests => Set<MaintenanceRequest>();
+
     partial void ConfigureOperations(ModelBuilder modelBuilder)
     {
         ConfigureStaffing(modelBuilder);
         ConfigureBillingExtras(modelBuilder);
+        ConfigureResidentRecords(modelBuilder);
+        ConfigureRoomOps(modelBuilder);
+        modelBuilder.Entity<FamilyInvitation>(entity =>
+        {
+            entity.ToTable("FamilyInvitations");
+            entity.Property(e => e.CodeHash).IsFixedLength().HasMaxLength(64).IsUnicode(false);
+            entity.HasOne(e => e.Resident).WithMany().HasForeignKey(e => e.ResidentId);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById);
+            entity.HasOne(e => e.Account).WithMany().HasForeignKey(e => e.AccountId);
+        });
         modelBuilder.Entity<AiConversation>().ToTable("AiConversations");
         modelBuilder.Entity<AiMessageRecord>().ToTable("AiMessages");
         modelBuilder.Entity<AiKnowledgeDoc>().ToTable("AiKnowledgeDocs");
@@ -83,6 +114,69 @@ public partial class NursingHomeContext
             entity.Property(e => e.TimeSlot).HasConversion<string>();
             entity.Property(e => e.Status).HasConversion<string>();
             entity.HasOne(e => e.ConfirmedBy).WithMany().HasForeignKey(e => e.ConfirmedById);
+        });
+    }
+
+    private static void ConfigureRoomOps(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<RoomType>(entity =>
+        {
+            entity.ToTable("RoomTypes");
+            entity.Property(e => e.DailySurcharge).HasPrecision(18, 0);
+        });
+        // Bảng lõi Rooms: cột RoomTypeId thêm ở schema mục 9.9.
+        modelBuilder.Entity<Room>().HasOne(e => e.RoomType).WithMany().HasForeignKey(e => e.RoomTypeId);
+        modelBuilder.Entity<BedReservation>(entity =>
+        {
+            entity.ToTable("BedReservations");
+            entity.Property(e => e.Status).HasConversion<string>();
+            entity.HasOne(e => e.Bed).WithMany().HasForeignKey(e => e.BedId);
+            entity.HasOne(e => e.Inquiry).WithMany().HasForeignKey(e => e.InquiryId);
+            entity.HasOne(e => e.ReservedBy).WithMany().HasForeignKey(e => e.ReservedById);
+        });
+        modelBuilder.Entity<MaintenanceRequest>(entity =>
+        {
+            entity.ToTable("MaintenanceRequests");
+            entity.Property(e => e.Priority).HasConversion<string>();
+            entity.Property(e => e.Status).HasConversion<string>();
+            entity.HasOne(e => e.Room).WithMany().HasForeignKey(e => e.RoomId);
+            entity.HasOne(e => e.Bed).WithMany().HasForeignKey(e => e.BedId);
+            entity.HasOne(e => e.ReportedBy).WithMany().HasForeignKey(e => e.ReportedById);
+        });
+    }
+
+    private static void ConfigureResidentRecords(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ResidentDocument>(entity =>
+        {
+            entity.ToTable("ResidentDocuments");
+            entity.Property(e => e.Kind).HasConversion<string>();
+            entity.HasOne(e => e.UploadedBy).WithMany().HasForeignKey(e => e.UploadedById);
+        });
+        modelBuilder.Entity<ResidentContract>(entity =>
+        {
+            entity.ToTable("ResidentContracts");
+            entity.Property(e => e.Status).HasConversion<string>();
+            entity.Property(e => e.MonthlyPrice).HasPrecision(18, 0);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById);
+        });
+        modelBuilder.Entity<ResidentLeave>(entity =>
+        {
+            entity.ToTable("ResidentLeaves");
+            entity.Property(e => e.Kind).HasConversion<string>();
+            entity.HasOne(e => e.Resident).WithMany().HasForeignKey(e => e.ResidentId);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById);
+        });
+        modelBuilder.Entity<ResidentStay>().ToTable("ResidentStays");
+        modelBuilder.Entity<Deposit>(entity =>
+        {
+            entity.ToTable("Deposits");
+            entity.Property(e => e.Method).HasConversion<string>();
+            entity.Property(e => e.Amount).HasPrecision(18, 0);
+            entity.Property(e => e.RefundAmount).HasPrecision(18, 0);
+            entity.HasOne(e => e.Resident).WithMany().HasForeignKey(e => e.ResidentId);
+            entity.HasOne(e => e.ReceivedBy).WithMany().HasForeignKey(e => e.ReceivedById);
+            entity.HasOne(e => e.RefundedBy).WithMany().HasForeignKey(e => e.RefundedById);
         });
     }
 

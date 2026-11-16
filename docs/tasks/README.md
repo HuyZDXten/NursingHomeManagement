@@ -49,6 +49,9 @@ Task S3-V1 → S4-V2 của Viên đã merge thẳng vào `develop` ngày 16/11, 
 | [S4-H2](S4-H2-ai-nhat-ky-sinh-hieu.md) | Nhật ký hằng ngày bằng AI + diễn giải sinh hiệu | AI-03, AI-06 | Huy | Should | 5 | 4 | S3-H4, S3-H5, S3-H6, S4-V1 | Chờ review |
 | [S5-V1](S5-V1-hoan-thien.md) | Hoàn thiện module Vận hành & Tài chính, slide, kịch bản demo | — | Viên | Must | 5 | 5 | tất cả | Chưa làm |
 | [S5-H1](S5-H1-hoan-thien.md) | Hoàn thiện module Chăm sóc & Gia đình, test, video dự phòng | — | Huy | Must | 5 | 5 | tất cả | Chờ review (đã xong seed/test/tài liệu, chờ QA trình duyệt & video) |
+| [BL-V1](BL-V1-tai-khoan-anh-google.md) | Backlog: ảnh đại diện & ảnh cư dân, đăng nhập Google, mã mời gia đình | UC-07, 24, 02, 08 | Viên | Could | 9 | 16/11 | — | Chờ review |
+| [BL-V2](BL-V2-ho-so-luu-tru.md) | Backlog: giấy tờ & hợp đồng, tạm vắng, tái nhập viện, tiền cọc | UC-29, 30, 31, 33, 99 | Viên | Could | 10 | 16/11 | BL-V1 | Chờ review |
+| [BL-V3](BL-V3-phong-giuong.md) | Backlog: loại phòng & phụ thu, giữ giường, báo hỏng & sửa chữa | UC-36, 41, 42 | Viên | Could | 6 | 17/11 | BL-V2 | Chờ review |
 
 **Tổng điểm:** Viên 33 (S3) + 13 (S4) + 5 (S5) = 51 · Huy 33 (S3) + 10 (S4) + 5 (S5) = 48. Một điểm ≈ nửa ngày làm việc (đã gồm test và seed).
 

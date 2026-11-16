@@ -811,5 +811,199 @@ check('GET /api/residents/1/vital-trends trả về phân tích xu hướng',
 check('Điều dưỡng nhận thông báo xu hướng sinh hiệu',
   (await call('GET', '/api/notifications', nurse.accessToken)).data.items.some((n) => n.title.includes('Xu hướng sinh hiệu')));
 
+// ---- Backlog · BL-V1: ảnh (UC-07, UC-24), đăng nhập Google (UC-02), mã mời gia đình (UC-08) ----
+// Runner cô lập xóa trắng khóa Cloudinary/Google/SMTP: ảnh lưu local (/uploads), Google trả 503, mã mời không gửi email.
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+async function upload(path, token, bytes, name, type = 'image/png') {
+  const form = new FormData();
+  form.append('file', new Blob([bytes], { type }), name);
+  const res = await fetch(API + path, { method: 'POST', headers: token ? { authorization: `Bearer ${token}` } : {}, body: form });
+  const text = await res.text();
+  let data; try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  return { status: res.status, data };
+}
+const authConfig = await call('GET', '/api/auth/config');
+check('Cấu hình đăng nhập công khai (chưa cấu hình Google -> Client ID rỗng)', authConfig.status === 200 && authConfig.data.googleClientId === '');
+const googleOff = await call('POST', '/api/auth/google', null, { idToken: 'khong-phai-token' });
+check('Đăng nhập Google khi máy chủ chưa cấu hình -> 503', googleOff.status === 503, googleOff.data?.message);
+const avatar = await upload('/api/auth/me/avatar', nurse.accessToken, PNG, 'mat.png');
+check('Nurse đổi ảnh đại diện (lưu local /uploads/avatars)', avatar.status === 200 && avatar.data.avatarUrl?.startsWith('/uploads/avatars/') && avatar.data.avatarUrl.endsWith('.png'),
+  avatar.data?.avatarUrl ?? avatar.data?.message);
+const served = avatar.status === 200 ? await fetch(API + avatar.data.avatarUrl) : null;
+check('Ảnh đã tải lên được phục vụ tĩnh', served?.status === 200 && served.headers.get('content-type') === 'image/png');
+const fakeImage = await upload('/api/auth/me/avatar', nurse.accessToken, Buffer.from('<html><script>alert(1)</script></html>'), 'x.png');
+check('File đuôi .png nhưng nội dung không phải ảnh -> 400', fakeImage.status === 400, fakeImage.data?.message);
+const bigImage = await upload('/api/auth/me/avatar', nurse.accessToken, Buffer.concat([PNG, Buffer.alloc(6 * 1024 * 1024)]), 'to.png');
+check('Ảnh lớn hơn 5 MB -> 400', bigImage.status === 400, bigImage.data?.message);
+const removedAvatar = await call('DELETE', '/api/auth/me/avatar', nurse.accessToken);
+check('Xóa ảnh đại diện', removedAvatar.status === 200 && !removedAvatar.data.avatarUrl);
+const photo = await upload('/api/residents/3/photo', recep.accessToken, PNG, 'nh3.png');
+check('Lễ tân tải ảnh chân dung NH-0003', photo.status === 200 && photo.data.photoUrl?.startsWith('/uploads/residents/'), photo.data?.message);
+check('Caregiver tải ảnh cư dân -> 403', (await upload('/api/residents/2/photo', caregiver.accessToken, PNG, 'a.png')).status === 403);
+const careImage = await upload('/api/uploads/image?folder=care', nurse.accessToken, PNG, 'c.png');
+check('Ảnh dùng chung cho nhân viên (folder care, dành cho UC-60)', careImage.status === 200 && careImage.data.url?.startsWith('/uploads/care/'));
+check('Gia đình gọi upload dùng chung -> 403', (await upload('/api/uploads/image', family.accessToken, PNG, 'f.png')).status === 403);
+
+const seededInvite = await call('GET', '/api/family-invitations/lookup?code=DEMO-NH0003-MOI');
+check('Tra mã mời demo của NH-0003 (seed)', seededInvite.status === 200 && seededInvite.data.email === 'giadinh.nh0003@example.com', seededInvite.data?.residentName ?? seededInvite.data?.message);
+check('Mã mời sai -> 404', (await call('GET', '/api/family-invitations/lookup?code=sai-ma')).status === 404);
+check('Caregiver tạo mã mời -> 403', (await call('POST', '/api/family-invitations', caregiver.accessToken, { residentId: 3, email: 'a@example.com', relationship: 'Con' })).status === 403);
+check('Mời email đã có tài khoản -> 409', (await call('POST', '/api/family-invitations', recep.accessToken, { residentId: 3, email: 'family@nursinghome.local', relationship: 'Con' })).status === 409);
+const invite = await call('POST', '/api/family-invitations', recep.accessToken,
+  { residentId: 3, email: 'Chau.NH0003@Example.com', relationship: 'Cháu', canViewHealth: true, canViewCare: true, canViewMedication: true, canViewBilling: false });
+check('Lễ tân tạo mã mời (chưa cấu hình email -> trả link + mã một lần)', invite.status === 200 && invite.data.code?.length >= 20
+  && invite.data.link.includes('/kich-hoat?code=') && invite.data.emailSent === false && invite.data.invitation.status === 'Pending'
+  && invite.data.invitation.email === 'chau.nh0003@example.com', invite.data?.message);
+const inviteLookup = await call('GET', `/api/family-invitations/lookup?code=${encodeURIComponent(invite.data.code)}`);
+check('Tra mã mời vừa tạo', inviteLookup.status === 200 && inviteLookup.data.relationship === 'Cháu');
+const weakAccept = await call('POST', '/api/family-invitations/accept', null, { code: invite.data.code, fullName: 'Lê Văn Cháu', password: '123' });
+check('Kích hoạt với mật khẩu yếu -> 400', weakAccept.status === 400);
+const accepted = await call('POST', '/api/family-invitations/accept', null, { code: invite.data.code, fullName: 'Lê Văn Cháu', phone: '0905000111', password: 'Moi@123456' });
+check('Kích hoạt mã mời: tạo tài khoản Family và đăng nhập luôn', accepted.status === 200 && accepted.data.role === 'Family' && !!accepted.data.accessToken, accepted.data?.message);
+const newFamily = await call('GET', '/api/family/residents', accepted.data.accessToken);
+check('Tài khoản mới thấy đúng NH-0003 với quyền đã chọn', newFamily.status === 200 && newFamily.data.length === 1 && newFamily.data[0].residentId === 3
+  && newFamily.data[0].canViewMedication === true && newFamily.data[0].canViewBilling === false, JSON.stringify(newFamily.data?.[0]));
+const reuseInvite = await call('POST', '/api/family-invitations/accept', null, { code: invite.data.code, fullName: 'Kẻ khác', password: 'Moi@123456' });
+check('Dùng lại mã đã kích hoạt -> 400', reuseInvite.status === 400, reuseInvite.data?.message);
+const relogin = await call('POST', '/api/auth/login', null, { email: 'chau.nh0003@example.com', password: 'Moi@123456' });
+check('Đăng nhập lại bằng mật khẩu vừa đặt', relogin.status === 200 && relogin.data.role === 'Family');
+const toRevoke = await call('POST', '/api/family-invitations', recep.accessToken, { residentId: 3, email: 'thuhoi@example.com', relationship: 'Con gái' });
+const revoked = await call('POST', `/api/family-invitations/${toRevoke.data.invitation.id}/revoke`, recep.accessToken);
+check('Thu hồi mã mời', revoked.status === 200 && revoked.data.status === 'Revoked');
+const revokedLookup = await call('GET', `/api/family-invitations/lookup?code=${encodeURIComponent(toRevoke.data.code)}`);
+check('Mã đã thu hồi không dùng được -> 400', revokedLookup.status === 400, revokedLookup.data?.message);
+const inviteList = await call('GET', '/api/family-invitations?residentId=3', recep.accessToken);
+check('Danh sách mã mời của NH-0003 có đủ trạng thái', inviteList.status === 200
+  && ['Pending', 'Used', 'Revoked'].every((s) => inviteList.data.some((i) => i.status === s)), inviteList.data?.map((i) => i.status).join());
+
+// ---- Backlog · BL-V2: hồ sơ lưu trú — giấy tờ (UC-29), hợp đồng (UC-30), tạm vắng (UC-31), tái nhập viện (UC-33), tiền cọc (UC-99) ----
+const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF');
+async function postForm(path, token, fields, file) {
+  const form = new FormData();
+  Object.entries(fields).forEach(([key, value]) => form.append(key, String(value)));
+  if (file) form.append('file', new Blob([file.bytes], { type: file.type }), file.name);
+  const res = await fetch(API + path, { method: 'POST', headers: { authorization: `Bearer ${token}` }, body: form });
+  const text = await res.text();
+  let data; try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  return { status: res.status, data };
+}
+const pdfFile = (name) => ({ bytes: PDF, type: 'application/pdf', name });
+
+const doc = await postForm('/api/residents/2/documents', recep.accessToken, { kind: 'IdCard', title: 'CCCD mặt trước' }, pdfFile('cccd.pdf'));
+check('Lễ tân tải CCCD (PDF) cho NH-0002', doc.status === 200 && doc.data.kind === 'IdCard' && doc.data.contentType === 'application/pdf', doc.data?.message);
+const docFile = await fetch(`${API}/api/residents/2/documents/${doc.data.id}/file`, { headers: { authorization: `Bearer ${recep.accessToken}` } });
+check('Tải lại giấy tờ (đúng nội dung, dạng tải về)', docFile.status === 200 && (await docFile.text()).startsWith('%PDF')
+  && (docFile.headers.get('content-disposition') ?? '').includes('attachment'));
+check('Điều dưỡng xem giấy tờ cư dân -> 403', (await call('GET', '/api/residents/2/documents', nurse.accessToken)).status === 403);
+const fakePdf = await postForm('/api/residents/2/documents', recep.accessToken, { kind: 'Other', title: 'giả' }, { bytes: Buffer.from('<html>x</html>'), type: 'application/pdf', name: 'x.pdf' });
+check('File HTML đổi đuôi .pdf -> 400', fakePdf.status === 400, fakePdf.data?.message);
+check('Xóa giấy tờ', (await call('DELETE', `/api/residents/2/documents/${doc.data.id}`, recep.accessToken)).status === 204
+  && (await call('GET', '/api/residents/2/documents', recep.accessToken)).data.length === 0);
+
+const seededContracts = await call('GET', '/api/residents/1/contracts', accountant.accessToken);
+check('Kế toán xem hợp đồng NH-0001 (seed)', seededContracts.status === 200 && seededContracts.data.some((c) => c.number === 'HD-2026-0001' && c.status === 'Active'));
+check('Gia đình (có quyền hóa đơn) xem hợp đồng người thân', (await call('GET', '/api/residents/1/contracts', family.accessToken)).status === 200);
+const otherFamilyContracts = await call('GET', '/api/residents/1/contracts', family2.accessToken);
+check('Gia đình khác xem hợp đồng NH-0001 -> bị chặn', otherFamilyContracts.status === 403 || otherFamilyContracts.status === 404);
+check('Bác sĩ xem hợp đồng -> 403', (await call('GET', '/api/residents/1/contracts', doctor.accessToken)).status === 403);
+const dupContract = await postForm('/api/residents/1/contracts', recep.accessToken, { number: 'HD-2026-0099', signedOn: plusDays(0), startDate: plusDays(0) });
+check('Thêm hợp đồng thứ hai khi đang có hợp đồng hiệu lực -> 409', dupContract.status === 409, dupContract.data?.message);
+const contract2 = await postForm('/api/residents/2/contracts', recep.accessToken,
+  { number: 'HD-2026-0002', signedOn: plusDays(-1), startDate: plusDays(0), monthlyPrice: 12000000, notes: 'Bản scan đính kèm' }, pdfFile('hop-dong.pdf'));
+check('Lễ tân thêm hợp đồng NH-0002 kèm bản scan', contract2.status === 200 && contract2.data.hasFile && contract2.data.monthlyPrice === 12000000, contract2.data?.message);
+const family2Contract = await fetch(`${API}/api/residents/2/contracts/${contract2.data.id}/file`, { headers: { authorization: `Bearer ${family2.accessToken}` } });
+check('Gia đình NH-0002 tải bản scan hợp đồng', family2Contract.status === 200);
+const endedContract = await call('POST', `/api/residents/2/contracts/${contract2.data.id}/end`, recep.accessToken, {});
+check('Kết thúc hợp đồng', endedContract.status === 200 && endedContract.data.status === 'Ended' && !!endedContract.data.endDate);
+
+const openLeaves = await call('GET', '/api/resident-leaves/open', adminToken);
+check('Danh sách cư dân đang tạm vắng (seed NH-0004 nằm viện)', openLeaves.status === 200 && openLeaves.data.some((l) => l.residentCode === 'NH-0004' && l.kind === 'Hospital'));
+const cgLeaves = await call('GET', '/api/resident-leaves/open', caregiver.accessToken);
+check('Caregiver chỉ thấy tạm vắng của cư dân mình xem được', cgLeaves.status === 200 && !cgLeaves.data.some((l) => l.residentCode === 'NH-0004'));
+const leave = await call('POST', '/api/residents/3/leaves', nurse.accessToken, { kind: 'Home', expectedReturnOn: plusDays(2), reason: 'Về quê dự đám cưới cháu' });
+check('Điều dưỡng ghi nhận NH-0003 về nhà', leave.status === 200 && leave.data.isOpen, leave.data?.message);
+check('Ghi tạm vắng lần nữa khi chưa về -> 409', (await call('POST', '/api/residents/3/leaves', nurse.accessToken, { kind: 'Home', reason: 'x' })).status === 409);
+check('Caregiver ghi tạm vắng -> 403', (await call('POST', '/api/residents/2/leaves', caregiver.accessToken, { kind: 'Home', reason: 'x' })).status === 403);
+const futureLeave = await call('POST', '/api/residents/1/leaves', recep.accessToken, { kind: 'Home', startAt: new Date(Date.now() + 86400e3).toISOString(), reason: 'x' });
+check('Tạm vắng bắt đầu ở tương lai -> 400', futureLeave.status === 400, futureLeave.data?.message);
+const back = await call('POST', `/api/residents/3/leaves/${leave.data.id}/return`, nurse.accessToken, {});
+check('Ghi nhận NH-0003 đã về', back.status === 200 && !back.data.isOpen && !!back.data.returnedAt);
+check('Ghi "đã về" lần nữa -> 400', (await call('POST', `/api/residents/3/leaves/${leave.data.id}/return`, nurse.accessToken, {})).status === 400);
+
+const dep5 = await call('GET', '/api/residents/5/deposits', accountant.accessToken);
+check('Cọc của NH-0005 (đã ngừng lưu trú) đang giữ 8.000.000', dep5.status === 200 && dep5.data.heldAmount === 8000000 && dep5.data.residentStatus === 'Discharged');
+const heldId = dep5.data.deposits.find((d) => d.held).id;
+check('Hoàn nhiều hơn số cọc -> 400', (await call('POST', `/api/deposits/${heldId}/refund`, accountant.accessToken, { amount: 9000000 })).status === 400);
+check('Lễ tân hoàn cọc -> 403', (await call('POST', `/api/deposits/${heldId}/refund`, recep.accessToken, { amount: 1000 })).status === 403);
+const refunded = await call('POST', `/api/deposits/${heldId}/refund`, accountant.accessToken, { amount: 7500000, note: 'Trừ 500.000 đ tiền giặt ủi tháng cuối' });
+check('Kế toán hoàn cọc 7.500.000', refunded.status === 200 && refunded.data.heldAmount === 0 && refunded.data.deposits[0].refundAmount === 7500000, refunded.data?.message);
+check('Hoàn cọc lần hai -> 400', (await call('POST', `/api/deposits/${heldId}/refund`, accountant.accessToken, { amount: 1 })).status === 400);
+const dep1 = await call('GET', '/api/residents/1/deposits', accountant.accessToken);
+const held1 = dep1.data.deposits.find((d) => d.held);
+check('Hoàn cọc khi cư dân còn ở -> 400', (await call('POST', `/api/deposits/${held1.id}/refund`, accountant.accessToken, { amount: 1000 })).status === 400);
+
+const freeBed = (await call('GET', '/api/rooms', adminToken)).data.filter((r) => r.isActive).flatMap((r) => r.beds).find((b) => b.status === 'Available' && !b.reservedFor);
+const readmitted = await call('POST', '/api/residents/5/readmit', recep.accessToken, { bedId: freeBed?.id, servicePackageId: 1, startDate: plusDays(0) });
+check('Tái nhập viện NH-0005 (giường trống, gói mới)', readmitted.status === 200 && readmitted.data.status === 'Active' && !!readmitted.data.bedLabel, readmitted.data?.message);
+const stays = await call('GET', '/api/residents/5/stays', recep.accessToken);
+check('Lần lưu trú trước được lưu vào lịch sử', stays.status === 200 && stays.data.length === 1);
+check('Tái nhập viện lần nữa khi đang ở -> 400', (await call('POST', '/api/residents/5/readmit', recep.accessToken, { bedId: freeBed?.id, servicePackageId: 1, startDate: plusDays(0) })).status === 400);
+const newDeposit = await call('POST', '/api/residents/5/deposits', accountant.accessToken, { amount: 10000000, method: 'BankTransfer', reference: 'CK-COC-0005-2' });
+check('Thu cọc mới sau tái nhập viện', newDeposit.status === 200 && newDeposit.data.heldAmount === 10000000, newDeposit.data?.message);
+check('Thu cọc lần hai khi còn giữ -> 409', (await call('POST', '/api/residents/5/deposits', accountant.accessToken, { amount: 1000, method: 'Cash' })).status === 409);
+
+// ---- Backlog · BL-V3: loại phòng & phụ thu (UC-36), giữ giường (UC-41), báo hỏng & sửa chữa (UC-42) ----
+const roomTypes = await call('GET', '/api/room-types', caregiver.accessToken);
+check('Danh mục loại phòng (seed 3 loại)', roomTypes.status === 200 && roomTypes.data.some((t) => t.name === 'Phòng đơn VIP' && t.dailySurcharge === 150000));
+check('Lễ tân thêm loại phòng -> 403', (await call('POST', '/api/room-types', recep.accessToken, { name: 'X', dailySurcharge: 0 })).status === 403);
+const newType = await call('POST', '/api/room-types', adminToken, { name: 'Phòng hướng vườn', dailySurcharge: 30000, description: 'Cửa sổ nhìn ra vườn' });
+check('Admin thêm loại phòng', newType.status === 200 && newType.data.dailySurcharge === 30000, newType.data?.message);
+check('Trùng tên loại phòng -> 409', (await call('POST', '/api/room-types', adminToken, { name: 'Phòng hướng vườn', dailySurcharge: 1 })).status === 409);
+
+const roomsNow = (await call('GET', '/api/rooms', recep.accessToken)).data;
+const vipRoom = roomsNow.find((r) => r.number === '202');
+const seededHold = vipRoom?.beds.find((b) => b.number === 'B');
+check('Phòng 202 là Phòng đơn VIP, giường 202-B đang được giữ (seed)', vipRoom?.roomTypeName === 'Phòng đơn VIP' && vipRoom.dailySurcharge === 150000 && !!seededHold?.reservedFor,
+  `${vipRoom?.roomTypeName} / ${seededHold?.reservedFor}`);
+const bed6 = vipRoom.beds.find((b) => b.number === 'A');
+const hold = await call('POST', '/api/bed-reservations', recep.accessToken, { bedId: bed6.id, holderName: 'Ông Phạm Văn Lộc (khách lẻ)', phone: '0905123456', expiresOn: plusDays(2) });
+check('Lễ tân giữ giường 202-A', hold.status === 200 && hold.data.status === 'Active', hold.data?.message);
+check('Giữ lại giường đang được giữ -> 409', (await call('POST', '/api/bed-reservations', recep.accessToken, { bedId: bed6.id, holderName: 'Khác', expiresOn: plusDays(1) })).status === 409);
+check('Giữ giường đang có người -> 400', (await call('POST', '/api/bed-reservations', recep.accessToken, { bedId: 1, holderName: 'Khác', expiresOn: plusDays(1) })).status === 400);
+check('Giữ quá 7 ngày -> 400', (await call('POST', '/api/bed-reservations', recep.accessToken, { bedId: 4, holderName: 'Khác', expiresOn: plusDays(9) })).status === 400);
+check('Caregiver giữ giường -> 403', (await call('POST', '/api/bed-reservations', caregiver.accessToken, { bedId: bed6.id, holderName: 'X', expiresOn: plusDays(1) })).status === 403);
+const blockedMove = await call('POST', '/api/bed-assignments', recep.accessToken, { residentId: 5, bedId: bed6.id });
+check('Xếp người khác vào giường đang giữ -> 400', blockedMove.status === 400 && blockedMove.data.message.includes('đang được giữ'), blockedMove.data?.message);
+const released = await call('POST', `/api/bed-reservations/${hold.data.id}/release`, recep.accessToken);
+check('Hủy giữ giường', released.status === 200 && released.data.status === 'Released');
+const moveToVip = await call('POST', '/api/bed-assignments', recep.accessToken, { residentId: 5, bedId: bed6.id });
+check('Hủy giữ xong thì chuyển NH-0005 sang phòng VIP được', moveToVip.status === 200 || moveToVip.status === 204, moveToVip.data?.message);
+
+const vipPeriod = firstOfMonthPlus(2);
+const vipInvoice = await call('POST', '/api/invoices', accountant.accessToken, { residentId: 5, billingPeriod: vipPeriod, dueDate: vipPeriod.replace(/01$/, '10') });
+const vipLine = vipInvoice.data?.items?.find((i) => i.description.startsWith('Phụ thu Phòng đơn VIP (phòng 202)'));
+const daysInPeriod = new Date(Number(vipPeriod.slice(0, 4)), Number(vipPeriod.slice(5, 7)), 0).getDate();
+check('Hóa đơn tháng có dòng phụ thu VIP theo số ngày', vipInvoice.status === 200 && vipLine?.quantity === daysInPeriod && vipLine.unitPrice === 150000,
+  vipLine?.description ?? vipInvoice.data?.message);
+
+const urgent = await call('POST', '/api/maintenance-requests', nurse.accessToken,
+  { roomId: roomsNow.find((r) => r.beds.some((b) => b.id === 4)).id, bedId: 4, title: 'Thanh chắn giường gãy', priority: 'High', blocksBed: true });
+check('Điều dưỡng báo hỏng khẩn, khóa giường trống', urgent.status === 200 && urgent.data.status === 'Open' && urgent.data.blocksBed, urgent.data?.message);
+const bed4After = (await call('GET', '/api/rooms', recep.accessToken)).data.flatMap((r) => r.beds).find((b) => b.id === 4);
+check('Giường bị khóa chuyển sang Bảo trì', bed4After?.status === 'Maintenance');
+const adminNotes = await call('GET', '/api/notifications', adminToken);
+check('Admin nhận thông báo báo hỏng khẩn', adminNotes.data.items.some((n) => n.title.startsWith('Báo hỏng khẩn')));
+check('Caregiver đổi trạng thái phiếu -> 403', (await call('POST', `/api/maintenance-requests/${urgent.data.id}/status`, caregiver.accessToken, { status: 'Done' })).status === 403);
+const inProgress = await call('POST', `/api/maintenance-requests/${urgent.data.id}/status`, adminToken, { status: 'InProgress', assignedTo: 'Đội kỹ thuật' });
+check('Admin nhận sửa', inProgress.status === 200 && inProgress.data.status === 'InProgress' && inProgress.data.assignedTo === 'Đội kỹ thuật');
+const done = await call('POST', `/api/maintenance-requests/${urgent.data.id}/status`, adminToken, { status: 'Done', resolutionNote: 'Đã thay thanh chắn mới' });
+const bed4Done = (await call('GET', '/api/rooms', recep.accessToken)).data.flatMap((r) => r.beds).find((b) => b.id === 4);
+check('Sửa xong: phiếu Done, giường trống lại', done.status === 200 && done.data.status === 'Done' && bed4Done?.status === 'Available');
+check('Mở lại phiếu đã xong -> 400', (await call('POST', `/api/maintenance-requests/${urgent.data.id}/status`, adminToken, { status: 'InProgress' })).status === 400);
+const nurseNotesDone = await call('GET', '/api/notifications', nurse.accessToken);
+check('Người báo nhận thông báo đã sửa xong', nurseNotesDone.data.items.some((n) => n.title === 'Đã sửa xong: Thanh chắn giường gãy'));
+const openList = await call('GET', '/api/maintenance-requests?status=Open', caregiver.accessToken);
+check('Danh sách phiếu đang mở (seed: bóng đèn phòng 101)', openList.status === 200 && openList.data.some((m) => m.title.startsWith('Bóng đèn')));
+
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);

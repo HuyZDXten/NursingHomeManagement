@@ -325,6 +325,24 @@ Sprint 3+ (module):
 | Báo cáo (S3-V3) | `GET /api/reports/revenue?year` · `/revenue/export` (.xlsx) | FinanceStaff |
 | | `GET /api/reports/occupancy?year` · `/occupancy/export` | BillingStaff |
 | | `GET /api/reports/medication-adherence?from&to` · `/medication-adherence/export` | Prescribers |
+| Tài khoản & ảnh (BL-V1) | `GET /api/auth/config` (Client ID Google, rỗng = ẩn nút), `POST /api/auth/google {idToken}` (chỉ tài khoản đã có cùng email; rate limit `Credentials`) | ẩn danh |
+| | `POST·DELETE /api/auth/me/avatar` (multipart `file`, JPG/PNG/WebP ≤ 5 MB, kiểm chữ ký file) | đăng nhập |
+| | `POST·DELETE /api/residents/{id}/photo` | FrontDesk |
+| | `POST /api/uploads/image?folder=images\|care` → `{url}` (ảnh dùng chung; Huy dùng `care` cho UC-60) | Staff |
+| | Ảnh lưu Cloudinary khi đủ 3 khóa, không thì `wwwroot/uploads`, phục vụ ở `/uploads/...` (DB lưu đường dẫn tương đối, FE ghép `API_BASE_URL` qua `utils/media.ts`) | — |
+| Mã mời gia đình (BL-V1, UC-08) | `POST /api/family-invitations` (trả mã + link **một lần**, gửi email nếu có SMTP), `GET ?residentId`, `POST /{id}/revoke` | FrontDesk |
+| | `GET /api/family-invitations/lookup?code`, `POST /accept {code, fullName, phone, password}` → phiên đăng nhập (rate limit `Credentials`) | ẩn danh |
+| Hồ sơ lưu trú (BL-V2) | `GET·POST /api/residents/{id}/documents` (multipart `kind`, `title`, `file` PDF/JPG/PNG ≤ 10 MB), `GET /documents/{docId}/file`, `DELETE /documents/{docId}` — file lưu riêng tư `App_Data/documents` | FrontDesk |
+| | `GET /api/residents/{id}/contracts`, `GET /contracts/{cid}/file` (kiểm phần Billing: cả gia đình có quyền hóa đơn) | InvoiceReaders |
+| | `POST /api/residents/{id}/contracts` (multipart, file không bắt buộc; tối đa 1 hợp đồng Active), `POST /contracts/{cid}/end` | FrontDesk |
+| | `GET /api/resident-leaves/open`, `GET /api/residents/{id}/leaves` (lọc theo cư dân xem được) | Staff |
+| | `POST /api/residents/{id}/leaves {kind, expectedReturnOn, reason}`, `POST /leaves/{leaveId}/return` | LeaveRecorders (Admin, Receptionist, Nurse) |
+| | `GET /api/residents/{id}/stays`, `POST /api/residents/{id}/readmit {bedId, servicePackageId, agreedMonthlyPrice?, startDate}` | FrontDesk |
+| | `GET /api/residents/{id}/deposits` (cọc + công nợ) | BillingStaff |
+| | `POST /api/residents/{id}/deposits {amount, method, reference}`, `POST /api/deposits/{id}/refund {amount, note}` (chỉ sau ngừng lưu trú) | FinanceStaff |
+| Vận hành phòng (BL-V3) | `GET /api/room-types` (Staff), `POST·PUT /api/room-types` (AdminOnly). Phụ thu/ngày cộng vào hóa đơn tháng theo số ngày ở phòng loại đó (`RoomRules.SurchargeLines`); `GET /api/rooms` trả thêm loại phòng + giường đang giữ | Staff / AdminOnly |
+| | `GET·POST /api/bed-reservations`, `POST /{id}/release` (tối đa 7 ngày; giường đang giữ chỉ xếp cho cư dân nhập viện từ đúng yêu cầu tư vấn — `BedReservationGuard` trong transaction xếp giường) | FrontDesk |
+| | `GET·POST /api/maintenance-requests` (khóa giường trống khi `blocksBed`; mức Khẩn báo Admin), `POST /{id}/status {status, assignedTo, resolutionNote}` | Staff / AdminOnly |
 
 **OData chỉ dùng attribute routing** (`Program.cs` bỏ các convention theo tên controller): mỗi entity set cần một `ODataController` có `[Route("odata/TenEntitySet")]`. Controller REST trùng tên entity set (vd. `InvoicesController`) không còn bị OData bắt nhầm.
 

@@ -57,6 +57,7 @@ builder.Services.AddOptions<JwtOptions>()
 builder.Services.AddNursingHomeServices(builder.Configuration);
 builder.Services.AddSingleton<INotificationPublisher, SignalRNotificationPublisher>();
 builder.Services.AddSingleton<IChatPublisher, SignalRChatPublisher>(); // S3-V6 sự kiện "chat"
+builder.Services.AddImageStorage(); // BL-V1: Cloudinary khi đủ khóa, không thì wwwroot/uploads
 builder.Services.AddSingleton<IUserIdProvider, SubjectUserIdProvider>();
 builder.Services.AddHostedService<PayOsSyncService>();
 builder.Services.AddHostedService<InvoiceReminderJob>(); // S3-V5 nhắc nợ mỗi giờ
@@ -221,6 +222,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+app.UseUploadedImages(); // BL-V1: /uploads/... (ảnh lưu local khi chưa có Cloudinary)
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();

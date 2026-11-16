@@ -23,7 +23,7 @@ PR 1 — hạ tầng:
 - Khác đặc tả:
   - Hợp đồng thêm `AiMessage.Native` / `AiChatResult.Native`: nội dung gốc lượt model gọi tool, engine gửi lại nguyên văn trong cùng request (Gemini 3 bắt buộc, giống StreetBiz). Lịch sử giữa các lượt chỉ gồm tin user/assistant (tool lưu DB để kiểm tra, không gửi lại).
   - `Ai:Enabled = false` = **tắt AI** (không tự chuyển sang Fake, để môi trường thật không trả lời giả). Dev/test bật `Enabled = true, Provider = "Fake"` — đã thêm vào `appsettings.Development.example.json`.
-  - Thêm `Ai:TimeoutSeconds` (15). `Fallback` chỉ giữ chỗ cấu hình, chưa cài provider dự phòng.
+  - Thêm `Ai:TimeoutSeconds` (15). Mục `Fallback` (giữ chỗ, không dùng) đã bỏ ngày 16/11.
   - Thêm `IAiChatEngine.HistoryAsync` để khung chat hiện lại lịch sử; `UX_AiConversations_Account_Channel`: mỗi tài khoản một hội thoại mỗi kênh.
   - Tìm tri thức: điểm = khớp tiêu đề ×3 + thẻ ×2 + nội dung ×1, lọc trong bộ nhớ (vài chục tài liệu).
 
@@ -107,7 +107,7 @@ GO
 
 | Layer | File | Nội dung |
 | --- | --- | --- |
-| Options | `Services/Ai/AiOptions.cs` | bind section `Ai` đã có trong `appsettings.json` (`Enabled, Provider, Gemini{ApiKey, Model}, Fallback{BaseUrl, ApiKey, Model}, MaxOutputTokens, Temperature, PublicChatbotEnabled`) |
+| Options | `Services/Ai/AiOptions.cs` | bind section `Ai` đã có trong `appsettings.json` (`Enabled, Provider, Gemini{ApiKey, Model}, MaxOutputTokens, Temperature, PublicChatbotEnabled`) |
 | Hợp đồng | `Services/Ai/AiContracts.cs` | xem khối code bên dưới |
 | Provider | `Services/Ai/GeminiChatProvider.cs` | `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`, header `x-goog-api-key`; body `systemInstruction`, `contents` (role `user`/`model`, phần `functionCall`/`functionResponse`), `tools: [{ functionDeclarations: [...] }]`, `generationConfig { maxOutputTokens, temperature }`. Tham khảo cách dựng payload ở StreetBiz: `D:\StreetBiz\StreetBiz-BE\src\StreetBiz.Infrastructure\Services\Chatbot\ChatbotProviders.cs` → `GeminiChatbotModel` (dòng ~218–330) |
 | Provider | `Services/Ai/FakeAiChatProvider.cs` | Nếu tin cuối là `user` và có tool tên khớp từ khóa ("giá" → `list_packages`, "giường" → `get_bed_availability`) thì trả tool call; nếu tin cuối là `tool` thì trả text tóm tắt kết quả. Đủ cho test và demo không key |

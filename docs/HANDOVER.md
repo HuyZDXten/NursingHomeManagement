@@ -50,6 +50,32 @@ Tài khoản demo — mật khẩu chung `Demo@123456`:
 
 **Không commit**: `appsettings.Development.json`, `FE/.env`, khóa thật (JWT, Gmail App Password, PayOS, Gemini). `.gitignore` đã chặn sẵn.
 
+### Khóa thật (user-secrets)
+
+Khóa thật đặt bằng `dotnet user-secrets` của project API (`UserSecretsId = nursinghome-api-prn232`). Chúng nằm ở `%APPDATA%\Microsoft\UserSecrets\nursinghome-api-prn232\secrets.json`, ngoài repo, chỉ được nạp khi chạy môi trường Development. Thiếu khóa nào thì tính năng đó tự tắt hoặc chạy bản giả, API vẫn chạy. Gửi khóa cho nhau qua tin nhắn riêng, không qua git.
+
+| Key | Dùng cho | Lấy ở đâu | Thiếu thì |
+| --- | --- | --- | --- |
+| `Email:SmtpUser`, `Email:SmtpPassword` | OTP quên mật khẩu, mail hóa đơn và nhắc nợ | Gmail: bật xác minh 2 bước, rồi tạo mật khẩu ứng dụng 16 ký tự ở myaccount.google.com/apppasswords | Quên mật khẩu trả 503, mail hóa đơn được bỏ qua |
+| `Ai:Enabled` = `true`, `Ai:Provider` = `Gemini`, `Ai:Gemini:ApiKey`, `Ai:Gemini:Model` | Chatbot công khai, AI bàn giao ca, hỏi đáp báo cáo | aistudio.google.com → Get API key | Dùng `Ai:Provider = Fake` (trả lời giả, không cần key) |
+| `PayOs:ApiBaseUrl` = `https://api-merchant.payos.vn`, `PayOs:ClientId`, `PayOs:ApiKey`, `PayOs:ChecksumKey` | VietQR thật | my.payos.vn → tạo kênh thanh toán riêng cho dự án (mục 6) | Dùng PayOS giả `localhost:5199` (mục 6) |
+| `Cloudinary:CloudName`, `Cloudinary:ApiKey`, `Cloudinary:ApiSecret` | Upload ảnh và giấy tờ (backlog UC-07, UC-24, UC-29), **chưa có code dùng** | cloudinary.com → Dashboard | Sẽ lưu file local |
+| `Google:ClientId` | Đăng nhập Google (backlog UC-02), **chưa có code dùng** | Google Cloud Console → APIs & Services → Credentials → OAuth client ID loại Web. Mục Authorized JavaScript origins phải có `http://localhost:5173` | Nút Google ẩn |
+
+```powershell
+cd BE\NursingHome.API
+dotnet user-secrets set "Email:SmtpUser" "ban@gmail.com"
+dotnet user-secrets set "Email:SmtpPassword" "mat-khau-ung-dung-16-ky-tu"
+dotnet user-secrets set "Ai:Enabled" "true"
+dotnet user-secrets set "Ai:Provider" "Gemini"
+dotnet user-secrets set "Ai:Gemini:ApiKey" "..."
+dotnet user-secrets set "Ai:Gemini:Model" "gemini-3.5-flash-lite"
+dotnet user-secrets list                     # xem đã đặt những gì
+```
+
+- **Model Gemini:** ngày 16/11, `gemini-3.8-flash` (StreetBiz đang dùng) liên tục trả 503 hoặc quá 15 giây, còn `gemini-3.5-flash-lite` trả lời trong 1–4 giây, gọi tool đúng. Chatbot báo "đang bận" thì thử đổi model.
+- **Smoke test cô lập:** `run-smoke-isolated.ps1` tự xóa trắng các khóa trên khi chạy, nên không gửi mail thật và không gọi Gemini thật.
+
 ## 2. Kiến trúc
 
 ```text
@@ -306,6 +332,6 @@ git push -u origin feature/incidents   # rồi mở Pull Request vào develop, n
 | payos-fake báo "Đơn thanh toán đã tồn tại" | Đã dựng lại DB (Id giao dịch bắt đầu lại từ 1): khởi động lại payos-fake |
 | Caregiver không thấy cư dân | Đúng thiết kế: chỉ thấy cư dân đang có việc Pending/InProgress giao cho mình hoặc đang được phân công phụ trách chính |
 | Không thấy nút chatbot ở trang công khai / API AI trả 503 | `Ai:Enabled=false` (mặc định). Local: thêm `"Ai": { "Enabled": true, "Provider": "Fake" }` vào `appsettings.Development.json` (đã có trong file example). Gemini thật: `Provider=Gemini` + key/model ở user-secrets |
-| Chatbot trả "Xin lỗi, trợ lý đang bận…" | Provider lỗi hoặc quá `Ai:TimeoutSeconds`: thiếu `Ai:Gemini:ApiKey/Model`, sai key, hết hạn mức. Xem log cảnh báo "Provider AI … lỗi" (không ghi nội dung hội thoại) |
+| Chatbot trả "Xin lỗi, trợ lý đang bận…" | Provider lỗi hoặc quá `Ai:TimeoutSeconds`: thiếu `Ai:Gemini:ApiKey/Model`, sai key, hết hạn mức, hoặc model đang quá tải (log có `503`: đổi `Ai:Gemini:Model`, ví dụ `gemini-3.5-flash-lite`). Xem log cảnh báo "Provider AI … lỗi" (không ghi nội dung hội thoại) |
 | Thêm khoản phí / ghi dịch vụ phát sinh với số lẻ trả 500 (bản cũ) | `[Range(typeof(decimal), "0.01", …)]` parse theo culture vi-VN; dùng `ParseLimitsInInvariantCulture = true` (đã sửa ở S3-V5) |
 | Tiếng Việt hiện `?` trong `sqlcmd` | Chỉ là console; dữ liệu đúng. Luôn chạy script với `-f 65001` (setup script đã có) |

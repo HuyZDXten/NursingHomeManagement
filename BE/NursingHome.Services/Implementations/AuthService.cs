@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using NursingHome.BusinessObjects.Entities;
 using NursingHome.BusinessObjects.Exceptions;
+using NursingHome.DTOs.Accounts;
 using NursingHome.DTOs.Auth;
 using NursingHome.DTOs.Common;
 using NursingHome.Repositories.Interfaces;
@@ -28,7 +29,9 @@ public class AuthService(
     PasswordResetOtpStore otps,
     FacilityClock clock,
     IOptions<JwtOptions> jwtOptions,
-    ILogger<AuthService> logger) : IAuthService
+    ILogger<AuthService> logger,
+    IGoogleTokenValidator google,
+    IOptions<GoogleOptions> googleOptions) : IAuthService
 {
     private const string InvalidCredentials = "Email hoặc mật khẩu không đúng.";
     private const string InvalidSession = "Phiên đăng nhập không còn hiệu lực. Vui lòng đăng nhập lại.";
@@ -50,6 +53,33 @@ public class AuthService(
 
         return await IssueTokensAsync(account, RefreshTokenGenerator.Create());
     }
+
+    /// <summary>
+    /// BL-V1, UC-02: Google xác thực người dùng; hệ thống chỉ nhận tài khoản ĐÃ có cùng email (không tự tạo tài khoản,
+    /// vì role và liên kết cư dân phải do cơ sở cấp). Email Google chưa xác minh thì từ chối.
+    /// </summary>
+    public async Task<LoginResponse> GoogleLoginAsync(GoogleLoginRequest request)
+    {
+        var identity = await google.ValidateAsync(request.IdToken);
+        if (!identity.EmailVerified || string.IsNullOrWhiteSpace(identity.Email))
+        {
+            throw new UnauthorizedServiceException("Email Google chưa được xác minh, không dùng để đăng nhập được.");
+        }
+
+        var account = await accounts.GetByEmailAsync(identity.Email.Trim())
+            ?? throw new UnauthorizedServiceException("Email Google này chưa có tài khoản trong hệ thống. Liên hệ lễ tân hoặc quản trị viên để được cấp tài khoản.");
+        if (!account.IsActive)
+        {
+            throw new UnauthorizedServiceException("Tài khoản đã bị khóa. Liên hệ quản trị viên.");
+        }
+
+        return await IssueTokensAsync(account, RefreshTokenGenerator.Create());
+    }
+
+    public AuthConfigDto GetPublicConfig() => new()
+    {
+        GoogleClientId = googleOptions.Value.IsConfigured ? googleOptions.Value.ClientId.Trim() : ""
+    };
 
     public async Task<LoginResponse> RefreshAsync(RefreshTokenRequest request)
     {

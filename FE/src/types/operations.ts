@@ -435,3 +435,216 @@ export interface HandoverAiDraft {
   items: HandoverItem[];
   note?: string | null;
 }
+
+// ---------------- BL-V1 ảnh, đăng nhập Google, mã mời gia đình ----------------
+
+export interface AuthConfig {
+  /** Rỗng = máy chủ chưa cấu hình Google, ẩn nút. */
+  googleClientId: string;
+}
+
+export type InvitationStatus = 'Pending' | 'Used' | 'Expired' | 'Revoked';
+
+export interface FamilyInvitation {
+  id: number;
+  residentId: number;
+  residentCode: string;
+  residentName: string;
+  email: string;
+  relationship: string;
+  canViewHealth: boolean;
+  canViewCare: boolean;
+  canViewMedication: boolean;
+  canViewBilling: boolean;
+  status: InvitationStatus;
+  createdAt: string;
+  expiresAt: string;
+  usedAt?: string | null;
+  createdByName?: string | null;
+  accountName?: string | null;
+}
+
+export interface FamilyInvitationCreated {
+  invitation: FamilyInvitation;
+  /** Chỉ trả về một lần lúc tạo. */
+  code: string;
+  link: string;
+  emailSent: boolean;
+}
+
+export interface FamilyInvitationForm {
+  residentId: number;
+  email: string;
+  relationship: string;
+  canViewHealth: boolean;
+  canViewCare: boolean;
+  canViewMedication: boolean;
+  canViewBilling: boolean;
+}
+
+export interface InvitationLookup {
+  email: string;
+  residentName: string;
+  relationship: string;
+  expiresAt: string;
+  facilityName: string;
+}
+
+// ---------------- BL-V2 hồ sơ lưu trú ----------------
+
+export type DocumentKind = 'IdCard' | 'Insurance' | 'Medical' | 'Other';
+
+export interface ResidentDocument {
+  id: number;
+  residentId: number;
+  kind: DocumentKind;
+  title: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedByName?: string | null;
+  createdAt: string;
+}
+
+export interface ResidentContract {
+  id: number;
+  residentId: number;
+  number: string;
+  signedOn: string;
+  startDate: string;
+  endDate?: string | null;
+  monthlyPrice?: number | null;
+  notes?: string | null;
+  hasFile: boolean;
+  fileName?: string | null;
+  status: 'Active' | 'Ended';
+  createdByName?: string | null;
+  createdAt: string;
+  endedAt?: string | null;
+}
+
+export interface ContractForm {
+  number: string;
+  signedOn: string;
+  startDate: string;
+  endDate?: string | null;
+  monthlyPrice?: number | null;
+  notes?: string | null;
+}
+
+export type LeaveKind = 'Home' | 'Hospital' | 'Other';
+
+export interface ResidentLeave {
+  id: number;
+  residentId: number;
+  residentCode: string;
+  residentName: string;
+  kind: LeaveKind;
+  startAt: string;
+  expectedReturnOn?: string | null;
+  returnedAt?: string | null;
+  reason: string;
+  createdByName?: string | null;
+  isOpen: boolean;
+  overdue: boolean;
+}
+
+export interface ResidentStay {
+  id: number;
+  admittedAt: string;
+  dischargedAt: string;
+}
+
+export interface ReadmitForm {
+  bedId: number;
+  servicePackageId: number;
+  agreedMonthlyPrice?: number | null;
+  startDate: string;
+}
+
+export interface Deposit {
+  id: number;
+  residentId: number;
+  amount: number;
+  method: 'Cash' | 'BankTransfer';
+  reference?: string | null;
+  receivedAt: string;
+  receivedByName?: string | null;
+  refundedAt?: string | null;
+  refundAmount?: number | null;
+  refundNote?: string | null;
+  refundedByName?: string | null;
+  held: boolean;
+}
+
+export interface DepositSummary {
+  residentStatus: string;
+  heldAmount: number;
+  outstanding: number;
+  deposits: Deposit[];
+}
+
+// ---------------- BL-V3 phòng & giường mở rộng ----------------
+
+export interface RoomType {
+  id: number;
+  name: string;
+  dailySurcharge: number;
+  description?: string | null;
+  isActive: boolean;
+}
+
+export type RoomTypeForm = Omit<RoomType, 'id'>;
+
+export interface BedReservation {
+  id: number;
+  bedId: number;
+  bedLabel: string;
+  inquiryId?: number | null;
+  holderName: string;
+  phone?: string | null;
+  note?: string | null;
+  status: 'Active' | 'Expired' | 'Converted' | 'Released';
+  reservedByName?: string | null;
+  reservedAt: string;
+  expiresAt: string;
+  closedAt?: string | null;
+}
+
+export interface BedReservationForm {
+  bedId: number;
+  inquiryId?: number | null;
+  holderName: string;
+  phone?: string | null;
+  note?: string | null;
+  expiresOn: string;
+}
+
+export type MaintenanceStatus = 'Open' | 'InProgress' | 'Done' | 'Cancelled';
+
+export interface MaintenanceRequest {
+  id: number;
+  roomId: number;
+  roomNumber: string;
+  bedId?: number | null;
+  bedNumber?: string | null;
+  title: string;
+  description?: string | null;
+  priority: 'Low' | 'Normal' | 'High';
+  status: MaintenanceStatus;
+  blocksBed: boolean;
+  reportedByName?: string | null;
+  reportedAt: string;
+  assignedTo?: string | null;
+  resolvedAt?: string | null;
+  resolutionNote?: string | null;
+}
+
+export interface MaintenanceForm {
+  roomId: number;
+  bedId?: number | null;
+  title: string;
+  description?: string | null;
+  priority: 'Low' | 'Normal' | 'High';
+  blocksBed: boolean;
+}

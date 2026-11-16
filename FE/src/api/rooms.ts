@@ -6,6 +6,7 @@ export interface RoomForm {
   floor?: number | null;
   description?: string | null;
   isActive: boolean;
+  roomTypeId?: number | null;
 }
 
 export const roomsApi = {

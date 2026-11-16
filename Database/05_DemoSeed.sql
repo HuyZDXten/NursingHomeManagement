@@ -366,6 +366,78 @@ BEGIN
     (1, 8, 1, N'Cảm ơn em. Cuối tuần này 9h sáng gia đình vào thăm được không?', DATEADD(HOUR, -2, @NowUtc), NULL);
 END;
 
+/* ---- 10.7 Mã mời tài khoản gia đình (BL-V1, UC-08) ----
+   NH-0003 chưa có tài khoản gia đình: một mã mời đang chờ, mã demo DEMO-NH0003-MOI
+   (mở /kich-hoat?code=DEMO-NH0003-MOI). Hạn 30 ngày kể từ lúc seed; mã tạo trong app hạn 7 ngày. */
+IF NOT EXISTS (SELECT 1 FROM dbo.FamilyInvitations WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.FamilyInvitations ON;
+    INSERT INTO dbo.FamilyInvitations (Id, CodeHash, Email, ResidentId, Relationship, CanViewHealth, CanViewCare, CanViewMedication, CanViewBilling, CreatedById, CreatedAt, ExpiresAt)
+    VALUES (1, CONVERT(CHAR(64), HASHBYTES('SHA2_256', 'DEMO-NH0003-MOI'), 2), N'giadinh.nh0003@example.com', 3, N'Con trai',
+            1, 1, 0, 1, 2, @NowUtc, DATEADD(DAY, 30, @NowUtc));
+    SET IDENTITY_INSERT dbo.FamilyInvitations OFF;
+END;
+
+/* ---- 10.8 Hồ sơ lưu trú (BL-V2) ----
+   NH-0001: hợp đồng đang hiệu lực (chưa đính kèm file) + cọc 10 triệu đang giữ.
+   NH-0004: đang tạm vắng (nằm viện, dự kiến về sau 3 ngày).
+   NH-0005: đã ngừng lưu trú, còn cọc 8 triệu chưa hoàn → thử hoàn cọc / tái nhập viện. */
+IF NOT EXISTS (SELECT 1 FROM dbo.ResidentContracts WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.ResidentContracts ON;
+    INSERT INTO dbo.ResidentContracts (Id, ResidentId, Number, SignedOn, StartDate, MonthlyPrice, Notes, Status, CreatedById, CreatedAt)
+    SELECT 1, r.Id, N'HD-2026-0001', CAST(DATEADD(HOUR, 7, r.AdmittedAt) AS DATE), CAST(DATEADD(HOUR, 7, r.AdmittedAt) AS DATE),
+           s.AgreedMonthlyPrice, N'Hợp đồng lưu trú dài hạn (mô phỏng).', N'Active', 2, r.AdmittedAt
+    FROM dbo.Residents AS r
+    OUTER APPLY (SELECT TOP 1 AgreedMonthlyPrice FROM dbo.ResidentSubscriptions WHERE ResidentId = r.Id ORDER BY StartDate) AS s
+    WHERE r.Id = 1;
+    SET IDENTITY_INSERT dbo.ResidentContracts OFF;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.ResidentLeaves WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.ResidentLeaves ON;
+    INSERT INTO dbo.ResidentLeaves (Id, ResidentId, Kind, StartAt, ExpectedReturnOn, Reason, CreatedById, CreatedAt)
+    VALUES (1, 4, N'Hospital', DATEADD(DAY, -1, @NowUtc), DATEADD(DAY, 3, @Today), N'Nhập viện theo dõi tim mạch (mô phỏng).', 2, DATEADD(DAY, -1, @NowUtc));
+    SET IDENTITY_INSERT dbo.ResidentLeaves OFF;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Deposits WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Deposits ON;
+    INSERT INTO dbo.Deposits (Id, ResidentId, Amount, Method, Reference, ReceivedAt, ReceivedById)
+    SELECT 1, 1, 10000000, N'Cash', N'PT-COC-0001', r.AdmittedAt, 3 FROM dbo.Residents AS r WHERE r.Id = 1
+    UNION ALL
+    SELECT 2, 5, 8000000, N'BankTransfer', N'CK-COC-0005', r.AdmittedAt, 3 FROM dbo.Residents AS r WHERE r.Id = 5;
+    SET IDENTITY_INSERT dbo.Deposits OFF;
+END;
+
+/* ---- 10.9 Phòng & giường mở rộng (BL-V3) ----
+   Mọi phòng chưa có loại = Tiêu chuẩn (không phụ thu, hóa đơn cũ không đổi). Phòng 202 (đang trống) = Phòng đơn VIP.
+   Giữ giường 202-B cho yêu cầu tư vấn số 3 (đã tham quan) 5 ngày. Một phiếu báo hỏng đang mở ở phòng 101. */
+UPDATE dbo.Rooms SET RoomTypeId = 1 WHERE RoomTypeId IS NULL AND Number <> N'202';
+UPDATE dbo.Rooms SET RoomTypeId = 3 WHERE RoomTypeId IS NULL AND Number = N'202';
+
+IF NOT EXISTS (SELECT 1 FROM dbo.BedReservations WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.BedReservations ON;
+    INSERT INTO dbo.BedReservations (Id, BedId, InquiryId, HolderName, Phone, Note, Status, ReservedById, ReservedAt, ExpiresAt)
+    SELECT 1, b.Id, i.Id, i.FullName, i.Phone, N'Gia đình hẹn làm thủ tục nhập viện cuối tuần.', N'Active', 2, @NowUtc, DATEADD(DAY, 5, @NowUtc)
+    FROM dbo.Beds AS b JOIN dbo.Rooms AS r ON r.Id = b.RoomId
+    CROSS JOIN (SELECT Id, FullName, Phone FROM dbo.Inquiries WHERE Id = 3) AS i
+    WHERE r.Number = N'202' AND b.Number = N'B' AND b.Status = N'Available';
+    SET IDENTITY_INSERT dbo.BedReservations OFF;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.MaintenanceRequests WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.MaintenanceRequests ON;
+    INSERT INTO dbo.MaintenanceRequests (Id, RoomId, Title, Description, Priority, Status, ReportedById, ReportedAt)
+    SELECT 1, r.Id, N'Bóng đèn nhà vệ sinh chập chờn', N'Ban đêm cư dân đi vệ sinh dễ té ngã, cần thay sớm.', N'Normal', N'Open', 6, DATEADD(HOUR, -3, @NowUtc)
+    FROM dbo.Rooms AS r WHERE r.Number = N'101';
+    SET IDENTITY_INSERT dbo.MaintenanceRequests OFF;
+END;
+
 /* ---- 10. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 
