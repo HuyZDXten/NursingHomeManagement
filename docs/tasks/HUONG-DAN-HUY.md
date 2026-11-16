@@ -22,7 +22,8 @@ dotnet test BE/NursingHome.sln       # 87/87
 ```
 
 - Đã có `appsettings.Development.json` từ trước: chỉ cần thêm khối `"Ai"` như trên, không có thì chatbot và trợ lý AI tắt.
-- Đã có DB cũ: chạy `setup-local-db.ps1` không kèm `-Recreate` cũng được, bảng mới được tạo và dữ liệu cũ giữ nguyên. Muốn dữ liệu demo mới thì thêm `-Recreate`.
+- Không muốn dùng PowerShell cho database: mở `Database\NursingHomeDB_AllInOne.sql` bằng SSMS và bấm Execute (F5). File này gộp `00`–`05`, tạo ra đúng database như `setup-local-db.ps1` (đã thử: cùng 36 bảng, cùng số dòng từng bảng).
+- Đã có DB cũ: chạy `setup-local-db.ps1` không kèm `-Recreate`, hoặc chạy file gộp ở trên, đều được. Bảng mới được tạo và dữ liệu cũ giữ nguyên. Muốn dữ liệu demo mới thì thêm `-Recreate`.
 - AI chạy bằng provider giả (Fake), không cần khóa Gemini. Khóa thật chỉ để trong user-secrets, không ghi vào file.
 
 Xem nhanh phần Viên đã làm: đăng nhập `admin@nursinghome.local` (mật khẩu `Demo@123456`), mở Ca trực, Báo cáo, Tin nhắn. Sau đó mở trang chủ công khai và thử chatbot ở góc phải.
@@ -121,3 +122,4 @@ Cách viết tool và service đã ghi trong [S4-V1, đoạn "Huy dùng hạ t�
 - [ ] Thử tay một role được phép và một role bị chặn (403/404, không lộ dữ liệu)
 - [ ] File task có mục "Kết quả triển khai"; cột Trạng thái trong [README](README.md) đổi sang "Chờ review"
 - [ ] API mới vào [ARCHITECTURE](../ARCHITECTURE.md) mục 7, bảng mới vào [Database/README](../../Database/README.md)
+- [ ] Có sửa `Database/00`–`05`: chạy `.\Database\build-all-in-one.ps1` rồi commit cả `NursingHomeDB_AllInOne.sql`

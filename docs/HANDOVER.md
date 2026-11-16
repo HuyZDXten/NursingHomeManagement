@@ -16,6 +16,8 @@ git checkout develop                     # hoặc nhánh nhóm đang dùng (mụ
 .\Database\setup-local-db.ps1
 # SQL Server không phải localhost / dùng tài khoản sa:
 .\Database\setup-local-db.ps1 -Server ".\SQLEXPRESS" -SqlUser sa -SqlPassword "..."
+# Hoặc không dùng PowerShell: mở Database\NursingHomeDB_AllInOne.sql bằng SSMS rồi Execute (F5).
+#   File này gộp 00..05, cho ra cùng một database (xem Database/README.md).
 
 # API
 Copy-Item BE\NursingHome.API\appsettings.Development.example.json BE\NursingHome.API\appsettings.Development.json
@@ -281,7 +283,7 @@ git push -u origin feature/incidents   # rồi mở Pull Request vào develop, n
 - Thay đổi DB: commit **cùng lúc** `01_Schema.sql`/`05_DemoSeed.sql` + Entity + mapping.
 - Mỗi người chỉ chèn trong vùng của mình ở `01_Schema.sql` (mục 9 Viên, mục 10 Huy) và `05_DemoSeed.sql` (mục 10 Viên, mục 11 Huy), nên git thường tự gộp. Dữ liệu demo thêm vào **bảng dùng chung** (Accounts, Residents, CareTasks…) dùng dải Id riêng: **Viên 100–499, Huy 500–899**.
 - Review chéo bắt buộc: người review chạy `setup-local-db.ps1 -Recreate` + smoke test trước khi approve. Chi tiết: [tasks/README.md](tasks/README.md#quy-trình-làm-một-task).
-- PR checklist: build 0 cảnh báo, test xanh, `setup-local-db.ps1 -Recreate` chạy được, đã thử bằng role bị chặn, cập nhật cột Trạng thái ở `docs/tasks/README.md`.
+- PR checklist: build 0 cảnh báo, test xanh, `setup-local-db.ps1 -Recreate` chạy được, có sửa `Database/00`–`05` thì đã chạy `build-all-in-one.ps1` (hoặc `-Check` báo khớp), đã thử bằng role bị chặn, cập nhật cột Trạng thái ở `docs/tasks/README.md`.
 
 ## 10. Lỗi thường gặp
 
