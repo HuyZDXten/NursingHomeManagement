@@ -13,7 +13,7 @@ import type {
   BedAssignment, Contact, FamilyLink, InvoiceListItem, ResidentDetail, Room, ServicePackage, Subscription,
 } from '../../../types';
 
-export { CareTab, MedicationTab, VitalsTab } from './ClinicalTabs';
+export { CareTab, IncidentsTab, MedicationTab, VitalsTab } from './ClinicalTabs';
 
 // ======================= UC-27: Người liên hệ =======================
 export function ContactsTab({ residentId, canEdit }: { residentId: number; canEdit: boolean }) {

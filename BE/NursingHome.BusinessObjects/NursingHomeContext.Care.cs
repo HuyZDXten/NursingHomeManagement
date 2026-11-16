@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NursingHome.BusinessObjects.Entities;
 
 namespace NursingHome.BusinessObjects;
 
@@ -10,17 +11,25 @@ namespace NursingHome.BusinessObjects;
 /// </summary>
 public partial class NursingHomeContext
 {
-    // Ví dụ (S3-H1):
-    // public DbSet<Incident> Incidents => Set<Incident>();
+    /// <summary>S3-H1: sự cố.</summary>
+    public DbSet<Incident> Incidents => Set<Incident>();
 
     partial void ConfigureCare(ModelBuilder modelBuilder)
     {
-        // Ví dụ:
-        // modelBuilder.Entity<Incident>(entity =>
-        // {
-        //     entity.ToTable("Incidents");
-        //     entity.Property(e => e.Status).HasConversion<string>();
-        //     entity.HasOne(e => e.Resident).WithMany().HasForeignKey(e => e.ResidentId);
-        // });
+        modelBuilder.Entity<Incident>(entity =>
+        {
+            entity.ToTable("Incidents");
+            entity.Property(e => e.Type).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Severity).HasConversion<string>().HasMaxLength(10);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Location).HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(2000);
+            entity.Property(e => e.ImmediateAction).HasMaxLength(2000);
+            entity.Property(e => e.Resolution).HasMaxLength(2000);
+            entity.Property(e => e.RowVersion).IsRowVersion();
+            entity.HasOne(e => e.Resident).WithMany().HasForeignKey(e => e.ResidentId);
+            entity.HasOne(e => e.ReportedBy).WithMany().HasForeignKey(e => e.ReportedById);
+            entity.HasOne(e => e.ClosedBy).WithMany().HasForeignKey(e => e.ClosedById);
+        });
     }
 }

@@ -375,6 +375,16 @@ END;
    Chèn NGAY TRÊN dòng "KẾT THÚC".
    =============================================================== */
 
+/* S3-H1: 1 sự cố đã đóng + chia sẻ gia đình (NH-0002), 1 sự cố đang mở (NH-0001). */
+IF NOT EXISTS (SELECT 1 FROM dbo.Incidents WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Incidents ON;
+    INSERT INTO dbo.Incidents (Id, ResidentId, Type, Severity, OccurredAt, Location, Description, ImmediateAction, ReportedById, Status, Resolution, ClosedById, ClosedAt, ShareWithFamily) VALUES
+    (1, 2, N'Fall', N'Medium', DATEADD(DAY, -3, DATEADD(HOUR, 3, @TodayUtc)), N'Phòng 101', N'Bà trượt chân khi đứng dậy, không chấn thương (mô phỏng).', N'Đỡ dậy, kiểm tra, theo dõi 2 giờ.', 6, N'Closed', N'Đã lắp tay vịn cạnh giường.', 5, DATEADD(DAY, -2, @TodayUtc), 1),
+    (2, 1, N'Behavior', N'Low', DATEADD(HOUR, 2, @TodayUtc), N'Phòng sinh hoạt chung', N'Ông lo lắng, đòi về nhà (mô phỏng).', N'Trò chuyện, gọi người nhà.', 6, N'Open', NULL, NULL, NULL, 0);
+    SET IDENTITY_INSERT dbo.Incidents OFF;
+END;
+
 /* ---- 11. MODULE CHĂM SÓC & GIA ĐÌNH — KẾT THÚC ---- */
 
 COMMIT TRANSACTION;

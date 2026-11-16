@@ -258,6 +258,9 @@ Tất cả trả JSON camelCase; lỗi `{ "message": "..." }`. Swagger: `http://
 | | `POST/PUT/DELETE /api/rooms`, `/api/rooms/{id}/beds[/{bedId}]`, `POST/GET /api/bed-assignments` | FrontDesk |
 | Chăm sóc | `GET /odata/CareTasks?date&mine&residentId`, `GET /api/care-tasks/{id}`, `POST /{id}/updates`, `GET /{id}/records`, `POST /api/vitals` | ClinicalStaff |
 | | `POST /api/care-tasks` | CarePlanners |
+| Sự cố (S3-H1) | `GET /api/incidents`, `GET /api/incidents/{id}`, `POST /api/incidents` | ClinicalStaff |
+| | `POST /api/incidents/{id}/updates` | Admin, Nurse, Doctor |
+| | `GET /api/family/residents/{id}/incidents` | FamilyOnly |
 | Thuốc | `GET /api/medication-schedules?residentId`, `GET /api/medications/today?date`, `POST /api/medication-logs` | ClinicalStaff |
 | | `POST /api/medication-schedules`, `POST /{id}/stop` | Prescribers |
 | Gói, hóa đơn | `GET /api/service-packages` | Staff |

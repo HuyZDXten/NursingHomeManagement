@@ -216,3 +216,22 @@ check('Caregiver báo sự cố cư dân không được giao -> 403',
 - Thời điểm từ FE là ISO có `Z` (UTC) — lưu thẳng, đừng cộng/trừ 7 giờ ở BE.
 - Không sửa `FamilyResidentDetailDto`/`FamilyService` (lõi); dùng endpoint riêng.
 - `UpdateAsync` phải gửi kèm `rowVersion` (2 điều dưỡng cùng đóng → người sau nhận 409).
+
+## Kết quả triển khai
+
+- **Database:** Thêm bảng `dbo.Incidents` + index vào `Database/01_Schema.sql` (mục 10), dữ liệu demo vào `Database/05_DemoSeed.sql` (mục 11), đã chạy `.\Database\build-all-in-one.ps1` sinh lại `Database/NursingHomeDB_AllInOne.sql`.
+- **Backend:**
+  - `BE/NursingHome.BusinessObjects/Entities/CareIncidents.cs` (`Incident`, `IncidentType`, `IncidentSeverity`, `IncidentStatus`) + mapping trong `NursingHomeContext.Care.cs`.
+  - `BE/NursingHome.DataAccessObjects/IncidentDAO.cs`, `IIncidentRepository` + `IncidentRepository`.
+  - `BE/NursingHome.DTOs/Care/IncidentDtos.cs`, mapper trong `BE/NursingHome.Services/Helpers/ModuleMappers.cs`.
+  - `IIncidentService` (`ICareModuleServices.cs`), `IncidentService.cs`, đăng ký DI ở `ServiceCollectionExtensions.Care.cs`.
+  - `BE/NursingHome.API/Controllers/IncidentsController.cs` (`/api/incidents`, `/api/incidents/{id}/updates`, `/api/family/residents/{residentId}/incidents`).
+- **Frontend:**
+  - `FE/src/types/care.ts`, `FE/src/utils/status.care.ts`, `FE/src/api/incidents.ts`.
+  - `FE/src/components/IncidentModals.tsx` (`ReportIncidentModal`, `IncidentDetailDrawer`).
+  - `FE/src/pages/Care/Incidents.tsx` + route/menu `/staff/incidents` trong `FE/src/modules/care.tsx`.
+  - `IncidentsTab` trong `FE/src/pages/Staff/resident/ClinicalTabs.tsx` (+ tab trong `ResidentDetail.tsx`); danh sách sự cố chia sẻ trong `FE/src/pages/Family/FamilyResident.tsx`.
+- **Kiểm thử & Build:**
+  - `dotnet build BE/NursingHome.sln`: 0 lỗi, 0 cảnh báo.
+  - `FE`: `npm run build` và `npm run lint` sạch (0 lỗi, 0 cảnh báo).
+  - Đã thêm kịch bản smoke test vào cuối `scripts/smoke-test.mjs` (chờ chạy `.\scripts\run-smoke-isolated.ps1` trên máy local có SQL Server).

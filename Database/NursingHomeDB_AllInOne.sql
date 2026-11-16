@@ -808,6 +808,38 @@ GO
    Chỉ Huy thêm bảng trong vùng này; chèn NGAY TRÊN dòng "KẾT THÚC" bên dưới.
    =============================================================== */
 
+/* S3-H1: sự cố (UC-58, UC-59, UC-107). Viên dùng các cột này cho báo cáo UC-125 — giữ nguyên tên. */
+IF OBJECT_ID(N'dbo.Incidents', N'U') IS NULL
+CREATE TABLE dbo.Incidents (
+    Id               INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Incidents PRIMARY KEY,
+    ResidentId       INT            NOT NULL CONSTRAINT FK_Incidents_Residents REFERENCES dbo.Residents (Id),
+    Type             NVARCHAR(20)   NOT NULL,
+    Severity         NVARCHAR(10)   NOT NULL,
+    OccurredAt       DATETIME2      NOT NULL,
+    Location         NVARCHAR(100)  NULL,
+    Description      NVARCHAR(2000) NOT NULL,
+    ImmediateAction  NVARCHAR(2000) NULL,
+    ReportedById     INT            NOT NULL CONSTRAINT FK_Incidents_Reporter REFERENCES dbo.Accounts (Id),
+    Status           NVARCHAR(20)   NOT NULL CONSTRAINT DF_Incidents_Status DEFAULT (N'Open'),
+    Resolution       NVARCHAR(2000) NULL,
+    ClosedById       INT            NULL CONSTRAINT FK_Incidents_Closer REFERENCES dbo.Accounts (Id),
+    ClosedAt         DATETIME2      NULL,
+    ShareWithFamily  BIT            NOT NULL CONSTRAINT DF_Incidents_Share DEFAULT (0),
+    FamilyNotifiedAt DATETIME2      NULL,
+    RowVersion       ROWVERSION     NOT NULL,
+    CreatedAt        DATETIME2      NOT NULL CONSTRAINT DF_Incidents_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_Incidents_Type CHECK (Type IN (N'Fall', N'Injury', N'Behavior', N'Other')),
+    CONSTRAINT CK_Incidents_Severity CHECK (Severity IN (N'Low', N'Medium', N'High')),
+    CONSTRAINT CK_Incidents_Status CHECK (Status IN (N'Open', N'Investigating', N'Closed')),
+    CONSTRAINT CK_Incidents_Closed CHECK (Status <> N'Closed' OR (Resolution IS NOT NULL AND ClosedAt IS NOT NULL))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Incidents_Resident_OccurredAt')
+    CREATE INDEX IX_Incidents_Resident_OccurredAt ON dbo.Incidents (ResidentId, OccurredAt DESC);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Incidents_Status')
+    CREATE INDEX IX_Incidents_Status ON dbo.Incidents (Status, OccurredAt DESC);
+GO
+
 /* ---- 10. MODULE CHĂM SÓC & GIA ĐÌNH — KẾT THÚC ---- */
 
 PRINT N'01_Schema.sql: xong.';
@@ -1464,6 +1496,16 @@ END;
    Dải Id dành cho dữ liệu demo Huy thêm vào BẢNG DÙNG CHUNG: 500–899.
    Chèn NGAY TRÊN dòng "KẾT THÚC".
    =============================================================== */
+
+/* S3-H1: 1 sự cố đã đóng + chia sẻ gia đình (NH-0002), 1 sự cố đang mở (NH-0001). */
+IF NOT EXISTS (SELECT 1 FROM dbo.Incidents WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Incidents ON;
+    INSERT INTO dbo.Incidents (Id, ResidentId, Type, Severity, OccurredAt, Location, Description, ImmediateAction, ReportedById, Status, Resolution, ClosedById, ClosedAt, ShareWithFamily) VALUES
+    (1, 2, N'Fall', N'Medium', DATEADD(DAY, -3, DATEADD(HOUR, 3, @TodayUtc)), N'Phòng 101', N'Bà trượt chân khi đứng dậy, không chấn thương (mô phỏng).', N'Đỡ dậy, kiểm tra, theo dõi 2 giờ.', 6, N'Closed', N'Đã lắp tay vịn cạnh giường.', 5, DATEADD(DAY, -2, @TodayUtc), 1),
+    (2, 1, N'Behavior', N'Low', DATEADD(HOUR, 2, @TodayUtc), N'Phòng sinh hoạt chung', N'Ông lo lắng, đòi về nhà (mô phỏng).', N'Trò chuyện, gọi người nhà.', 6, N'Open', NULL, NULL, NULL, 0);
+    SET IDENTITY_INSERT dbo.Incidents OFF;
+END;
 
 /* ---- 11. MODULE CHĂM SÓC & GIA ĐÌNH — KẾT THÚC ---- */
 

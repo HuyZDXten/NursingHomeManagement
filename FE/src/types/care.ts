@@ -1,4 +1,40 @@
 // Kiểu dữ liệu (khớp DTO) của module Chăm sóc & Gia đình — Huy.
-// Thêm interface ở đây thay vì sửa types/index.ts (phần lõi). Ví dụ (S3-H1):
-//   export interface Incident { id: number; residentId: number; type: IncidentType; severity: ...; status: ...; }
-export {};
+
+export type IncidentType = 'Fall' | 'Injury' | 'Behavior' | 'Other';
+export type IncidentSeverity = 'Low' | 'Medium' | 'High';
+export type IncidentStatus = 'Open' | 'Investigating' | 'Closed';
+
+export interface Incident {
+  id: number;
+  residentId: number;
+  residentName: string;
+  residentCode: string;
+  type: IncidentType;
+  severity: IncidentSeverity;
+  occurredAt: string;
+  location?: string | null;
+  description: string;
+  immediateAction?: string | null;
+  reportedByName: string;
+  status: IncidentStatus;
+  resolution?: string | null;
+  closedByName?: string | null;
+  closedAt?: string | null;
+  shareWithFamily: boolean;
+  familyNotifiedAt?: string | null;
+  createdAt: string;
+  rowVersion: string;
+}
+
+export interface FamilyIncident {
+  id: number;
+  type: IncidentType;
+  severity: IncidentSeverity;
+  occurredAt: string;
+  location?: string | null;
+  description: string;
+  immediateAction?: string | null;
+  status: IncidentStatus;
+  resolution?: string | null;
+  closedAt?: string | null;
+}

@@ -541,5 +541,43 @@ check('Bác sĩ dùng hỏi đáp báo cáo -> 403', (await call('POST', '/api/a
 const reportHistory = await call('GET', '/api/ai/staff/report-chat/history', accountant.accessToken);
 check('Lịch sử hỏi đáp báo cáo của kế toán', reportHistory.status === 200 && reportHistory.data.length === 6);
 
+// ---- Sprint 3 · S3-H1: Báo cáo & xử lý sự cố (UC-58, UC-59, UC-107) ----
+const inc = await call('POST', '/api/incidents', caregiver.accessToken, {
+  residentId: 2,
+  type: 'Fall',
+  severity: 'High',
+  occurredAt: new Date().toISOString(),
+  location: 'Phòng 101',
+  description: 'Test té ngã mức cao',
+  immediateAction: 'Đỡ dậy, kiểm tra sinh hiệu',
+});
+check('Caregiver báo sự cố cư dân được giao', inc.status === 200 && inc.data?.id > 0);
+check('Nurse nhận cảnh báo sự cố mức CAO',
+  (await call('GET', '/api/notifications', nurse.accessToken)).data.items.some((n) => n.title.includes('Sự cố mức CAO')));
+check('Caregiver báo sự cố cư dân không được giao -> 403',
+  (await call('POST', '/api/incidents', caregiver.accessToken, {
+    residentId: 3, type: 'Fall', severity: 'Low', occurredAt: new Date().toISOString(), description: 'x',
+  })).status === 403);
+check('Caregiver thử đóng sự cố -> 403',
+  (await call('POST', `/api/incidents/${inc.data.id}/updates`, caregiver.accessToken, {
+    status: 'Closed', resolution: 'ok', shareWithFamily: false, notifyFamily: false, rowVersion: inc.data.rowVersion,
+  })).status === 403);
+check('Nurse đóng sự cố thiếu kết luận -> 400',
+  (await call('POST', `/api/incidents/${inc.data.id}/updates`, nurse.accessToken, {
+    status: 'Closed', resolution: '', shareWithFamily: false, notifyFamily: false, rowVersion: inc.data.rowVersion,
+  })).status === 400);
+const incClosed = await call('POST', `/api/incidents/${inc.data.id}/updates`, nurse.accessToken, {
+  status: 'Closed',
+  resolution: 'Đã kiểm tra ổn định, lắp thanh chắn giường.',
+  shareWithFamily: true,
+  notifyFamily: true,
+  rowVersion: inc.data.rowVersion,
+});
+check('Nurse đóng sự cố + báo gia đình', incClosed.status === 200 && incClosed.data.status === 'Closed' && incClosed.data.shareWithFamily);
+const famInc = await call('GET', '/api/family/residents/2/incidents', family.accessToken);
+check('Gia đình thấy sự cố đã chia sẻ', famInc.status === 200 && famInc.data.some((x) => x.id === inc.data.id));
+check('Gia đình khác không xem được sự cố cư dân 2 -> 403',
+  (await call('GET', '/api/family/residents/2/incidents', family2.accessToken)).status === 403);
+
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);

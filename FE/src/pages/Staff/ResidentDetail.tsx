@@ -8,7 +8,7 @@ import { BILLING_STAFF, CLINICAL_STAFF, FRONT_DESK, hasRole } from '../../auth/r
 import { PageTitle, StatusTag } from '../../components/Common';
 import { dateOnly, dateTime } from '../../utils/format';
 import type { ResidentDetail as Resident } from '../../types';
-import { BedTab, BillingTab, CareTab, ContactsTab, FamilyTab, MedicationTab, VitalsTab } from './resident/Tabs';
+import { BedTab, BillingTab, CareTab, ContactsTab, FamilyTab, IncidentsTab, MedicationTab, VitalsTab } from './resident/Tabs';
 import { ResidentFormModal } from './resident/ResidentFormModal';
 
 /** UC-26: hồ sơ 360°. Mỗi tab chỉ hiện với role được phép; API vẫn kiểm tra quyền theo cư dân. */
@@ -66,6 +66,7 @@ export default function ResidentDetail() {
     ] : []),
     ...(hasRole(user?.role, CLINICAL_STAFF) ? [
       { key: 'care', label: 'Chăm sóc', children: <CareTab residentId={id} /> },
+      { key: 'incidents', label: 'Sự cố', children: <IncidentsTab residentId={id} active={active} /> },
       { key: 'vitals', label: 'Sinh hiệu', children: <VitalsTab residentId={id} canRecord={active} /> },
       { key: 'medication', label: 'Thuốc', children: <MedicationTab residentId={id} active={active} /> },
     ] : []),

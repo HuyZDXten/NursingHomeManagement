@@ -37,7 +37,7 @@ Task S3-V1 → S4-V2 của Viên đã merge thẳng vào `develop` ngày 16/11, 
 | [S3-V4](S3-V4-ban-giao-ca-nghi-phep.md) | Nghỉ phép/đổi ca & bàn giao ca | UC-47, 49 | Viên | Should | 5 | 3.2 | S3-V2 | Đã merge 16/11, chưa review |
 | [S3-V5](S3-V5-tai-chinh-mo-rong.md) | Dịch vụ phát sinh, hóa đơn hàng loạt, PDF, nhắc nợ, email | UC-85, 86, 88, 97, 98, 118 | Viên | Should | 8 | 3.2 | — | Đã merge 16/11, chưa review |
 | [S3-V6](S3-V6-chat-gia-dinh.md) | Chat gia đình – nhân viên | UC-106 | Viên | Should | 5 | 3.2 | — | Đã merge 16/11, chưa review |
-| [S3-H1](S3-H1-su-co.md) | Báo cáo & xử lý sự cố | UC-58, 59, 107 | Huy | Must | 5 | 3.1 | — | Chưa làm |
+| [S3-H1](S3-H1-su-co.md) | Báo cáo & xử lý sự cố | UC-58, 59, 107 | Huy | Must | 5 | 3.1 | — | Chờ review |
 | [S3-H2](S3-H2-benh-nen-di-ung-che-do-an.md) | Bệnh nền, dị ứng, chế độ ăn, cảnh báo dị ứng | UC-66, 71, 82 | Huy | Must/Should | 5 | 3.1 | — | Chưa làm |
 | [S3-H3](S3-H3-lich-tham.md) | Đặt & duyệt lịch thăm | UC-103, 104 | Huy | Must | 5 | 3.1 | — | Chưa làm |
 | [S3-H4](S3-H4-ke-hoach-cham-soc-adl-bua-an.md) | Kế hoạch chăm sóc tự sinh việc, ADL, bữa ăn, nhắc việc | UC-51, 56, 57, 61 | Huy | Should | 8 | 3.2 | — | Chưa làm |

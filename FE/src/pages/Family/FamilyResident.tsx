@@ -1,22 +1,34 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Alert, Button, Card, Descriptions, Table, Tabs, Timeline } from 'antd';
+import { Alert, Button, Card, Descriptions, Space, Table, Tabs, Timeline, Typography } from 'antd';
+import { incidentsApi } from '../../api/incidents';
 import { portalApi } from '../../api/portal';
 import { extractErrorMessage } from '../../api/client';
 import { PageTitle, StatusTag } from '../../components/Common';
 import { VitalsChart } from '../../components/VitalsChart';
 import { dateOnly, dateTime, hhmm, money, monthOf } from '../../utils/format';
 import type { FamilyResidentDetail } from '../../types';
+import type { FamilyIncident } from '../../types/care';
 
 /** UC-101, UC-102: chỉ đọc; mỗi tab hiện theo quyền chia sẻ do lễ tân cấp. */
 export default function FamilyResident() {
   const id = Number(useParams().id);
   const navigate = useNavigate();
   const [data, setData] = useState<FamilyResidentDetail>();
+  const [incidents, setIncidents] = useState<FamilyIncident[]>([]);
   const [error, setError] = useState<string>();
 
   useEffect(() => {
-    portalApi.familyResident(id).then(setData).catch((e) => setError(extractErrorMessage(e)));
+    setIncidents([]);
+    portalApi
+      .familyResident(id)
+      .then((res) => {
+        setData(res);
+        if (res.resident.canViewCare) {
+          incidentsApi.familyIncidents(id).then(setIncidents).catch(() => undefined);
+        }
+      })
+      .catch((e) => setError(extractErrorMessage(e)));
   }, [id]);
 
   if (error) return <Alert type="error" showIcon title={error} />;
@@ -40,10 +52,38 @@ export default function FamilyResident() {
       ),
     }] : []),
     ...(r.canViewCare ? [{
-      key: 'care', label: 'Chăm sóc hằng ngày', children: data.careRecords.length === 0 ? <p>Chưa có ghi chép được chia sẻ.</p> : (
-        <Timeline items={data.careRecords.map((c) => ({
-          children: <><b>{c.taskTitle}</b> · {dateTime(c.performedAt)} · {c.recordedByName}<div>{c.result}</div></>,
-        }))} />
+      key: 'care', label: 'Chăm sóc hằng ngày', children: (
+        <>
+          {data.careRecords.length === 0 ? <p>Chưa có ghi chép được chia sẻ.</p> : (
+            <Timeline items={data.careRecords.map((c) => ({
+              children: <><b>{c.taskTitle}</b> · {dateTime(c.performedAt)} · {c.recordedByName}<div>{c.result}</div></>,
+            }))} />
+          )}
+          <Typography.Title level={5} style={{ marginTop: 16 }}>Sự cố đã chia sẻ</Typography.Title>
+          {incidents.length === 0 ? <p>Chưa có sự cố nào được chia sẻ.</p> : (
+            <Table
+              rowKey="id"
+              size="small"
+              dataSource={incidents}
+              pagination={false}
+              columns={[
+                { title: 'Thời điểm', dataIndex: 'occurredAt', render: dateTime },
+                {
+                  title: 'Loại & mức độ',
+                  render: (_, i) => (
+                    <Space size={4}>
+                      <StatusTag kind="incidentType" value={i.type} />
+                      <StatusTag kind="incidentSeverity" value={i.severity} />
+                    </Space>
+                  ),
+                },
+                { title: 'Mô tả', dataIndex: 'description' },
+                { title: 'Xử lý / kết luận', render: (_, i) => i.resolution || i.immediateAction || '—' },
+                { title: 'Trạng thái', dataIndex: 'status', render: (v: string) => <StatusTag kind="incident" value={v} /> },
+              ]}
+            />
+          )}
+        </>
       ),
     }] : []),
     ...(r.canViewMedication ? [{

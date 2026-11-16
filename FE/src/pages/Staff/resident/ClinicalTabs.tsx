@@ -3,14 +3,17 @@ import { App, Button, Checkbox, DatePicker, Form, Input, InputNumber, Modal, Pop
 import { PlusOutlined } from '@ant-design/icons';
 import { careApi, type VitalForm } from '../../../api/care';
 import { extractErrorMessage } from '../../../api/client';
+import { incidentsApi } from '../../../api/incidents';
 import { residentsApi } from '../../../api/residents';
 import { useAuth } from '../../../auth/AuthContext';
 import { CARE_PLANNERS, PRESCRIBERS, hasRole } from '../../../auth/roles';
 import { CreateTaskModal, TaskRecordsDrawer, UpdateTaskModal } from '../../../components/CareTaskModals';
+import { IncidentDetailDrawer, ReportIncidentModal } from '../../../components/IncidentModals';
 import { StatusTag } from '../../../components/Common';
 import { VitalsChart } from '../../../components/VitalsChart';
 import { dateOnly, dateTime, dayjs, hhmm } from '../../../utils/format';
 import type { CareTask, MedicationLog, MedicationSchedule, VitalSign } from '../../../types';
+import type { Incident } from '../../../types/care';
 
 // ======================= UC-50..UC-55: Chăm sóc của cư dân =======================
 export function CareTab({ residentId }: { residentId: number }) {
@@ -179,6 +182,57 @@ export function MedicationTab({ residentId, active }: { residentId: number; acti
           <Form.Item name="instructions" label="Hướng dẫn"><Input.TextArea rows={2} /></Form.Item>
         </Form>
       </Modal>
+    </>
+  );
+}
+
+// ======================= S3-H1 (UC-58, UC-59): Sự cố của cư dân =======================
+export function IncidentsTab({ residentId, active }: { residentId: number; active: boolean }) {
+  const [rows, setRows] = useState<Incident[]>([]);
+  const [reporting, setReporting] = useState(false);
+  const [selected, setSelected] = useState<Incident | null>(null);
+  const load = useCallback(() => incidentsApi.list({ residentId }).then(setRows).catch(() => undefined), [residentId]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <>
+      {active && (
+        <Button icon={<PlusOutlined />} style={{ marginBottom: 12 }} onClick={() => setReporting(true)}>
+          Báo sự cố
+        </Button>
+      )}
+      <Table
+        rowKey="id"
+        size="small"
+        dataSource={rows}
+        pagination={{ pageSize: 10 }}
+        onRow={(r) => ({ onClick: () => setSelected(r), style: { cursor: 'pointer' } })}
+        columns={[
+          { title: 'Thời điểm', dataIndex: 'occurredAt', render: dateTime },
+          { title: 'Loại', dataIndex: 'type', render: (v: string) => <StatusTag kind="incidentType" value={v} /> },
+          { title: 'Mức độ', dataIndex: 'severity', render: (v: string) => <StatusTag kind="incidentSeverity" value={v} /> },
+          { title: 'Mô tả', dataIndex: 'description', ellipsis: true },
+          { title: 'Trạng thái', dataIndex: 'status', render: (v: string) => <StatusTag kind="incident" value={v} /> },
+          {
+            title: '',
+            key: 'a',
+            render: (_, r) => <Button size="small" onClick={(e) => { e.stopPropagation(); setSelected(r); }}>Chi tiết</Button>,
+          },
+        ]}
+      />
+      <ReportIncidentModal
+        open={reporting}
+        residentId={residentId}
+        onClose={() => setReporting(false)}
+        onSaved={() => { setReporting(false); void load(); }}
+      />
+      <IncidentDetailDrawer
+        incident={selected}
+        onClose={() => setSelected(null)}
+        onUpdated={(next) => { setSelected(next); void load(); }}
+      />
     </>
   );
 }
