@@ -57,4 +57,11 @@ export const OPERATIONS_STATUS: Record<string, Record<string, StatusMeta>> = {
     Overdue: { label: 'Quá hạn', color: 'orange' },
     Overdue7: { label: 'Quá hạn ≥ 7 ngày', color: 'red' },
   },
+  // BL-V1 mã mời tài khoản gia đình
+  invitation: {
+    Pending: { label: 'Đang chờ', color: 'processing' },
+    Used: { label: 'Đã kích hoạt', color: 'success' },
+    Expired: { label: 'Hết hạn', color: 'default' },
+    Revoked: { label: 'Đã thu hồi', color: 'error' },
+  },
 };

@@ -1,34 +1,61 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Alert, Button, Card, Form, Input, Typography } from 'antd';
+import { Alert, Button, Card, Divider, Form, Input, Typography } from 'antd';
 import { useAuth } from '../../auth/AuthContext';
 import { homePath } from '../../auth/roles';
+import { authApi } from '../../api/auth';
 import { extractErrorMessage } from '../../api/client';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton';
+import type { Role } from '../../types';
 
 const DEMO = ['admin', 'receptionist', 'accountant', 'doctor', 'nurse', 'caregiver', 'family', 'family2'];
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, applySession } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState('');
   const [form] = Form.useForm();
+
+  // BL-V1, UC-02: nút Google chỉ hiện khi máy chủ có Google:ClientId.
+  useEffect(() => {
+    authApi.config().then((c) => setGoogleClientId(c.googleClientId)).catch(() => undefined);
+  }, []);
+
+  const goHome = useCallback((role: Role) => {
+    const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname;
+    navigate(from ?? homePath(role), { replace: true });
+  }, [location.state, navigate]);
 
   const submit = async (values: { email: string; password: string }) => {
     setLoading(true);
     setError(undefined);
     try {
       const user = await login(values.email, values.password);
-      const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname;
-      navigate(from ?? homePath(user.role), { replace: true });
+      goHome(user.role);
     } catch (e) {
       setError(extractErrorMessage(e));
     } finally {
       setLoading(false);
     }
   };
+
+  const signInWithGoogle = useCallback(async (idToken: string) => {
+    setLoading(true);
+    setError(undefined);
+    try {
+      const session = await authApi.google(idToken);
+      applySession(session);
+      goHome(session.role);
+    } catch (e) {
+      setError(extractErrorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [applySession, goHome]);
 
   return (
     <div className="auth-box">
@@ -45,6 +72,15 @@ export default function Login() {
           </Form.Item>
           <Button type="primary" htmlType="submit" block loading={loading}>Đăng nhập</Button>
         </Form>
+        {googleClientId && (
+          <>
+            <Divider plain>hoặc</Divider>
+            <GoogleSignInButton clientId={googleClientId} onCredential={(token) => void signInWithGoogle(token)} />
+            <Typography.Paragraph type="secondary" style={{ marginTop: 8, fontSize: 12, textAlign: 'center' }}>
+              Chỉ dùng được khi email Google đã có tài khoản tại cơ sở.
+            </Typography.Paragraph>
+          </>
+        )}
         <div style={{ marginTop: 12 }}><Link to="/forgot-password">Quên mật khẩu?</Link></div>
         {import.meta.env.DEV && (
           <Typography.Paragraph type="secondary" style={{ marginTop: 16, fontSize: 12 }}>

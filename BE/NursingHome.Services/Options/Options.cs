@@ -27,6 +27,28 @@ public class EmailOptions
     public bool IsConfigured => !string.IsNullOrWhiteSpace(SmtpUser) && !string.IsNullOrWhiteSpace(SmtpPassword);
 }
 
+/// <summary>BL-V1 (UC-07, UC-24): lưu ảnh lên Cloudinary khi đủ 3 khóa, không thì lưu trên máy chạy API.</summary>
+public class CloudinaryOptions
+{
+    public const string SectionName = "Cloudinary";
+
+    public string CloudName { get; set; } = "";
+    public string ApiKey { get; set; } = "";
+    public string ApiSecret { get; set; } = "";
+
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(CloudName) && !string.IsNullOrWhiteSpace(ApiKey) && !string.IsNullOrWhiteSpace(ApiSecret);
+}
+
+/// <summary>BL-V1 (UC-02): đăng nhập Google. ClientId của OAuth client loại Web; rỗng = tắt.</summary>
+public class GoogleOptions
+{
+    public const string SectionName = "Google";
+
+    public string ClientId { get; set; } = "";
+
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ClientId);
+}
+
 /// <summary>
 /// Một kênh payOS duy nhất của cơ sở (khác StreetBiz: nhiều người nhận tiền). Khóa đặt trong
 /// user-secrets hoặc appsettings.Development.json, không commit.

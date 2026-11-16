@@ -55,5 +55,14 @@ public static partial class ServiceCollectionExtensions
         // S4-V2 AI tóm tắt bàn giao ca (AI-04) + hỏi đáp báo cáo (AI-12)
         services.AddScoped<IHandoverAiService, HandoverAiService>();
         services.AddScoped<IReportAssistantService, ReportAssistantService>();
+
+        // BL-V1 ảnh (UC-07, UC-24), đăng nhập Google (UC-02), mã mời gia đình (UC-08).
+        // IImageStorage chọn ở API (AddImageStorage): Cloudinary khi đủ 3 khóa, không thì wwwroot/uploads.
+        services.Configure<CloudinaryOptions>(configuration.GetSection(CloudinaryOptions.SectionName));
+        services.Configure<GoogleOptions>(configuration.GetSection(GoogleOptions.SectionName));
+        services.AddSingleton<IGoogleTokenValidator, GoogleTokenValidator>();
+        services.AddScoped<IMediaService, MediaService>();
+        services.AddScoped<IFamilyInvitationRepository, FamilyInvitationRepository>();
+        services.AddScoped<IFamilyInvitationService, FamilyInvitationService>();
     }
 }

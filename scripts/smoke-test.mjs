@@ -541,5 +541,70 @@ check('Bác sĩ dùng hỏi đáp báo cáo -> 403', (await call('POST', '/api/a
 const reportHistory = await call('GET', '/api/ai/staff/report-chat/history', accountant.accessToken);
 check('Lịch sử hỏi đáp báo cáo của kế toán', reportHistory.status === 200 && reportHistory.data.length === 6);
 
+// ---- Backlog · BL-V1: ảnh (UC-07, UC-24), đăng nhập Google (UC-02), mã mời gia đình (UC-08) ----
+// Runner cô lập xóa trắng khóa Cloudinary/Google/SMTP: ảnh lưu local (/uploads), Google trả 503, mã mời không gửi email.
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+async function upload(path, token, bytes, name, type = 'image/png') {
+  const form = new FormData();
+  form.append('file', new Blob([bytes], { type }), name);
+  const res = await fetch(API + path, { method: 'POST', headers: token ? { authorization: `Bearer ${token}` } : {}, body: form });
+  const text = await res.text();
+  let data; try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  return { status: res.status, data };
+}
+const authConfig = await call('GET', '/api/auth/config');
+check('Cấu hình đăng nhập công khai (chưa cấu hình Google -> Client ID rỗng)', authConfig.status === 200 && authConfig.data.googleClientId === '');
+const googleOff = await call('POST', '/api/auth/google', null, { idToken: 'khong-phai-token' });
+check('Đăng nhập Google khi máy chủ chưa cấu hình -> 503', googleOff.status === 503, googleOff.data?.message);
+const avatar = await upload('/api/auth/me/avatar', nurse.accessToken, PNG, 'mat.png');
+check('Nurse đổi ảnh đại diện (lưu local /uploads/avatars)', avatar.status === 200 && avatar.data.avatarUrl?.startsWith('/uploads/avatars/') && avatar.data.avatarUrl.endsWith('.png'),
+  avatar.data?.avatarUrl ?? avatar.data?.message);
+const served = avatar.status === 200 ? await fetch(API + avatar.data.avatarUrl) : null;
+check('Ảnh đã tải lên được phục vụ tĩnh', served?.status === 200 && served.headers.get('content-type') === 'image/png');
+const fakeImage = await upload('/api/auth/me/avatar', nurse.accessToken, Buffer.from('<html><script>alert(1)</script></html>'), 'x.png');
+check('File đuôi .png nhưng nội dung không phải ảnh -> 400', fakeImage.status === 400, fakeImage.data?.message);
+const bigImage = await upload('/api/auth/me/avatar', nurse.accessToken, Buffer.concat([PNG, Buffer.alloc(6 * 1024 * 1024)]), 'to.png');
+check('Ảnh lớn hơn 5 MB -> 400', bigImage.status === 400, bigImage.data?.message);
+const removedAvatar = await call('DELETE', '/api/auth/me/avatar', nurse.accessToken);
+check('Xóa ảnh đại diện', removedAvatar.status === 200 && !removedAvatar.data.avatarUrl);
+const photo = await upload('/api/residents/3/photo', recep.accessToken, PNG, 'nh3.png');
+check('Lễ tân tải ảnh chân dung NH-0003', photo.status === 200 && photo.data.photoUrl?.startsWith('/uploads/residents/'), photo.data?.message);
+check('Caregiver tải ảnh cư dân -> 403', (await upload('/api/residents/2/photo', caregiver.accessToken, PNG, 'a.png')).status === 403);
+const careImage = await upload('/api/uploads/image?folder=care', nurse.accessToken, PNG, 'c.png');
+check('Ảnh dùng chung cho nhân viên (folder care, dành cho UC-60)', careImage.status === 200 && careImage.data.url?.startsWith('/uploads/care/'));
+check('Gia đình gọi upload dùng chung -> 403', (await upload('/api/uploads/image', family.accessToken, PNG, 'f.png')).status === 403);
+
+const seededInvite = await call('GET', '/api/family-invitations/lookup?code=DEMO-NH0003-MOI');
+check('Tra mã mời demo của NH-0003 (seed)', seededInvite.status === 200 && seededInvite.data.email === 'giadinh.nh0003@example.com', seededInvite.data?.residentName ?? seededInvite.data?.message);
+check('Mã mời sai -> 404', (await call('GET', '/api/family-invitations/lookup?code=sai-ma')).status === 404);
+check('Caregiver tạo mã mời -> 403', (await call('POST', '/api/family-invitations', caregiver.accessToken, { residentId: 3, email: 'a@example.com', relationship: 'Con' })).status === 403);
+check('Mời email đã có tài khoản -> 409', (await call('POST', '/api/family-invitations', recep.accessToken, { residentId: 3, email: 'family@nursinghome.local', relationship: 'Con' })).status === 409);
+const invite = await call('POST', '/api/family-invitations', recep.accessToken,
+  { residentId: 3, email: 'Chau.NH0003@Example.com', relationship: 'Cháu', canViewHealth: true, canViewCare: true, canViewMedication: true, canViewBilling: false });
+check('Lễ tân tạo mã mời (chưa cấu hình email -> trả link + mã một lần)', invite.status === 200 && invite.data.code?.length >= 20
+  && invite.data.link.includes('/kich-hoat?code=') && invite.data.emailSent === false && invite.data.invitation.status === 'Pending'
+  && invite.data.invitation.email === 'chau.nh0003@example.com', invite.data?.message);
+const inviteLookup = await call('GET', `/api/family-invitations/lookup?code=${encodeURIComponent(invite.data.code)}`);
+check('Tra mã mời vừa tạo', inviteLookup.status === 200 && inviteLookup.data.relationship === 'Cháu');
+const weakAccept = await call('POST', '/api/family-invitations/accept', null, { code: invite.data.code, fullName: 'Lê Văn Cháu', password: '123' });
+check('Kích hoạt với mật khẩu yếu -> 400', weakAccept.status === 400);
+const accepted = await call('POST', '/api/family-invitations/accept', null, { code: invite.data.code, fullName: 'Lê Văn Cháu', phone: '0905000111', password: 'Moi@123456' });
+check('Kích hoạt mã mời: tạo tài khoản Family và đăng nhập luôn', accepted.status === 200 && accepted.data.role === 'Family' && !!accepted.data.accessToken, accepted.data?.message);
+const newFamily = await call('GET', '/api/family/residents', accepted.data.accessToken);
+check('Tài khoản mới thấy đúng NH-0003 với quyền đã chọn', newFamily.status === 200 && newFamily.data.length === 1 && newFamily.data[0].residentId === 3
+  && newFamily.data[0].canViewMedication === true && newFamily.data[0].canViewBilling === false, JSON.stringify(newFamily.data?.[0]));
+const reuseInvite = await call('POST', '/api/family-invitations/accept', null, { code: invite.data.code, fullName: 'Kẻ khác', password: 'Moi@123456' });
+check('Dùng lại mã đã kích hoạt -> 400', reuseInvite.status === 400, reuseInvite.data?.message);
+const relogin = await call('POST', '/api/auth/login', null, { email: 'chau.nh0003@example.com', password: 'Moi@123456' });
+check('Đăng nhập lại bằng mật khẩu vừa đặt', relogin.status === 200 && relogin.data.role === 'Family');
+const toRevoke = await call('POST', '/api/family-invitations', recep.accessToken, { residentId: 3, email: 'thuhoi@example.com', relationship: 'Con gái' });
+const revoked = await call('POST', `/api/family-invitations/${toRevoke.data.invitation.id}/revoke`, recep.accessToken);
+check('Thu hồi mã mời', revoked.status === 200 && revoked.data.status === 'Revoked');
+const revokedLookup = await call('GET', `/api/family-invitations/lookup?code=${encodeURIComponent(toRevoke.data.code)}`);
+check('Mã đã thu hồi không dùng được -> 400', revokedLookup.status === 400, revokedLookup.data?.message);
+const inviteList = await call('GET', '/api/family-invitations?residentId=3', recep.accessToken);
+check('Danh sách mã mời của NH-0003 có đủ trạng thái', inviteList.status === 200
+  && ['Pending', 'Used', 'Revoked'].every((s) => inviteList.data.some((i) => i.status === s)), inviteList.data?.map((i) => i.status).join());
+
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);

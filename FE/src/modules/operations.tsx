@@ -40,10 +40,13 @@ const ServiceUsages = lazy(() => import('../pages/Operations/ServiceUsages'));
 const Messages = lazy(() => import('../pages/Operations/Messages'));
 // S4-V1 AI: tri thức cho chatbot (widget công khai gắn ở PublicLayout)
 const AiKnowledge = lazy(() => import('../pages/Operations/AiKnowledge'));
+// BL-V1 mã mời tài khoản gia đình (bảng mời nằm trong tab "Tài khoản gia đình" của hồ sơ cư dân)
+const ActivateAccount = lazy(() => import('../pages/Operations/ActivateAccount'));
 
 export const operationsPublicRoutes = (
   <>
     <Route path="/dat-lich-tham-quan" element={<TourBooking />} />
+    <Route path="/kich-hoat" element={<ActivateAccount />} />
   </>
 );
 

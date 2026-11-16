@@ -39,4 +39,11 @@ export const residentsApi = {
     apiClient.get<VitalSign[]>(`/api/residents/${id}/vitals`, { params: { from, to } }).then((r) => r.data),
   medicationLogs: (id: number) => apiClient.get<MedicationLog[]>(`/api/residents/${id}/medication-logs`).then((r) => r.data),
   subscriptions: (id: number) => apiClient.get<Subscription[]>(`/api/residents/${id}/subscriptions`).then((r) => r.data),
+  /** BL-V1, UC-24: ảnh chân dung (JPG/PNG/WebP ≤ 5 MB). */
+  uploadPhoto: (id: number, file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiClient.post<ResidentDetail>(`/api/residents/${id}/photo`, form).then((r) => r.data);
+  },
+  removePhoto: (id: number) => apiClient.delete<ResidentDetail>(`/api/residents/${id}/photo`).then((r) => r.data),
 };

@@ -22,7 +22,8 @@ public class ResidentsController(
     IRoomService rooms,
     IHealthService health,
     IMedicationService medications,
-    IBillingService billing) : ControllerBase
+    IBillingService billing,
+    IMediaService media) : ControllerBase
 {
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ResidentDetailDto>> Get(int id) => Ok(await residents.GetAsync(User.RequireCurrentUser(), id));
@@ -47,6 +48,23 @@ public class ResidentsController(
         await residents.DischargeAsync(User.RequireCurrentUser(), id, request);
         return NoContent();
     }
+
+    // ---------------- BL-V1, UC-24: ảnh chân dung ----------------
+
+    [HttpPost("{id:int}/photo")]
+    [Authorize(Policy = AuthPolicies.FrontDesk)]
+    [RequestSizeLimit(AuthController.UploadLimit)]
+    [RequestFormLimits(MultipartBodyLengthLimit = AuthController.UploadLimit)]
+    public async Task<ActionResult<ResidentDetailDto>> UploadPhoto(int id, IFormFile? file)
+    {
+        await using var content = await file.ReadImageAsync();
+        return Ok(await media.SetResidentPhotoAsync(User.RequireCurrentUser(), id, content, file!.FileName, file.Length));
+    }
+
+    [HttpDelete("{id:int}/photo")]
+    [Authorize(Policy = AuthPolicies.FrontDesk)]
+    public async Task<ActionResult<ResidentDetailDto>> RemovePhoto(int id) =>
+        Ok(await media.RemoveResidentPhotoAsync(User.RequireCurrentUser(), id));
 
     // ---------------- Người liên hệ ----------------
 

@@ -65,3 +65,6 @@ FE/dist/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# BL-V1: anh tai len luu local khi chua co Cloudinary
+BE/NursingHome.API/wwwroot/uploads/

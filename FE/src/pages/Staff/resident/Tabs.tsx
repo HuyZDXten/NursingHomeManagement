@@ -8,6 +8,7 @@ import { extractErrorMessage } from '../../../api/client';
 import { residentsApi, type ContactForm } from '../../../api/residents';
 import { roomsApi } from '../../../api/rooms';
 import { ServiceUsagePanel } from '../../Operations/ServiceUsages';
+import { InvitationPanel } from '../../Operations/FamilyInvitations';
 import { dateOnly, dateTime, dayjs, money, monthOf } from '../../../utils/format';
 import type {
   BedAssignment, Contact, FamilyLink, InvoiceListItem, ResidentDetail, Room, ServicePackage, Subscription,
@@ -127,7 +128,7 @@ export function BedTab({ resident, onChanged }: { resident: ResidentDetail; onCh
 }
 
 // ======================= UC-28: Tài khoản gia đình & quyền chia sẻ =======================
-export function FamilyTab({ residentId }: { residentId: number }) {
+export function FamilyTab({ residentId, active = true }: { residentId: number; active?: boolean }) {
   const { message } = App.useApp();
   const [rows, setRows] = useState<FamilyLink[]>([]);
   const [open, setOpen] = useState(false);
@@ -153,6 +154,7 @@ export function FamilyTab({ residentId }: { residentId: number }) {
 
   return (
     <>
+      <InvitationPanel residentId={residentId} active={active} />
       <Button icon={<PlusOutlined />} style={{ marginBottom: 12 }} onClick={() => { form.resetFields(); setOpen(true); }}>Liên kết tài khoản gia đình</Button>
       <Table rowKey="id" size="small" dataSource={rows} pagination={false} columns={[
         { title: 'Tài khoản', render: (_, l) => <>{l.familyName}<br /><small>{l.familyEmail}</small></> },

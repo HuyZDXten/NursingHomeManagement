@@ -47,10 +47,21 @@ public partial class NursingHomeContext
 
     public DbSet<AiKnowledgeDoc> AiKnowledgeDocs => Set<AiKnowledgeDoc>();
 
+    // BL-V1 mã mời tài khoản gia đình
+    public DbSet<FamilyInvitation> FamilyInvitations => Set<FamilyInvitation>();
+
     partial void ConfigureOperations(ModelBuilder modelBuilder)
     {
         ConfigureStaffing(modelBuilder);
         ConfigureBillingExtras(modelBuilder);
+        modelBuilder.Entity<FamilyInvitation>(entity =>
+        {
+            entity.ToTable("FamilyInvitations");
+            entity.Property(e => e.CodeHash).IsFixedLength().HasMaxLength(64).IsUnicode(false);
+            entity.HasOne(e => e.Resident).WithMany().HasForeignKey(e => e.ResidentId);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById);
+            entity.HasOne(e => e.Account).WithMany().HasForeignKey(e => e.AccountId);
+        });
         modelBuilder.Entity<AiConversation>().ToTable("AiConversations");
         modelBuilder.Entity<AiMessageRecord>().ToTable("AiMessages");
         modelBuilder.Entity<AiKnowledgeDoc>().ToTable("AiKnowledgeDocs");

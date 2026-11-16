@@ -366,6 +366,18 @@ BEGIN
     (1, 8, 1, N'Cảm ơn em. Cuối tuần này 9h sáng gia đình vào thăm được không?', DATEADD(HOUR, -2, @NowUtc), NULL);
 END;
 
+/* ---- 10.7 Mã mời tài khoản gia đình (BL-V1, UC-08) ----
+   NH-0003 chưa có tài khoản gia đình: một mã mời đang chờ, mã demo DEMO-NH0003-MOI
+   (mở /kich-hoat?code=DEMO-NH0003-MOI). Hạn 30 ngày kể từ lúc seed; mã tạo trong app hạn 7 ngày. */
+IF NOT EXISTS (SELECT 1 FROM dbo.FamilyInvitations WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.FamilyInvitations ON;
+    INSERT INTO dbo.FamilyInvitations (Id, CodeHash, Email, ResidentId, Relationship, CanViewHealth, CanViewCare, CanViewMedication, CanViewBilling, CreatedById, CreatedAt, ExpiresAt)
+    VALUES (1, CONVERT(CHAR(64), HASHBYTES('SHA2_256', 'DEMO-NH0003-MOI'), 2), N'giadinh.nh0003@example.com', 3, N'Con trai',
+            1, 1, 0, 1, 2, @NowUtc, DATEADD(DAY, 30, @NowUtc));
+    SET IDENTITY_INSERT dbo.FamilyInvitations OFF;
+END;
+
 /* ---- 10. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 

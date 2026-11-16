@@ -6,6 +6,7 @@ import { residentsApi } from '../../api/residents';
 import { useAuth } from '../../auth/AuthContext';
 import { BILLING_STAFF, CLINICAL_STAFF, FRONT_DESK, hasRole } from '../../auth/roles';
 import { PageTitle, StatusTag } from '../../components/Common';
+import { PhotoPicker } from '../../components/PhotoPicker';
 import { dateOnly, dateTime } from '../../utils/format';
 import type { ResidentDetail as Resident } from '../../types';
 import { BedTab, BillingTab, CareTab, ContactsTab, FamilyTab, MedicationTab, VitalsTab } from './resident/Tabs';
@@ -62,7 +63,7 @@ export default function ResidentDetail() {
     { key: 'contacts', label: 'Người liên hệ', children: <ContactsTab residentId={id} canEdit={frontDesk} /> },
     ...(frontDesk ? [
       { key: 'bed', label: 'Giường', children: <BedTab resident={resident} onChanged={load} /> },
-      { key: 'family', label: 'Tài khoản gia đình', children: <FamilyTab residentId={id} /> },
+      { key: 'family', label: 'Tài khoản gia đình', children: <FamilyTab residentId={id} active={active} /> },
     ] : []),
     ...(hasRole(user?.role, CLINICAL_STAFF) ? [
       { key: 'care', label: 'Chăm sóc', children: <CareTab residentId={id} /> },
@@ -86,7 +87,14 @@ export default function ResidentDetail() {
         )}
       />
       <Card style={{ marginBottom: 16 }}>
-        <Descriptions column={{ xs: 1, md: 3 }} size="small">
+        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        <PhotoPicker
+          alt={resident.fullName}
+          url={resident.photoUrl}
+          onUpload={frontDesk ? async (file) => setResident(await residentsApi.uploadPhoto(id, file)) : undefined}
+          onRemove={frontDesk ? async () => setResident(await residentsApi.removePhoto(id)) : undefined}
+        />
+        <Descriptions column={{ xs: 1, md: 3 }} size="small" style={{ flex: 1, minWidth: 260 }}>
           <Descriptions.Item label="Mã">{resident.code}</Descriptions.Item>
           <Descriptions.Item label="Ngày sinh">{dateOnly(resident.dateOfBirth)} ({resident.age} tuổi)</Descriptions.Item>
           <Descriptions.Item label="Giới tính">{resident.gender}</Descriptions.Item>
@@ -95,6 +103,7 @@ export default function ResidentDetail() {
           <Descriptions.Item label="Ngừng lưu trú">{dateTime(resident.dischargedAt) || '—'}</Descriptions.Item>
           <Descriptions.Item label="Ghi chú" span={3}>{resident.notes}</Descriptions.Item>
         </Descriptions>
+        </div>
       </Card>
       <Card><Tabs items={tabs} /></Card>
       <ResidentFormModal open={editing} resident={resident} onClose={() => setEditing(false)} onSaved={(r) => { setEditing(false); setResident(r); }} />

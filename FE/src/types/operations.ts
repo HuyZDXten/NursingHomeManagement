@@ -435,3 +435,57 @@ export interface HandoverAiDraft {
   items: HandoverItem[];
   note?: string | null;
 }
+
+// ---------------- BL-V1 ảnh, đăng nhập Google, mã mời gia đình ----------------
+
+export interface AuthConfig {
+  /** Rỗng = máy chủ chưa cấu hình Google, ẩn nút. */
+  googleClientId: string;
+}
+
+export type InvitationStatus = 'Pending' | 'Used' | 'Expired' | 'Revoked';
+
+export interface FamilyInvitation {
+  id: number;
+  residentId: number;
+  residentCode: string;
+  residentName: string;
+  email: string;
+  relationship: string;
+  canViewHealth: boolean;
+  canViewCare: boolean;
+  canViewMedication: boolean;
+  canViewBilling: boolean;
+  status: InvitationStatus;
+  createdAt: string;
+  expiresAt: string;
+  usedAt?: string | null;
+  createdByName?: string | null;
+  accountName?: string | null;
+}
+
+export interface FamilyInvitationCreated {
+  invitation: FamilyInvitation;
+  /** Chỉ trả về một lần lúc tạo. */
+  code: string;
+  link: string;
+  emailSent: boolean;
+}
+
+export interface FamilyInvitationForm {
+  residentId: number;
+  email: string;
+  relationship: string;
+  canViewHealth: boolean;
+  canViewCare: boolean;
+  canViewMedication: boolean;
+  canViewBilling: boolean;
+}
+
+export interface InvitationLookup {
+  email: string;
+  residentName: string;
+  relationship: string;
+  expiresAt: string;
+  facilityName: string;
+}

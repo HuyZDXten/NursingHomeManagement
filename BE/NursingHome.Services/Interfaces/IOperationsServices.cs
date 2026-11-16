@@ -1,12 +1,64 @@
 using NursingHome.BusinessObjects.Entities;
+using NursingHome.DTOs.Accounts;
 using NursingHome.DTOs.Admissions;
+using NursingHome.DTOs.Auth;
 using NursingHome.DTOs.Billing;
 using NursingHome.DTOs.Chat;
 using NursingHome.DTOs.Common;
 using NursingHome.DTOs.Reports;
+using NursingHome.DTOs.Residents;
 using NursingHome.DTOs.Staffing;
 
 namespace NursingHome.Services.Interfaces;
+
+// ======================= BL-V1: ảnh, đăng nhập Google, mã mời gia đình =======================
+
+/// <summary>
+/// Nơi lưu ảnh: Cloudinary (đủ 3 khóa) hoặc thư mục wwwroot/uploads của API (cài ở API, vì cần môi trường web).
+/// Trả URL tuyệt đối (Cloudinary) hoặc đường dẫn "/uploads/..." (FE ghép địa chỉ API).
+/// </summary>
+public interface IImageStorage
+{
+    Task<string> SaveAsync(Stream content, string extension, string folder, CancellationToken cancellationToken = default);
+}
+
+/// <param name="EmailVerified">Google chỉ bảo đảm email khi cờ này = true.</param>
+public sealed record GoogleIdentity(string Subject, string Email, bool EmailVerified, string? Name);
+
+public interface IGoogleTokenValidator
+{
+    /// <summary>Kiểm chữ ký, hạn, issuer và audience = Client ID của mình. Sai → 401; chưa cấu hình → 503.</summary>
+    Task<GoogleIdentity> ValidateAsync(string idToken);
+}
+
+/// <summary>UC-07 ảnh đại diện, UC-24 ảnh chân dung cư dân, ảnh dùng chung (Huy dùng cho UC-60).</summary>
+public interface IMediaService
+{
+    Task<UploadedImageDto> UploadImageAsync(Stream content, string? fileName, long length, string folder);
+
+    Task<ProfileDto> SetMyAvatarAsync(CurrentUser user, Stream content, string? fileName, long length);
+
+    Task<ProfileDto> RemoveMyAvatarAsync(CurrentUser user);
+
+    Task<ResidentDetailDto> SetResidentPhotoAsync(CurrentUser user, int residentId, Stream content, string? fileName, long length);
+
+    Task<ResidentDetailDto> RemoveResidentPhotoAsync(CurrentUser user, int residentId);
+}
+
+/// <summary>UC-08: lễ tân mời người thân; người thân tự đặt mật khẩu qua /kich-hoat?code=.</summary>
+public interface IFamilyInvitationService
+{
+    Task<FamilyInvitationCreatedDto> CreateAsync(CurrentUser user, CreateFamilyInvitationRequest request);
+
+    Task<List<FamilyInvitationDto>> ListAsync(int? residentId);
+
+    Task<FamilyInvitationDto> RevokeAsync(int id);
+
+    Task<InvitationLookupDto> LookupAsync(string code);
+
+    /// <summary>Tạo tài khoản Family + liên kết cư dân, rồi đăng nhập luôn.</summary>
+    Task<LoginResponse> AcceptAsync(AcceptInvitationRequest request);
+}
 
 // MODULE VẬN HÀNH & TÀI CHÍNH (Viên): khai báo interface service của module ở file này
 // (không thêm vào IServices.cs của phần lõi).

@@ -24,6 +24,12 @@ public interface IAuthService
     Task<LoginResponse> ChangePasswordAsync(CurrentUser user, ChangePasswordRequest request);
     Task<ProfileDto> GetProfileAsync(CurrentUser user);
     Task<ProfileDto> UpdateProfileAsync(CurrentUser user, UpdateProfileRequest request);
+
+    /// <summary>BL-V1, UC-02: chỉ đăng nhập tài khoản ĐÃ có cùng email (Google đã xác minh email).</summary>
+    Task<LoginResponse> GoogleLoginAsync(GoogleLoginRequest request);
+
+    /// <summary>Cấu hình công khai cho trang đăng nhập (Client ID Google, rỗng = ẩn nút).</summary>
+    AuthConfigDto GetPublicConfig();
 }
 
 public interface IAccountService

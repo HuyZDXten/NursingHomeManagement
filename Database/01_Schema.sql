@@ -729,6 +729,34 @@ CREATE TABLE dbo.AiKnowledgeDocs (
 );
 GO
 
+/* ---- 9.7 Tài khoản & ảnh (BL-V1: UC-07, UC-24 dùng cột có sẵn; UC-08 mã mời tài khoản gia đình) ----
+   Chỉ lưu SHA-256 của mã mời (hex in hoa). Mã dùng một lần: UsedAt + AccountId đi cùng nhau; đã dùng thì không thu hồi. */
+IF OBJECT_ID(N'dbo.FamilyInvitations', N'U') IS NULL
+CREATE TABLE dbo.FamilyInvitations (
+    Id                INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_FamilyInvitations PRIMARY KEY,
+    CodeHash          CHAR(64)      NOT NULL CONSTRAINT UQ_FamilyInvitations_CodeHash UNIQUE,
+    Email             NVARCHAR(256) NOT NULL,
+    ResidentId        INT           NOT NULL CONSTRAINT FK_FamilyInvitations_Residents REFERENCES dbo.Residents (Id),
+    Relationship      NVARCHAR(50)  NOT NULL,
+    CanViewHealth     BIT           NOT NULL CONSTRAINT DF_FamilyInvitations_Health DEFAULT (1),
+    CanViewCare       BIT           NOT NULL CONSTRAINT DF_FamilyInvitations_Care DEFAULT (1),
+    CanViewMedication BIT           NOT NULL CONSTRAINT DF_FamilyInvitations_Medication DEFAULT (0),
+    CanViewBilling    BIT           NOT NULL CONSTRAINT DF_FamilyInvitations_Billing DEFAULT (1),
+    CreatedById       INT           NOT NULL CONSTRAINT FK_FamilyInvitations_Creator REFERENCES dbo.Accounts (Id),
+    CreatedAt         DATETIME2     NOT NULL CONSTRAINT DF_FamilyInvitations_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    ExpiresAt         DATETIME2     NOT NULL,
+    UsedAt            DATETIME2     NULL,
+    AccountId         INT           NULL CONSTRAINT FK_FamilyInvitations_Account REFERENCES dbo.Accounts (Id),
+    RevokedAt         DATETIME2     NULL,
+    CONSTRAINT CK_FamilyInvitations_Used CHECK ((UsedAt IS NULL AND AccountId IS NULL) OR (UsedAt IS NOT NULL AND AccountId IS NOT NULL)),
+    CONSTRAINT CK_FamilyInvitations_UsedOrRevoked CHECK (UsedAt IS NULL OR RevokedAt IS NULL)
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_FamilyInvitations_Resident' AND object_id = OBJECT_ID(N'dbo.FamilyInvitations'))
+CREATE INDEX IX_FamilyInvitations_Resident ON dbo.FamilyInvitations (ResidentId, CreatedAt DESC);
+GO
+
 /* ---- 9. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 

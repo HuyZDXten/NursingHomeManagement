@@ -3,21 +3,51 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using NursingHome.API.Extensions;
 using NursingHome.API.Security;
+using NursingHome.DTOs.Accounts;
 using NursingHome.DTOs.Auth;
 using NursingHome.DTOs.Common;
 using NursingHome.Services.Interfaces;
 
 namespace NursingHome.API.Controllers;
 
-/// <summary>UC-01..UC-07: đăng nhập, refresh, đăng xuất, quên/đổi mật khẩu, hồ sơ cá nhân.</summary>
+/// <summary>UC-01..UC-07: đăng nhập (cả Google), refresh, đăng xuất, quên/đổi mật khẩu, hồ sơ cá nhân, ảnh đại diện.</summary>
 [ApiController]
 [Route("api/auth")]
-public class AuthController(IAuthService auth) : ControllerBase
+public class AuthController(IAuthService auth, IMediaService media) : ControllerBase
 {
+    /// <summary>Tầng HTTP nhận tối đa 10 MB; ảnh hợp lệ tối đa 5 MB (service báo lỗi rõ ràng giữa hai mức).</summary>
+    public const long UploadLimit = 10 * 1024 * 1024;
+
     [HttpPost("login")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitPolicies.Credentials)]
     public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request) => Ok(await auth.LoginAsync(request));
+
+    /// <summary>BL-V1: cấu hình công khai cho trang đăng nhập (Client ID Google, rỗng = ẩn nút).</summary>
+    [HttpGet("config")]
+    [AllowAnonymous]
+    public ActionResult<AuthConfigDto> Config() => Ok(auth.GetPublicConfig());
+
+    /// <summary>BL-V1, UC-02: đăng nhập bằng ID token Google, chỉ cho tài khoản đã có cùng email.</summary>
+    [HttpPost("google")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Credentials)]
+    public async Task<ActionResult<LoginResponse>> Google([FromBody] GoogleLoginRequest request) => Ok(await auth.GoogleLoginAsync(request));
+
+    /// <summary>BL-V1, UC-07: đổi ảnh đại diện (multipart, trường "file"; JPG/PNG/WebP ≤ 5 MB).</summary>
+    [HttpPost("me/avatar")]
+    [Authorize]
+    [RequestSizeLimit(UploadLimit)]
+    [RequestFormLimits(MultipartBodyLengthLimit = UploadLimit)]
+    public async Task<ActionResult<ProfileDto>> UploadAvatar(IFormFile? file)
+    {
+        await using var content = await file.ReadImageAsync();
+        return Ok(await media.SetMyAvatarAsync(User.RequireCurrentUser(), content, file!.FileName, file.Length));
+    }
+
+    [HttpDelete("me/avatar")]
+    [Authorize]
+    public async Task<ActionResult<ProfileDto>> RemoveAvatar() => Ok(await media.RemoveMyAvatarAsync(User.RequireCurrentUser()));
 
     [HttpPost("refresh")]
     [AllowAnonymous]
