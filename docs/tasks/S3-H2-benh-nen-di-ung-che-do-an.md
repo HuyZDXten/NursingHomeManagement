@@ -126,3 +126,23 @@ NH-0001: bệnh "Tăng huyết áp" (Active), dị ứng **Penicillin** (Drug, S
 
 - So khớp phải bỏ dấu và không phân biệt hoa thường, nếu không "penicilin" sẽ lọt.
 - Filtered unique index `UX_DietPlans_Active`: kết thúc plan cũ và thêm plan mới **trong cùng transaction**, nếu không sẽ vi phạm index.
+
+## Kết quả triển khai
+
+- **Database:** Thêm `MedicalConditions`, `Allergies`, `DietPlans` + `UX_DietPlans_Active` vào `Database/01_Schema.sql` (mục 10), dữ liệu demo vào `Database/05_DemoSeed.sql` (mục 11), đã sinh lại `Database/NursingHomeDB_AllInOne.sql`.
+- **Backend:**
+  - `BE/NursingHome.BusinessObjects/Entities/CareMedicalProfile.cs` + mapping ở `NursingHomeContext.Care.cs`.
+  - `BE/NursingHome.DataAccessObjects/MedicalProfileDAO.cs` (gồm `ReplaceDietPlanAsync` trong transaction Serializable), `IMedicalProfileRepository` + `MedicalProfileRepository`.
+  - `BE/NursingHome.DTOs/Care/MedicalProfileDtos.cs`, cập nhật `CreateMedicationScheduleRequest` thêm `AcknowledgeWarnings`.
+  - `BE/NursingHome.Services/Helpers/TextMatch.cs` (+ unit test `BE/NursingHome.Tests/TextMatchTests.cs`), mapper ở `ModuleMappers.cs`.
+  - `IMedicalProfileService` (`ICareModuleServices.cs`), `MedicalProfileService.cs`, tích hợp kiểm tra cảnh báo ở `MedicationService.CreateScheduleAsync` (`CareServices.cs`), DI ở `ServiceCollectionExtensions.Care.cs`.
+  - `BE/NursingHome.API/Controllers/MedicalProfileController.cs`.
+- **Frontend:**
+  - `FE/src/types/care.ts`, `FE/src/utils/status.care.ts`, `FE/src/api/medicalProfile.ts`, `FE/src/api/care.ts`.
+  - `FE/src/pages/Care/AllergyBadge.tsx` + gắn ở `FE/src/pages/Staff/ResidentDetail.tsx`.
+  - `FE/src/pages/Staff/resident/MedicalProfileTabs.tsx` (`MedicalConditionsTab`, `DietPlansTab`) + tích hợp cảnh báo thuốc ở `MedicationTab` (`ClinicalTabs.tsx`), `Tabs.tsx`.
+  - Hiển thị bệnh nền, dị ứng, chế độ ăn ở tab Sức khỏe của `FE/src/pages/Family/FamilyResident.tsx`.
+- **Kiểm thử & Build:**
+  - `BE/NursingHome.sln`: build 0 lỗi, 0 cảnh báo.
+  - `FE`: `npm run build` và `npm run lint` sạch.
+  - Đã thêm test S3-H2 vào `scripts/smoke-test.mjs` và `TextMatchTests.cs`.

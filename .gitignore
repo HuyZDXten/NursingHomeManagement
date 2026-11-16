@@ -15,7 +15,16 @@ work/
 # Frontend (Vite + React)
 **/node_modules/
 FE/dist/
+FE/.vite/
+**/coverage/
 *.local
+
+# Uploads & AI / Agent local folders
+**/wwwroot/uploads/
+.gemini/
+.claude/
+.cursor/
+**/.playwright-mcp/
 
 # Secrets, Credentials & Local Environment Configurations
 .env
@@ -55,6 +64,7 @@ FE/dist/
 .vs/
 .vscode/
 .idea/
+**/Properties/PublishProfiles/
 *.user
 *.suo
 *.userosscache

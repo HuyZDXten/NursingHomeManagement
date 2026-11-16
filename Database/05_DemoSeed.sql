@@ -375,6 +375,134 @@ END;
    Chèn NGAY TRÊN dòng "KẾT THÚC".
    =============================================================== */
 
+/* S3-H1: 1 sự cố đã đóng + chia sẻ gia đình (NH-0002), 1 sự cố đang mở (NH-0001). */
+IF NOT EXISTS (SELECT 1 FROM dbo.Incidents WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Incidents ON;
+    INSERT INTO dbo.Incidents (Id, ResidentId, Type, Severity, OccurredAt, Location, Description, ImmediateAction, ReportedById, Status, Resolution, ClosedById, ClosedAt, ShareWithFamily) VALUES
+    (1, 2, N'Fall', N'Medium', DATEADD(DAY, -3, DATEADD(HOUR, 3, @TodayUtc)), N'Phòng 101', N'Bà trượt chân khi đứng dậy, không chấn thương (mô phỏng).', N'Đỡ dậy, kiểm tra, theo dõi 2 giờ.', 6, N'Closed', N'Đã lắp tay vịn cạnh giường.', 5, DATEADD(DAY, -2, @TodayUtc), 1),
+    (2, 1, N'Behavior', N'Low', DATEADD(HOUR, 2, @TodayUtc), N'Phòng sinh hoạt chung', N'Ông lo lắng, đòi về nhà (mô phỏng).', N'Trò chuyện, gọi người nhà.', 6, N'Open', NULL, NULL, NULL, 0);
+    SET IDENTITY_INSERT dbo.Incidents OFF;
+END;
+
+/* S3-H2: bệnh nền, dị ứng, chế độ ăn mẫu. */
+IF NOT EXISTS (SELECT 1 FROM dbo.MedicalConditions WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.MedicalConditions ON;
+    INSERT INTO dbo.MedicalConditions (Id, ResidentId, Name, DiagnosedOn, Status, Notes, RecordedById) VALUES
+    (1, 1, N'Tăng huyết áp', DATEADD(YEAR, -4, @Today), N'Active', N'Theo dõi huyết áp sáng/chiều mỗi ngày.', 4);
+    SET IDENTITY_INSERT dbo.MedicalConditions OFF;
+END;
+IF NOT EXISTS (SELECT 1 FROM dbo.Allergies WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Allergies ON;
+    INSERT INTO dbo.Allergies (Id, ResidentId, Allergen, Type, Reaction, Severity, RecordedById) VALUES
+    (1, 1, N'Penicillin', N'Drug', N'Phát ban, mẩn đỏ toàn thân', N'Severe', 4),
+    (2, 2, N'Tôm', N'Food', N'Nổi mề đay nhẹ', N'Moderate', 5);
+    SET IDENTITY_INSERT dbo.Allergies OFF;
+END;
+IF NOT EXISTS (SELECT 1 FROM dbo.DietPlans WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.DietPlans ON;
+    INSERT INTO dbo.DietPlans (Id, ResidentId, DietType, Texture, Restrictions, StartDate, EndDate, PrescribedById) VALUES
+    (1, 4, N'Diabetic', N'Soft', N'Hạn chế đường, chia nhỏ 5 bữa/ngày.', DATEADD(DAY, -14, @Today), NULL, 4);
+    SET IDENTITY_INSERT dbo.DietPlans OFF;
+END;
+
+/* S3-H3: lịch thăm mẫu. */
+IF NOT EXISTS (SELECT 1 FROM dbo.VisitBookings WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.VisitBookings ON;
+    INSERT INTO dbo.VisitBookings (Id, ResidentId, FamilyAccountId, VisitDate, SlotStart, SlotEnd, GuestCount, GuestNames, Note, Status, ReviewedById, ReviewNote, CheckedInAt) VALUES
+    (1, 1, 8, DATEADD(DAY, 1, @Today), '09:00:00', '10:00:00', 2, N'Nguyễn Thị Bích, Nguyễn Văn An', N'Mang sữa cho cụ.', N'Approved', 2, N'Đã xác nhận lịch thăm.', NULL),
+    (2, 1, 8, DATEADD(DAY, -7, @Today), '14:00:00', '15:00:00', 2, N'Nguyễn Thị Bích', NULL, N'Completed', 2, NULL, DATEADD(DAY, -7, DATEADD(HOUR, 7, @TodayUtc))),
+    (3, 2, 9, DATEADD(DAY, 1, @Today), '15:00:00', '16:00:00', 1, N'Trần Quốc Bảo', N'Thăm buổi chiều.', N'Requested', NULL, NULL, NULL);
+    SET IDENTITY_INSERT dbo.VisitBookings OFF;
+END;
+
+/* S3-H4: kế hoạch chăm sóc (không seed GeneratedCareTasks để job/nút tự sinh) + ADL & bữa ăn hôm qua. */
+IF NOT EXISTS (SELECT 1 FROM dbo.CarePlans WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.CarePlans ON;
+    INSERT INTO dbo.CarePlans (Id, ResidentId, Title, Goals, StartDate, EndDate, IsActive, CreatedById) VALUES
+    (1, 4, N'Theo dõi đường huyết & vệ sinh', N'Kiểm soát đường huyết ổn định, hỗ trợ sinh hoạt hằng ngày.', DATEADD(DAY, -7, @Today), NULL, 1, 5);
+    SET IDENTITY_INSERT dbo.CarePlans OFF;
+END;
+IF NOT EXISTS (SELECT 1 FROM dbo.CarePlanItems WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.CarePlanItems ON;
+    INSERT INTO dbo.CarePlanItems (Id, CarePlanId, Title, Instructions, TimeOfDay, DaysOfWeek, DefaultAssigneeId, IsActive) VALUES
+    (1, 1, N'Đo đường huyết sáng', N'Đo trước khi ăn sáng, ghi chỉ số vào hồ sơ.', '06:30:00', '1111111', 7, 1),
+    (2, 1, N'Tắm & vệ sinh cá nhân', N'Nước ấm, hỗ trợ di chuyển phòng tắm.', '09:00:00', '1010100', 7, 1);
+    SET IDENTITY_INSERT dbo.CarePlanItems OFF;
+END;
+IF NOT EXISTS (SELECT 1 FROM dbo.DailyCareLogs WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.DailyCareLogs ON;
+    INSERT INTO dbo.DailyCareLogs (Id, ResidentId, LogDate, Category, Level, Note, RecordedById, ShareWithFamily) VALUES
+    (1, 1, DATEADD(DAY, -1, @Today), N'Mobility', N'NeedsHelp', N'Đi dạo sân vườn 15 phút có hỗ trợ.', 6, 1),
+    (2, 2, DATEADD(DAY, -1, @Today), N'Sleep', N'Good', N'Ngủ đủ 7 tiếng, không tỉnh giấc.', 6, 1);
+    SET IDENTITY_INSERT dbo.DailyCareLogs OFF;
+END;
+IF NOT EXISTS (SELECT 1 FROM dbo.MealLogs WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.MealLogs ON;
+    INSERT INTO dbo.MealLogs (Id, ResidentId, MealDate, Meal, IntakePercent, FluidMl, Note, RecordedById, ShareWithFamily) VALUES
+    (1, 1, DATEADD(DAY, -1, @Today), N'Lunch', 75, 250, N'Ăn cháo thịt bằm, uống nước ấm.', 6, 1),
+    (2, 2, DATEADD(DAY, -1, @Today), N'Lunch', 100, 300, N'Ăn hết suất cơm mềm.', 6, 1);
+    SET IDENTITY_INSERT dbo.MealLogs OFF;
+END;
+IF NOT EXISTS (SELECT 1 FROM dbo.MealLogs WHERE Id = 3)
+BEGIN
+    SET IDENTITY_INSERT dbo.MealLogs ON;
+    INSERT INTO dbo.MealLogs (Id, ResidentId, MealDate, Meal, IntakePercent, FluidMl, Note, RecordedById, ShareWithFamily) VALUES
+    (3, 1, DATEADD(DAY, -2, @Today), N'Lunch', 85, 280, N'Ăn súp gà, uống đủ nước.', 6, 1),
+    (4, 2, DATEADD(DAY, -2, @Today), N'Lunch', 90, 260, N'Ăn hết phần cá kho mềm.', 6, 1),
+    (5, 1, DATEADD(DAY, -3, @Today), N'Dinner', 80, 220, N'Ăn cháo rau củ, tinh thần tốt.', 6, 1);
+    SET IDENTITY_INSERT dbo.MealLogs OFF;
+END;
+
+/* S3-H5: ngưỡng riêng NH-0001 (SystolicHigh = 150), đánh giá mẫu, phiếu khám bác sĩ mẫu. */
+IF NOT EXISTS (SELECT 1 FROM dbo.VitalThresholds WHERE ResidentId = 1)
+BEGIN
+    INSERT INTO dbo.VitalThresholds (ResidentId, SystolicHigh, SystolicLow, HeartRateHigh, HeartRateLow, TemperatureHigh, SpO2Low, Note, SetById) VALUES
+    (1, 150, 90, 120, 50, 38.0, 92.00, N'Cụ có tiền sử tăng huyết áp, đặt ngưỡng trên 150 mmHg.', 4);
+END;
+IF NOT EXISTS (SELECT 1 FROM dbo.Assessments WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Assessments ON;
+    INSERT INTO dbo.Assessments (Id, ResidentId, Type, Score, MaxScore, RiskLevel, AnswersJson, Note, AssessedById, AssessedAt, NextDueOn) VALUES
+    (1, 2, N'FallRisk', 45, 125, N'High', N'{"history":"yes","secondary":"yes","aid":"none","iv":"no","gait":"weak","mental":"oriented"}', N'Nguy cơ té ngã cao, đã quá hạn đánh giá lại.', 5, DATEADD(DAY, -100, @TodayUtc), DATEADD(DAY, -10, @Today)),
+    (2, 1, N'Barthel', 85, 100, N'Medium', N'{"feeding":"10","bathing":"5","grooming":"5","dressing":"10","bowels":"10","bladder":"10","toilet":"10","transfer":"10","mobility":"10","stairs":"5"}', N'Phụ thuộc nhẹ khi lên cầu thang.', 5, DATEADD(DAY, -20, @TodayUtc), DATEADD(DAY, 70, @Today));
+    SET IDENTITY_INSERT dbo.Assessments OFF;
+END;
+IF NOT EXISTS (SELECT 1 FROM dbo.DoctorVisits WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.DoctorVisits ON;
+    INSERT INTO dbo.DoctorVisits (Id, ResidentId, DoctorId, VisitedAt, Subjective, Objective, Assessment, [Plan], FollowUpOn, ShareWithFamily, CreatedAt) VALUES
+    (1, 3, 4, DATEADD(DAY, -7, @TodayUtc), N'Ngủ ngon, ăn uống bình thường.', N'Tim đều, phổi trong, huyết áp 125/78 mmHg.', N'Tình trạng ổn định.', N'Tiếp tục chế độ sinh hoạt hiện tại.', DATEADD(DAY, 23, @Today), 1, DATEADD(DAY, -7, @TodayUtc));
+    SET IDENTITY_INSERT dbo.DoctorVisits OFF;
+END;
+
+/* S3-H6: phản hồi gia đình mẫu. */
+IF NOT EXISTS (SELECT 1 FROM dbo.Feedbacks WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Feedbacks ON;
+    INSERT INTO dbo.Feedbacks (Id, FamilyAccountId, ResidentId, Category, Rating, Subject, Content, Status, AssignedToId, Response, RespondedById, RespondedAt) VALUES
+    (1, 8, 1, N'Food', 4, N'Bữa ăn mềm dễ nuốt', N'Gia đình thấy thực đơn cháo tuần này rất vừa miệng ông.', N'Resolved', 5, N'Cảm ơn gia đình đã góp ý, bếp sẽ duy trì thực đơn này.', 1, DATEADD(DAY, -1, @NowUtc)),
+    (2, 9, 2, N'Facility', NULL, N'Đèn hành lang tầng 1', N'Buổi tối đèn hành lang hơi tối, nhờ cơ sở kiểm tra thêm.', N'New', NULL, NULL, NULL, NULL);
+    SET IDENTITY_INSERT dbo.Feedbacks OFF;
+END;
+
+/* S4-H2 & S5-H1: nhật ký AI đã duyệt hôm qua cho NH-0001. */
+IF NOT EXISTS (SELECT 1 FROM dbo.AiInsights WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.AiInsights ON;
+    INSERT INTO dbo.AiInsights (Id, ResidentId, Type, ForDate, Content, Status, ReviewedById, ReviewedAt, GeneratedAt) VALUES
+    (1, 1, N'DailyDigest', DATEADD(DAY, -1, @Today), N'Hôm qua cụ ăn trưa đạt 75% khẩu phần (cháo thịt bằm) và uống khoảng 250 ml nước ấm. Cụ đi dạo sân vườn 15 phút có điều dưỡng hỗ trợ, tinh thần ổn định và hợp tác tốt.', N'Approved', 5, DATEADD(HOUR, -12, @NowUtc), DATEADD(HOUR, -13, @NowUtc));
+    SET IDENTITY_INSERT dbo.AiInsights OFF;
+END;
+
 /* ---- 11. MODULE CHĂM SÓC & GIA ĐÌNH — KẾT THÚC ---- */
 
 COMMIT TRANSACTION;

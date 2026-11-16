@@ -131,9 +131,10 @@ public class CareTaskService(
     }
 }
 
-/// <summary>UC-62, UC-63, UC-65: sinh hiệu + cảnh báo khi vượt ngưỡng mặc định của cơ sở.</summary>
+/// <summary>UC-62, UC-63, UC-65: sinh hiệu + cảnh báo khi vượt ngưỡng riêng (S3-H5) hoặc mặc định của cơ sở.</summary>
 public class HealthService(
     IHealthRepository health,
+    IClinicalRepository clinical,
     IResidentRepository residents,
     IResidentAccessService access,
     INotificationService notifications,
@@ -177,7 +178,20 @@ public class HealthService(
             CreatedAt = clock.UtcNow
         });
 
-        var alerts = OutOfRange(request, facility.Value.VitalAlerts);
+        var custom = await clinical.GetThresholdAsync(request.ResidentId);
+        var limits = custom is null
+            ? facility.Value.VitalAlerts
+            : new VitalAlertOptions
+            {
+                SystolicHigh = custom.SystolicHigh,
+                SystolicLow = custom.SystolicLow,
+                HeartRateHigh = custom.HeartRateHigh,
+                HeartRateLow = custom.HeartRateLow,
+                TemperatureHigh = custom.TemperatureHigh,
+                SpO2Low = custom.SpO2Low
+            };
+
+        var alerts = OutOfRange(request, limits);
         if (alerts.Count > 0)
         {
             var resident = await residents.GetByIdAsync(request.ResidentId);
@@ -225,6 +239,7 @@ public class HealthService(
 /// </summary>
 public class MedicationService(
     IMedicationRepository medications,
+    IMedicalProfileService medicalProfile,
     IResidentRepository residents,
     IResidentAccessService access,
     FacilityClock clock) : IMedicationService
@@ -250,6 +265,12 @@ public class MedicationService(
         if (request.EndDate < request.StartDate)
         {
             throw new BusinessRuleException("Ngày kết thúc phải sau ngày bắt đầu.");
+        }
+
+        var warnings = await medicalProfile.CheckMedicationAsync(request.ResidentId, request.MedicationName);
+        if (warnings.Count > 0 && !request.AcknowledgeWarnings)
+        {
+            throw new BusinessRuleException("Cần xác nhận cảnh báo: " + string.Join(" | ", warnings.Select(w => w.Message)));
         }
 
         var schedule = await medications.AddScheduleAsync(new MedicationSchedule

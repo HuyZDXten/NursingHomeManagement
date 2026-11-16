@@ -31,7 +31,12 @@ public sealed partial class FakeAiChatProvider : IAiChatProvider
         // S4-V2 kênh nhân viên (hỏi đáp báo cáo)
         (["doanh thu", "thu được", "công nợ"], "revenue"),
         (["công suất", "lấp đầy"], "occupancy"),
-        (["tuân thủ", "uống thuốc", "bỏ liều"], "medication_adherence")
+        (["tuân thủ", "uống thuốc", "bỏ liều"], "medication_adherence"),
+        // S4-H1 kênh gia đình
+        (["người thân", "danh sách người thân"], "list_my_residents"),
+        (["nhật ký", "ăn uống", "hôm nay", "hôm qua"], "get_day_summary"),
+        (["lịch thăm"], "get_my_visits"),
+        (["còn nợ", "hóa đơn"], "get_open_invoices")
     ];
 
     public string Name => AiOptions.FakeProvider;

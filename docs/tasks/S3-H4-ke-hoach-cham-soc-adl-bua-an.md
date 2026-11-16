@@ -164,3 +164,22 @@ Quy tắc:
 - Job chạy trong `BackgroundService` phải tạo scope (`IServiceScopeFactory`) để lấy service scoped.
 - Tạo việc + bảng nối phải cùng transaction; nếu tạo việc xong mà ghi bảng nối lỗi sẽ có việc mồ côi bị sinh lại.
 - Không thêm cột vào `CareTasks` (bảng lõi) — dùng bảng `GeneratedCareTasks`, `TaskReminders`.
+
+## Kết quả triển khai
+
+- **Database:** Thêm 6 bảng `CarePlans`, `CarePlanItems`, `GeneratedCareTasks`, `TaskReminders`, `DailyCareLogs`, `MealLogs` vào `Database/01_Schema.sql` (mục 10), dữ liệu mẫu vào `Database/05_DemoSeed.sql` (mục 11), sinh lại `Database/NursingHomeDB_AllInOne.sql`.
+- **Backend:**
+  - `BE/NursingHome.BusinessObjects/Entities/CareDaily.cs` + mapping ở `NursingHomeContext.Care.cs`.
+  - `BE/NursingHome.DataAccessObjects/CarePlanDAO.cs` (`CarePlanDAO`, `DailyLogDAO`, `TaskReminderDAO`), `ICarePlanRepository.cs`, `CarePlanRepository.cs`.
+  - `BE/NursingHome.Services/Helpers/CareSchedule.cs` (+ unit test `BE/NursingHome.Tests/CareScheduleTests.cs`), `CarePlanDtos.cs`, mapper ở `ModuleMappers.cs`.
+  - `CarePlanService` (ưu tiên `DefaultAssigneeId`, fallback sang `IStaffingRepository.ListCareAssignmentsAsync` + `StaffingRules.ShiftWindow`), `DailyLogService`, `TaskReminderService` trong `CarePlanService.cs`, DI ở `ServiceCollectionExtensions.Care.cs`.
+  - `BE/NursingHome.API/BackgroundJobs/CareJobs.cs` (`CarePlanJob` mỗi giờ, `TaskReminderJob` mỗi 5 phút) đăng ký trong `Program.cs`.
+  - `BE/NursingHome.API/Controllers/CarePlansController.cs` (`CarePlansController`, `DailyLogsController`).
+- **Frontend:**
+  - `FE/src/types/care.ts`, `FE/src/utils/status.care.ts`, `FE/src/api/carePlans.ts`.
+  - `FE/src/pages/Staff/resident/CarePlanTabs.tsx` (`CarePlansTab`, `DailyLogsTab`, `MealModal`, `AdlModal`) + gắn vào `Tabs.tsx` & `ResidentDetail.tsx`.
+  - `FE/src/pages/Care/DailyLogs.tsx` (`/staff/daily-logs`) + khai báo route & menu trong `FE/src/modules/care.tsx`.
+- **Kiểm thử & Build:**
+  - `BE/NursingHome.sln`: build 0 lỗi, 0 cảnh báo.
+  - `FE`: `npm run build` và `npm run lint` sạch.
+  - Đã thêm test S3-H4 vào `scripts/smoke-test.mjs` và `CareScheduleTests.cs`.

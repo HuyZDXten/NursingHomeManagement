@@ -60,6 +60,9 @@ builder.Services.AddSingleton<IChatPublisher, SignalRChatPublisher>(); // S3-V6 
 builder.Services.AddSingleton<IUserIdProvider, SubjectUserIdProvider>();
 builder.Services.AddHostedService<PayOsSyncService>();
 builder.Services.AddHostedService<InvoiceReminderJob>(); // S3-V5 nhắc nợ mỗi giờ
+builder.Services.AddHostedService<CarePlanJob>();        // S3-H4 sinh việc chăm sóc mỗi giờ
+builder.Services.AddHostedService<TaskReminderJob>();    // S3-H4 nhắc việc mỗi 5 phút
+builder.Services.AddHostedService<AiInsightJob>();       // S4-H2 xu hướng sinh hiệu 06:00 & nhật ký AI 19:00
 builder.Services.AddSignalR();
 
 // ---- Auth: JWT bearer (giống ASS2) ----
@@ -140,6 +143,10 @@ builder.Services.AddRateLimiter(options =>
     // S4-V1: chatbot công khai theo IP (khách không đăng nhập).
     options.AddPolicy(RateLimitPolicies.AiPublic, httpContext => RateLimitPartition.GetFixedWindowLimiter(
         httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = aiPerMinute, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    // S4-H1: trợ lý gia đình theo tài khoản (RateLimit:AiMessagesPerMinute).
+    options.AddPolicy(RateLimitPolicies.AiFamily, httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        httpContext.User.FindFirst("sub")?.Value ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = aiPerMinute, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.OnRejected = (context, _) => new ValueTask(ExceptionHandlingMiddleware.WriteErrorAsync(
         context.HttpContext.Response, StatusCodes.Status429TooManyRequests, "Thao tác quá nhiều lần. Vui lòng chờ một phút."));

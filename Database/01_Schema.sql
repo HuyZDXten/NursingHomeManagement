@@ -738,6 +738,294 @@ GO
    Chỉ Huy thêm bảng trong vùng này; chèn NGAY TRÊN dòng "KẾT THÚC" bên dưới.
    =============================================================== */
 
+/* S3-H1: sự cố (UC-58, UC-59, UC-107). Viên dùng các cột này cho báo cáo UC-125 — giữ nguyên tên. */
+IF OBJECT_ID(N'dbo.Incidents', N'U') IS NULL
+CREATE TABLE dbo.Incidents (
+    Id               INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Incidents PRIMARY KEY,
+    ResidentId       INT            NOT NULL CONSTRAINT FK_Incidents_Residents REFERENCES dbo.Residents (Id),
+    Type             NVARCHAR(20)   NOT NULL,
+    Severity         NVARCHAR(10)   NOT NULL,
+    OccurredAt       DATETIME2      NOT NULL,
+    Location         NVARCHAR(100)  NULL,
+    Description      NVARCHAR(2000) NOT NULL,
+    ImmediateAction  NVARCHAR(2000) NULL,
+    ReportedById     INT            NOT NULL CONSTRAINT FK_Incidents_Reporter REFERENCES dbo.Accounts (Id),
+    Status           NVARCHAR(20)   NOT NULL CONSTRAINT DF_Incidents_Status DEFAULT (N'Open'),
+    Resolution       NVARCHAR(2000) NULL,
+    ClosedById       INT            NULL CONSTRAINT FK_Incidents_Closer REFERENCES dbo.Accounts (Id),
+    ClosedAt         DATETIME2      NULL,
+    ShareWithFamily  BIT            NOT NULL CONSTRAINT DF_Incidents_Share DEFAULT (0),
+    FamilyNotifiedAt DATETIME2      NULL,
+    RowVersion       ROWVERSION     NOT NULL,
+    CreatedAt        DATETIME2      NOT NULL CONSTRAINT DF_Incidents_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_Incidents_Type CHECK (Type IN (N'Fall', N'Injury', N'Behavior', N'Other')),
+    CONSTRAINT CK_Incidents_Severity CHECK (Severity IN (N'Low', N'Medium', N'High')),
+    CONSTRAINT CK_Incidents_Status CHECK (Status IN (N'Open', N'Investigating', N'Closed')),
+    CONSTRAINT CK_Incidents_Closed CHECK (Status <> N'Closed' OR (Resolution IS NOT NULL AND ClosedAt IS NOT NULL))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Incidents_Resident_OccurredAt')
+    CREATE INDEX IX_Incidents_Resident_OccurredAt ON dbo.Incidents (ResidentId, OccurredAt DESC);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Incidents_Status')
+    CREATE INDEX IX_Incidents_Status ON dbo.Incidents (Status, OccurredAt DESC);
+GO
+
+/* S3-H2: bệnh nền, dị ứng, chế độ ăn (UC-66, UC-71, UC-82). */
+IF OBJECT_ID(N'dbo.MedicalConditions', N'U') IS NULL
+CREATE TABLE dbo.MedicalConditions (
+    Id           INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_MedicalConditions PRIMARY KEY,
+    ResidentId   INT            NOT NULL CONSTRAINT FK_MedicalConditions_Residents REFERENCES dbo.Residents (Id),
+    Name         NVARCHAR(200)  NOT NULL,
+    DiagnosedOn  DATE           NULL,
+    Status       NVARCHAR(20)   NOT NULL CONSTRAINT DF_MedicalConditions_Status DEFAULT (N'Active'),
+    Notes        NVARCHAR(1000) NULL,
+    RecordedById INT            NOT NULL CONSTRAINT FK_MedicalConditions_Accounts REFERENCES dbo.Accounts (Id),
+    CreatedAt    DATETIME2      NOT NULL CONSTRAINT DF_MedicalConditions_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt    DATETIME2      NULL,
+    CONSTRAINT CK_MedicalConditions_Status CHECK (Status IN (N'Active', N'Resolved'))
+);
+GO
+IF OBJECT_ID(N'dbo.Allergies', N'U') IS NULL
+CREATE TABLE dbo.Allergies (
+    Id           INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Allergies PRIMARY KEY,
+    ResidentId   INT           NOT NULL CONSTRAINT FK_Allergies_Residents REFERENCES dbo.Residents (Id),
+    Allergen     NVARCHAR(150) NOT NULL,
+    Type         NVARCHAR(10)  NOT NULL,
+    Reaction     NVARCHAR(500) NULL,
+    Severity     NVARCHAR(10)  NOT NULL,
+    RecordedById INT           NOT NULL CONSTRAINT FK_Allergies_Accounts REFERENCES dbo.Accounts (Id),
+    CreatedAt    DATETIME2     NOT NULL CONSTRAINT DF_Allergies_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT UQ_Allergies UNIQUE (ResidentId, Allergen),
+    CONSTRAINT CK_Allergies_Type CHECK (Type IN (N'Drug', N'Food', N'Other')),
+    CONSTRAINT CK_Allergies_Severity CHECK (Severity IN (N'Mild', N'Moderate', N'Severe'))
+);
+GO
+IF OBJECT_ID(N'dbo.DietPlans', N'U') IS NULL
+CREATE TABLE dbo.DietPlans (
+    Id             INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_DietPlans PRIMARY KEY,
+    ResidentId     INT            NOT NULL CONSTRAINT FK_DietPlans_Residents REFERENCES dbo.Residents (Id),
+    DietType       NVARCHAR(30)   NOT NULL,
+    Texture        NVARCHAR(20)   NOT NULL CONSTRAINT DF_DietPlans_Texture DEFAULT (N'Normal'),
+    Restrictions   NVARCHAR(1000) NULL,
+    StartDate      DATE           NOT NULL,
+    EndDate        DATE           NULL,
+    PrescribedById INT            NOT NULL CONSTRAINT FK_DietPlans_Accounts REFERENCES dbo.Accounts (Id),
+    CreatedAt      DATETIME2      NOT NULL CONSTRAINT DF_DietPlans_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_DietPlans_Type CHECK (DietType IN (N'Normal', N'Diabetic', N'LowSalt', N'LowFat', N'Renal', N'Vegetarian', N'Other')),
+    CONSTRAINT CK_DietPlans_Texture CHECK (Texture IN (N'Normal', N'Soft', N'Minced', N'Pureed', N'Liquid')),
+    CONSTRAINT CK_DietPlans_Dates CHECK (EndDate IS NULL OR EndDate >= StartDate)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_DietPlans_Active')
+    CREATE UNIQUE INDEX UX_DietPlans_Active ON dbo.DietPlans (ResidentId) WHERE EndDate IS NULL;
+GO
+
+/* S3-H3: đặt & duyệt lịch thăm (UC-103, UC-104). */
+IF OBJECT_ID(N'dbo.VisitBookings', N'U') IS NULL
+CREATE TABLE dbo.VisitBookings (
+    Id              INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_VisitBookings PRIMARY KEY,
+    ResidentId      INT           NOT NULL CONSTRAINT FK_VisitBookings_Residents REFERENCES dbo.Residents (Id),
+    FamilyAccountId INT           NOT NULL CONSTRAINT FK_VisitBookings_Accounts REFERENCES dbo.Accounts (Id),
+    VisitDate       DATE          NOT NULL,
+    SlotStart       TIME(0)       NOT NULL,
+    SlotEnd         TIME(0)       NOT NULL,
+    GuestCount      INT           NOT NULL,
+    GuestNames      NVARCHAR(500) NULL,
+    Note            NVARCHAR(500) NULL,
+    Status          NVARCHAR(20)  NOT NULL CONSTRAINT DF_VisitBookings_Status DEFAULT (N'Requested'),
+    ReviewedById    INT           NULL CONSTRAINT FK_VisitBookings_Reviewer REFERENCES dbo.Accounts (Id),
+    ReviewNote      NVARCHAR(500) NULL,
+    CheckedInAt     DATETIME2     NULL,
+    CreatedAt       DATETIME2     NOT NULL CONSTRAINT DF_VisitBookings_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt       DATETIME2     NULL,
+    CONSTRAINT CK_VisitBookings_Guests CHECK (GuestCount BETWEEN 1 AND 5),
+    CONSTRAINT CK_VisitBookings_Slot CHECK (SlotEnd > SlotStart),
+    CONSTRAINT CK_VisitBookings_Status CHECK (Status IN (N'Requested', N'Approved', N'Rejected', N'CheckedIn', N'Completed', N'Cancelled', N'NoShow'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_VisitBookings_Date_Slot')
+    CREATE INDEX IX_VisitBookings_Date_Slot ON dbo.VisitBookings (VisitDate, SlotStart, Status);
+GO
+
+/* S3-H4: kế hoạch chăm sóc tự sinh việc, nhắc việc, ADL, bữa ăn (UC-51, UC-56, UC-57, UC-61). */
+IF OBJECT_ID(N'dbo.CarePlans', N'U') IS NULL
+CREATE TABLE dbo.CarePlans (
+    Id          INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_CarePlans PRIMARY KEY,
+    ResidentId  INT            NOT NULL CONSTRAINT FK_CarePlans_Residents REFERENCES dbo.Residents (Id),
+    Title       NVARCHAR(200)  NOT NULL,
+    Goals       NVARCHAR(1000) NULL,
+    StartDate   DATE           NOT NULL,
+    EndDate     DATE           NULL,
+    IsActive    BIT            NOT NULL CONSTRAINT DF_CarePlans_IsActive DEFAULT (1),
+    CreatedById INT            NOT NULL CONSTRAINT FK_CarePlans_Accounts REFERENCES dbo.Accounts (Id),
+    CreatedAt   DATETIME2      NOT NULL CONSTRAINT DF_CarePlans_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt   DATETIME2      NULL,
+    CONSTRAINT CK_CarePlans_Dates CHECK (EndDate IS NULL OR EndDate >= StartDate)
+);
+GO
+IF OBJECT_ID(N'dbo.CarePlanItems', N'U') IS NULL
+CREATE TABLE dbo.CarePlanItems (
+    Id                INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_CarePlanItems PRIMARY KEY,
+    CarePlanId        INT            NOT NULL CONSTRAINT FK_CarePlanItems_Plans REFERENCES dbo.CarePlans (Id),
+    Title             NVARCHAR(200)  NOT NULL,
+    Instructions      NVARCHAR(1000) NULL,
+    TimeOfDay         TIME(0)        NOT NULL,
+    DaysOfWeek        CHAR(7)        NOT NULL CONSTRAINT DF_CarePlanItems_Days DEFAULT ('1111111'),
+    DefaultAssigneeId INT            NULL CONSTRAINT FK_CarePlanItems_Accounts REFERENCES dbo.Accounts (Id),
+    IsActive          BIT            NOT NULL CONSTRAINT DF_CarePlanItems_IsActive DEFAULT (1),
+    CONSTRAINT CK_CarePlanItems_Days CHECK (DaysOfWeek NOT LIKE '%[^01]%')
+);
+GO
+IF OBJECT_ID(N'dbo.GeneratedCareTasks', N'U') IS NULL
+CREATE TABLE dbo.GeneratedCareTasks (
+    CarePlanItemId INT       NOT NULL CONSTRAINT FK_GeneratedCareTasks_Items REFERENCES dbo.CarePlanItems (Id),
+    ForDate        DATE      NOT NULL,
+    CareTaskId     INT       NOT NULL CONSTRAINT FK_GeneratedCareTasks_Tasks REFERENCES dbo.CareTasks (Id),
+    CreatedAt      DATETIME2 NOT NULL CONSTRAINT DF_GeneratedCareTasks_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT PK_GeneratedCareTasks PRIMARY KEY (CarePlanItemId, ForDate)
+);
+GO
+IF OBJECT_ID(N'dbo.TaskReminders', N'U') IS NULL
+CREATE TABLE dbo.TaskReminders (
+    CareTaskId INT          NOT NULL CONSTRAINT FK_TaskReminders_Tasks REFERENCES dbo.CareTasks (Id),
+    Kind       NVARCHAR(10) NOT NULL,
+    SentAt     DATETIME2    NOT NULL CONSTRAINT DF_TaskReminders_SentAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT PK_TaskReminders PRIMARY KEY (CareTaskId, Kind),
+    CONSTRAINT CK_TaskReminders_Kind CHECK (Kind IN (N'DueSoon', N'Overdue'))
+);
+GO
+IF OBJECT_ID(N'dbo.DailyCareLogs', N'U') IS NULL
+CREATE TABLE dbo.DailyCareLogs (
+    Id              BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_DailyCareLogs PRIMARY KEY,
+    ResidentId      INT           NOT NULL CONSTRAINT FK_DailyCareLogs_Residents REFERENCES dbo.Residents (Id),
+    LogDate         DATE          NOT NULL,
+    Category        NVARCHAR(20)  NOT NULL,
+    Level           NVARCHAR(20)  NOT NULL,
+    Note            NVARCHAR(500) NULL,
+    RecordedById    INT           NOT NULL CONSTRAINT FK_DailyCareLogs_Accounts REFERENCES dbo.Accounts (Id),
+    RecordedAt      DATETIME2     NOT NULL CONSTRAINT DF_DailyCareLogs_RecordedAt DEFAULT (SYSUTCDATETIME()),
+    ShareWithFamily BIT           NOT NULL CONSTRAINT DF_DailyCareLogs_Share DEFAULT (1),
+    CONSTRAINT CK_DailyCareLogs_Category CHECK (Category IN (N'Bathing', N'Toileting', N'Mobility', N'Sleep', N'Mood', N'Other')),
+    CONSTRAINT CK_DailyCareLogs_Level CHECK (Level IN (N'Independent', N'NeedsHelp', N'Dependent', N'Good', N'Fair', N'Poor'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_DailyCareLogs_Resident_Date')
+    CREATE INDEX IX_DailyCareLogs_Resident_Date ON dbo.DailyCareLogs (ResidentId, LogDate);
+GO
+IF OBJECT_ID(N'dbo.MealLogs', N'U') IS NULL
+CREATE TABLE dbo.MealLogs (
+    Id              BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_MealLogs PRIMARY KEY,
+    ResidentId      INT           NOT NULL CONSTRAINT FK_MealLogs_Residents REFERENCES dbo.Residents (Id),
+    MealDate        DATE          NOT NULL,
+    Meal            NVARCHAR(10)  NOT NULL,
+    IntakePercent   INT           NOT NULL,
+    FluidMl         INT           NULL,
+    Note            NVARCHAR(500) NULL,
+    RecordedById    INT           NOT NULL CONSTRAINT FK_MealLogs_Accounts REFERENCES dbo.Accounts (Id),
+    RecordedAt      DATETIME2     NOT NULL CONSTRAINT DF_MealLogs_RecordedAt DEFAULT (SYSUTCDATETIME()),
+    ShareWithFamily BIT           NOT NULL CONSTRAINT DF_MealLogs_Share DEFAULT (1),
+    CONSTRAINT UQ_MealLogs UNIQUE (ResidentId, MealDate, Meal),
+    CONSTRAINT CK_MealLogs_Meal CHECK (Meal IN (N'Breakfast', N'Lunch', N'Dinner', N'Snack')),
+    CONSTRAINT CK_MealLogs_Intake CHECK (IntakePercent BETWEEN 0 AND 100),
+    CONSTRAINT CK_MealLogs_Fluid CHECK (FluidMl IS NULL OR FluidMl BETWEEN 0 AND 5000)
+);
+GO
+
+/* S3-H5: ngưỡng sinh hiệu riêng, đánh giá định kỳ (Morse/Barthel/MNA-SF), phiếu khám bác sĩ (UC-64, UC-67, UC-68). */
+IF OBJECT_ID(N'dbo.VitalThresholds', N'U') IS NULL
+CREATE TABLE dbo.VitalThresholds (
+    ResidentId      INT           NOT NULL CONSTRAINT PK_VitalThresholds PRIMARY KEY
+                                  CONSTRAINT FK_VitalThresholds_Residents REFERENCES dbo.Residents (Id),
+    SystolicHigh    INT           NOT NULL,
+    SystolicLow     INT           NOT NULL,
+    HeartRateHigh   INT           NOT NULL,
+    HeartRateLow    INT           NOT NULL,
+    TemperatureHigh DECIMAL(4,1)  NOT NULL,
+    SpO2Low         DECIMAL(5,2)  NOT NULL,
+    Note            NVARCHAR(500) NULL,
+    SetById         INT           NOT NULL CONSTRAINT FK_VitalThresholds_Accounts REFERENCES dbo.Accounts (Id),
+    UpdatedAt       DATETIME2     NOT NULL CONSTRAINT DF_VitalThresholds_UpdatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_VitalThresholds CHECK (SystolicHigh > SystolicLow AND HeartRateHigh > HeartRateLow)
+);
+GO
+IF OBJECT_ID(N'dbo.Assessments', N'U') IS NULL
+CREATE TABLE dbo.Assessments (
+    Id           INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Assessments PRIMARY KEY,
+    ResidentId   INT           NOT NULL CONSTRAINT FK_Assessments_Residents REFERENCES dbo.Residents (Id),
+    Type         NVARCHAR(20)  NOT NULL,
+    Score        INT           NOT NULL,
+    MaxScore     INT           NOT NULL,
+    RiskLevel    NVARCHAR(10)  NOT NULL,
+    AnswersJson  NVARCHAR(MAX) NOT NULL,
+    Note         NVARCHAR(500) NULL,
+    AssessedById INT           NOT NULL CONSTRAINT FK_Assessments_Accounts REFERENCES dbo.Accounts (Id),
+    AssessedAt   DATETIME2     NOT NULL CONSTRAINT DF_Assessments_AssessedAt DEFAULT (SYSUTCDATETIME()),
+    NextDueOn    DATE          NULL,
+    CONSTRAINT CK_Assessments_Type CHECK (Type IN (N'FallRisk', N'Barthel', N'Nutrition')),
+    CONSTRAINT CK_Assessments_Risk CHECK (RiskLevel IN (N'Low', N'Medium', N'High'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Assessments_Resident_Type')
+    CREATE INDEX IX_Assessments_Resident_Type ON dbo.Assessments (ResidentId, Type, AssessedAt DESC);
+GO
+IF OBJECT_ID(N'dbo.DoctorVisits', N'U') IS NULL
+CREATE TABLE dbo.DoctorVisits (
+    Id              INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_DoctorVisits PRIMARY KEY,
+    ResidentId      INT            NOT NULL CONSTRAINT FK_DoctorVisits_Residents REFERENCES dbo.Residents (Id),
+    DoctorId        INT            NOT NULL CONSTRAINT FK_DoctorVisits_Accounts REFERENCES dbo.Accounts (Id),
+    VisitedAt       DATETIME2      NOT NULL,
+    Subjective      NVARCHAR(2000) NULL,
+    Objective       NVARCHAR(2000) NULL,
+    Assessment      NVARCHAR(2000) NOT NULL,
+    [Plan]          NVARCHAR(2000) NULL,
+    FollowUpOn      DATE           NULL,
+    ShareWithFamily BIT            NOT NULL CONSTRAINT DF_DoctorVisits_Share DEFAULT (0),
+    CreatedAt       DATETIME2      NOT NULL CONSTRAINT DF_DoctorVisits_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt       DATETIME2      NULL
+);
+GO
+
+/* S3-H6: phản hồi & khiếu nại từ gia đình (UC-109, UC-110). */
+IF OBJECT_ID(N'dbo.Feedbacks', N'U') IS NULL
+CREATE TABLE dbo.Feedbacks (
+    Id              INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Feedbacks PRIMARY KEY,
+    FamilyAccountId INT            NOT NULL CONSTRAINT FK_Feedbacks_Family REFERENCES dbo.Accounts (Id),
+    ResidentId      INT            NULL CONSTRAINT FK_Feedbacks_Residents REFERENCES dbo.Residents (Id),
+    Category        NVARCHAR(20)   NOT NULL,
+    Rating          TINYINT        NULL,
+    Subject         NVARCHAR(200)  NOT NULL,
+    Content         NVARCHAR(2000) NOT NULL,
+    Status          NVARCHAR(20)   NOT NULL CONSTRAINT DF_Feedbacks_Status DEFAULT (N'New'),
+    AssignedToId    INT            NULL CONSTRAINT FK_Feedbacks_Assignee REFERENCES dbo.Accounts (Id),
+    Response        NVARCHAR(2000) NULL,
+    RespondedById   INT            NULL CONSTRAINT FK_Feedbacks_Responder REFERENCES dbo.Accounts (Id),
+    RespondedAt     DATETIME2      NULL,
+    CreatedAt       DATETIME2      NOT NULL CONSTRAINT DF_Feedbacks_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_Feedbacks_Category CHECK (Category IN (N'Care', N'Food', N'Facility', N'Billing', N'Staff', N'Other')),
+    CONSTRAINT CK_Feedbacks_Rating CHECK (Rating IS NULL OR Rating BETWEEN 1 AND 5),
+    CONSTRAINT CK_Feedbacks_Status CHECK (Status IN (N'New', N'InProgress', N'Resolved'))
+);
+GO
+
+/* S4-H2: nhật ký hằng ngày AI (AI-03) & diễn giải xu hướng sinh hiệu (AI-06). */
+IF OBJECT_ID(N'dbo.AiInsights', N'U') IS NULL
+CREATE TABLE dbo.AiInsights (
+    Id           BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AiInsights PRIMARY KEY,
+    ResidentId   INT           NOT NULL CONSTRAINT FK_AiInsights_Residents REFERENCES dbo.Residents (Id),
+    Type         NVARCHAR(20)  NOT NULL,
+    ForDate      DATE          NOT NULL,
+    Content      NVARCHAR(MAX) NOT NULL,
+    SourceJson   NVARCHAR(MAX) NULL,
+    Status       NVARCHAR(10)  NOT NULL CONSTRAINT DF_AiInsights_Status DEFAULT (N'Draft'),
+    GeneratedAt  DATETIME2     NOT NULL CONSTRAINT DF_AiInsights_GeneratedAt DEFAULT (SYSUTCDATETIME()),
+    ReviewedById INT           NULL CONSTRAINT FK_AiInsights_Reviewer REFERENCES dbo.Accounts (Id),
+    ReviewedAt   DATETIME2     NULL,
+    CONSTRAINT UQ_AiInsights UNIQUE (ResidentId, Type, ForDate),
+    CONSTRAINT CK_AiInsights_Type CHECK (Type IN (N'DailyDigest', N'VitalTrend')),
+    CONSTRAINT CK_AiInsights_Status CHECK (Status IN (N'Draft', N'Approved', N'Rejected'))
+);
+GO
+
 /* ---- 10. MODULE CHĂM SÓC & GIA ĐÌNH — KẾT THÚC ---- */
 
 PRINT N'01_Schema.sql: xong.';

@@ -61,6 +61,9 @@ public class FacilityOptions
     /// <summary>Tổng số khách tối đa của một buổi tham quan (S3-V1, UC-18).</summary>
     public int TourSlotCapacity { get; set; } = 5;
 
+    /// <summary>Tổng số khách tối đa của một khung giờ thăm (S3-H3, UC-103).</summary>
+    public int VisitSlotCapacity { get; set; } = 8;
+
     /// <summary>Ngưỡng cảnh báo mặc định (UC-65). Chỉ để báo nhân viên xem lại, không phải chẩn đoán.</summary>
     public VitalAlertOptions VitalAlerts { get; set; } = new();
 }

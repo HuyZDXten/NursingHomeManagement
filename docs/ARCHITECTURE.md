@@ -258,6 +258,28 @@ Tất cả trả JSON camelCase; lỗi `{ "message": "..." }`. Swagger: `http://
 | | `POST/PUT/DELETE /api/rooms`, `/api/rooms/{id}/beds[/{bedId}]`, `POST/GET /api/bed-assignments` | FrontDesk |
 | Chăm sóc | `GET /odata/CareTasks?date&mine&residentId`, `GET /api/care-tasks/{id}`, `POST /{id}/updates`, `GET /{id}/records`, `POST /api/vitals` | ClinicalStaff |
 | | `POST /api/care-tasks` | CarePlanners |
+| Sự cố (S3-H1) | `GET /api/incidents`, `GET /api/incidents/{id}`, `POST /api/incidents` | ClinicalStaff |
+| | `POST /api/incidents/{id}/updates` | Admin, Nurse, Doctor |
+| | `GET /api/family/residents/{id}/incidents` | FamilyOnly |
+| Hồ sơ y tế (S3-H2) | `GET /api/residents/{id}/medical-profile` | ClinicalStaff |
+| | `POST/PUT/DELETE /api/residents/{id}/conditions`, `allergies`, `POST diet-plans` | Admin, Doctor, Nurse |
+| | `POST /api/medication-schedules/check` | Prescribers |
+| | `GET /api/family/residents/{id}/medical-profile` | FamilyOnly |
+| Lịch thăm (S3-H3) | `GET /api/visits/slots?date=` | Admin, Receptionist, Family |
+| | `POST /api/visits`, `GET /api/visits/mine`, `POST /api/visits/{id}/cancel` | FamilyOnly |
+| | `GET /api/visits`, `POST /{id}/approve`, `reject`, `check-in`, `complete`, `no-show` | FrontDesk |
+| Kế hoạch & nhật ký (S3-H4) | `GET /api/residents/{id}/care-plans`, `daily-logs`, `meals`, `POST daily-logs`, `PUT meals` | ClinicalStaff |
+| | `POST/PUT /api/care-plans`, `POST /{id}/deactivate`, `POST /api/care-plans/generate` | CarePlanners |
+| Đánh giá & khám (S3-H5) | `GET /api/assessments/scales`, `/residents/{id}/assessments`, `doctor-visits`, `vital-thresholds` | ClinicalStaff |
+| | `POST /api/assessments`, `GET /api/assessments/due` | Admin, Nurse, Doctor |
+| | `POST/PUT /api/residents/{id}/doctor-visits` | Doctor |
+| | `PUT /api/residents/{id}/vital-thresholds` | Prescribers |
+| Nhật ký & phản hồi (S3-H6) | `GET /api/family/residents/{id}/timeline?date=`, `GET /api/feedbacks/mine`, `POST /api/feedbacks` | FamilyOnly |
+| | `GET /api/feedbacks`, `POST /api/feedbacks/{id}/respond` | AdminOnly |
+| Trợ lý gia đình (S4-H1) | `POST /api/ai/family/chat`, `GET /api/ai/family/history` | FamilyOnly |
+| Nhật ký AI & xu hướng (S4-H2) | `GET /api/ai-insights`, `POST /api/ai-insights/{id}/approve`, `reject`, `POST /api/ai-insights/generate` | CarePlanners |
+| | `GET /api/residents/{id}/vital-trends` | ClinicalStaff |
+| | `GET /api/family/residents/{id}/digests` | FamilyOnly |
 | Thuốc | `GET /api/medication-schedules?residentId`, `GET /api/medications/today?date`, `POST /api/medication-logs` | ClinicalStaff |
 | | `POST /api/medication-schedules`, `POST /{id}/stop` | Prescribers |
 | Gói, hóa đơn | `GET /api/service-packages` | Staff |

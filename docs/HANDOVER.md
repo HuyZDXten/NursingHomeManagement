@@ -254,6 +254,10 @@ Chi tiết từng use case ở [SPRINTS.md](SPRINTS.md). Những điểm cần b
 - `Cloudinary`, `Google`, `Ai` đã có section trong `appsettings.json` nhưng **chưa nối code** (Sprint 3–4).
 - Upload ảnh cư dân/giấy tờ chưa có (UC-24 ảnh, UC-29).
 - Giao diện đã build và kiểm tra qua HTTP (CORS, SignalR, các module Vite), **chưa QA bằng mắt** trên trình duyệt cho từng role — làm ở Sprint 5.
+- Giới hạn của module Chăm sóc & Gia đình:
+  - Cảnh báo dị ứng khi kê thuốc chỉ so khớp chuỗi tên thuốc/hoạt chất (đã chuẩn hóa dấu và chữ thường qua `TextMatch.Normalize`) với danh sách dị ứng đã ghi nhận của cư dân; chưa tích hợp cơ sở dữ liệu tương tác thuốc – thuốc hay nhóm hoạt chất chéo.
+  - Nhật ký AI hằng ngày (`DailyDigest`) chỉ tạo bản nháp từ dữ liệu chia sẻ trong ngày và bắt buộc điều dưỡng duyệt (`Approved`) mới hiển thị cho gia đình.
+  - Phân tích xu hướng sinh hiệu (`VitalTrend`) dùng 3 quy tắc thống kê cơ bản trên dữ liệu 14 ngày gần nhất (vượt ngưỡng, tăng/giảm liên tục > 10%, lệch `|z-score| >= 2` với >= 5 lần đo), chỉ mang tính hỗ trợ cảnh báo nội bộ cho nhân viên y tế.
 - Code MVC cũ (Razor) đã bỏ khỏi nhánh này, vẫn còn ở `main`: xem lại bằng `git show main:BE/Services/BillingService.cs`.
 
 ## 9. Quy trình Git

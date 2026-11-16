@@ -105,3 +105,20 @@ Quy tắc:
 
 - "Khung đã qua" tính theo giờ VN (`FacilityClock`), không theo giờ máy trình duyệt.
 - Kiểm sức chứa + giới hạn 1 lịch/ngày phải nằm trong transaction DAO, không kiểm ở Service rồi mới ghi.
+
+## Kết quả triển khai
+
+- **Database:** Thêm `dbo.VisitBookings` + index `IX_VisitBookings_Date_Slot` vào `Database/01_Schema.sql` (mục 10), dữ liệu mẫu vào `Database/05_DemoSeed.sql` (mục 11), sinh lại `Database/NursingHomeDB_AllInOne.sql`.
+- **Backend:**
+  - `BE/NursingHome.Services/Options/Options.cs` (`FacilityOptions.VisitSlotCapacity = 8`) + `BE/NursingHome.API/appsettings.json`.
+  - `BE/NursingHome.BusinessObjects/Entities/CareVisits.cs` + mapping ở `NursingHomeContext.Care.cs`.
+  - `BE/NursingHome.Services/Helpers/VisitingHours.cs` (+ unit test `BE/NursingHome.Tests/VisitingHoursTests.cs`).
+  - `BE/NursingHome.DataAccessObjects/VisitDAO.cs` (`BookAsync` kiểm tra sức chứa & giới hạn 1 lịch/ngày trong transaction `Serializable`), `IVisitRepository` + `VisitRepository`.
+  - `BE/NursingHome.DTOs/Care/VisitDtos.cs`, mapper ở `ModuleMappers.cs`, `IVisitService` (`ICareModuleServices.cs`), `VisitService.cs` (gửi chuông + email khi duyệt nếu `IEmailService.IsConfigured`), DI ở `ServiceCollectionExtensions.Care.cs`, `VisitsController.cs`.
+- **Frontend:**
+  - `FE/src/types/care.ts`, `FE/src/utils/status.care.ts`, `FE/src/api/visits.ts`.
+  - `FE/src/pages/Family/FamilyVisits.tsx` (`/family/visits`) và `FE/src/pages/Care/Visits.tsx` (`/staff/visits`), khai báo route & menu trong `FE/src/modules/care.tsx`.
+- **Kiểm thử & Build:**
+  - `BE/NursingHome.sln`: build 0 lỗi, 0 cảnh báo.
+  - `FE`: `npm run build` và `npm run lint` sạch.
+  - Đã thêm test S3-H3 vào `scripts/smoke-test.mjs` và `VisitingHoursTests.cs`.

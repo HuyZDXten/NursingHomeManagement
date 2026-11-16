@@ -72,3 +72,16 @@ System prompt, ý chính:
 
 - **Không** viết tool truy vấn DAO/Repository trực tiếp — sẽ bỏ qua `ResidentAccessService` và lộ dữ liệu. Luôn đi qua service.
 - `residentId` do model đưa ra không đáng tin: service kiểm quyền sẽ chặn; đừng "sửa" bằng cách tự chọn người thân đầu tiên.
+
+## Kết quả triển khai
+
+- **Backend:**
+  - `BE/NursingHome.Services/Ai/Tools/FamilyTools.cs` (6 tool `list_my_residents`, `get_day_summary`, `get_recent_vitals`, `get_active_medications`, `get_open_invoices`, `get_my_visits` đều gọi qua service với `CurrentUser` và bắt ngoại lệ quyền trả JSON gọn).
+  - `BE/NursingHome.Services/Ai/FamilyAssistantService.cs` + từ khóa cho `FakeAiChatProvider.cs`.
+  - Đăng ký DI ở `ServiceCollectionExtensions.Care.cs` và controller `BE/NursingHome.API/Controllers/FamilyAssistantController.cs` (`/api/ai/family/chat`, `/api/ai/family/history`).
+- **Frontend:**
+  - `FE/src/api/familyAssistant.ts`, `FE/src/pages/Family/FamilyAssistant.tsx` (bọc `ChatWidget`), gắn `{user?.role === 'Family' && <FamilyAssistant />}` vào `FE/src/layouts/AppLayout.tsx`.
+- **Kiểm thử & Build:**
+  - `BE/NursingHome.sln`: build 0 lỗi, 0 cảnh báo.
+  - `FE`: `npm run build` và `npm run lint` sạch.
+  - Đã thêm test `BE/NursingHome.Tests/FamilyToolsTests.cs` và kịch bản smoke test vào `scripts/smoke-test.mjs`.

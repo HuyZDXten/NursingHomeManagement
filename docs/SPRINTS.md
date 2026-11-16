@@ -20,9 +20,9 @@ Dựa trên báo cáo phân tích (142 use case: UC-01..UC-130 + AI-01..AI-12). 
 | 0 | Tuần 1 | Nền tảng: solution 6 layer, `Database/`, JWT, FE khung | Xong |
 | 1 | Tuần 2–3 | Chuyển 40 use case của bản MVC sang API + React | Xong |
 | 2 | Tuần 4 | PayOS VietQR, đối soát, thông báo realtime | Xong |
-| 3 | 16–29/11 | Module mới: ca trực, sự cố, ADL, lịch thăm, chat, báo cáo... | Chưa làm |
-| 4 | 30/11–06/12 | AI: chatbot tư vấn, trợ lý gia đình, tóm tắt | Chưa làm |
-| 5 | 07–13/12 | Hoàn thiện: test, seed demo, tài liệu, slide, tổng duyệt | Chưa làm |
+| 3 | 16–29/11 | Module mới: ca trực, sự cố, ADL, lịch thăm, chat, báo cáo... | Chờ review |
+| 4 | 30/11–06/12 | AI: chatbot tư vấn, trợ lý gia đình, tóm tắt | Chờ review |
+| 5 | 07–13/12 | Hoàn thiện: test, seed demo, tài liệu, slide, tổng duyệt | Đang làm |
 
 Mốc an toàn: hết Sprint 2 đã đủ để demo (bản cũ chạy trên API + React + PayOS).
 

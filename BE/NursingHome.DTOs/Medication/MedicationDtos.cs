@@ -47,6 +47,9 @@ public class CreateMedicationScheduleRequest
 
     [MaxLength(2000)]
     public string? Instructions { get; set; }
+
+    /// <summary>S3-H2: bác sĩ xác nhận đã đọc cảnh báo dị ứng / trùng thuốc.</summary>
+    public bool AcknowledgeWarnings { get; set; }
 }
 
 /// <summary>Một lần dùng thuốc trong bảng phát thuốc của một ngày.</summary>
