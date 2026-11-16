@@ -6,6 +6,8 @@ Sprint 0–2 đã xong (56/142 use case, xem [../SPRINTS.md](../SPRINTS.md)). C�
 
 ## Đọc trước khi nhận task
 
+> **Huy:** bắt đầu từ [HUONG-DAN-HUY.md](HUONG-DAN-HUY.md) (cập nhật 16/11): dựng máy trên nhánh mới nhất, tạo nhánh từ đâu, thứ tự review 10 PR của Viên, những chỗ trong mã của Viên cần biết.
+
 1. [../HANDOVER.md](../HANDOVER.md) mục 1 — cài máy, chạy được API + FE + PayOS giả lập.
 2. [../ARCHITECTURE.md](../ARCHITECTURE.md) — kiến trúc, lần theo request "phân giường", ERD, **mục 6: điểm mở rộng cho 2 module**.
 3. [../HANDOVER.md](../HANDOVER.md) mục 3–5 — phân quyền, quy ước, ví dụ thêm một use case qua từng layer.
@@ -15,7 +17,7 @@ Sprint 0–2 đã xong (56/142 use case, xem [../SPRINTS.md](../SPRINTS.md)). C�
 
 | Sprint | Thời gian | Mục tiêu | Mốc kiểm tra |
 | --- | --- | --- | --- |
-| Chuẩn bị | 14–15/11 | Huy cài máy, đọc tài liệu, làm bài khởi động (bên dưới) | Huy chạy được smoke test 31/31 |
+| Chuẩn bị | 14–15/11 | Huy cài máy, đọc tài liệu, làm bài khởi động (bên dưới) | Huy chạy được smoke test (213/213 trên `feature/s4-v2-ai-handover`) |
 | **3** | 16/11 – 29/11 | Module mới. Tuần 1: các task **Must**; tuần 2: **Should** | 20/11: merge Must vào `develop` · 29/11: sprint review |
 | **4** | 30/11 – 06/12 | AI: hạ tầng, chatbot tư vấn, trợ lý gia đình, nhật ký AI | 02/12: hạ tầng AI (S4-V1 phần 1) merge để Huy dùng |
 | **5** | 07/12 – 13/12 | Hoàn thiện, QA từng role, seed demo, slide, tổng duyệt | 11/12: đóng băng tính năng · 12/12: tổng duyệt |
