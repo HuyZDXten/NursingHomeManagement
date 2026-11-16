@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Viên/Huy | Must/Should/Could | 1/2/3/5/8 | 3.1 | — | `feature/s?-??-ten` |
+| Viên/Huy | Must/Should/Could | 1/2/3/5/8 | 3.1 | — | `feature/short-feature-name` |
 
 ## Mục tiêu
 

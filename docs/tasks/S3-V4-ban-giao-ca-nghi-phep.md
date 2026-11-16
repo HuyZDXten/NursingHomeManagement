@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Viên | Should | 5 | 3.2 | S3-V2 (bảng ca) | `feature/s3-v4-handover` |
+| Viên | Should | 5 | 3.2 | S3-V2 (bảng ca) | `feature/leave-shift-handover` |
 
 ## Mục tiêu
 

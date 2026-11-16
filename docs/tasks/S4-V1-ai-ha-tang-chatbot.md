@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Viên | Must | 8 — **2 PR**: (1) hạ tầng, merge **trước 02/12** để Huy dùng; (2) chatbot công khai | 4 | S3-V1 (tạo yêu cầu, đặt tham quan) | `feature/s4-v1-ai-core`, `feature/s4-v1-public-bot` |
+| Viên | Must | 8 — **2 PR**: (1) hạ tầng, merge **trước 02/12** để Huy dùng; (2) chatbot công khai | 4 | S3-V1 (tạo yêu cầu, đặt tham quan) | `feature/ai-core`, `feature/public-chatbot` |
 
 ## Mục tiêu
 
@@ -17,7 +17,7 @@ PR 1 — hạ tầng:
 - [x] Widget `ChatWidget` (nút nổi góc phải, khung chat, lịch sử, đang gõ…) nhận hàm `send`/`loadHistory` qua props để Huy dùng lại.
 - [x] Unit test engine với `FakeAiChatProvider`: tool được gọi đúng tham số, kết quả tool được đưa lại cho model, tin nhắn được lưu.
 
-### Kết quả PR 1 — hạ tầng (13/11/2026, nhánh `feature/s4-v1-ai-core`)
+### Kết quả PR 1 — hạ tầng (13/11/2026, nhánh `feature/ai-core`)
 
 - Unit thêm `AiEngineTests` (75/75): tool nhận đúng tham số và kết quả quay lại model, dừng mời tool sau 3 vòng, provider lỗi → câu xin lỗi có hotline, Fake từ chối câu hỏi thuốc, payload Gemini gửi lại nguyên `content` có `thoughtSignature`, đọc `functionCall` + bỏ phần "thought". Smoke 184/184 vẫn PASS. **Chưa gọi Gemini thật** (không có key trên máy test).
 - Khác đặc tả:
@@ -41,7 +41,7 @@ PR 2 — chatbot công khai:
 - [x] Admin quản lý **tài liệu tri thức** (FAQ, quy trình nhập viện, chính sách thăm) tại `/staff/ai-knowledge`.
 - [x] Quá `RateLimit:AiMessagesPerMinute` mỗi IP → 429; `Ai:PublicChatbotEnabled = false` → widget ẩn.
 
-### Kết quả PR 2 — chatbot công khai (13/11/2026, nhánh `feature/s4-v1-public-bot`)
+### Kết quả PR 2 — chatbot công khai (13/11/2026, nhánh `feature/public-chatbot`)
 
 - Kiểm thử: smoke thêm 19 kiểm tra với provider **Fake** (tổng 203/203 PASS: giá từ `list_packages`, giường trống, giờ thăm từ tri thức, từ chối câu hỏi thuốc, tài liệu nội bộ không lộ, tạo yêu cầu/đặt tham quan chỉ sau khi xác nhận, nguồn `Chatbot`, tham số sai không 500, 429). Unit thêm `PublicToolsTests` (85/85). `run-smoke-isolated.ps1` giờ chạy với `Ai__Enabled=true`, `Ai__Provider=Fake`.
 - **Chưa chạy với Gemini thật** (không có key trên máy test) — khi có key: `dotnet user-secrets set "Ai:Gemini:ApiKey" "..."`, `"Ai:Gemini:Model" "gemini-3.8-flash"` (model StreetBiz dùng), `Provider = Gemini`, rồi thử các câu ở mục 6. Widget và trang `/staff/ai-knowledge` **chưa xem trên trình duyệt**.

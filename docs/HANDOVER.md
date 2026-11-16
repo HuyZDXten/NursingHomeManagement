@@ -259,16 +259,22 @@ Chi tiết từng use case ở [SPRINTS.md](SPRINTS.md). Những điểm cần b
 ```text
 main     ← chỉ bản đã kiểm thử để nộp/demo
 develop  ← nhánh chung của nhóm
-feature/<task-id>-<ten>     vd. feature/s3-h1-incidents, feature/s3-v2-shifts, feature/s4-v1-ai-core
+<loại>/<mô-tả-chức-năng>
+  feature/  tính năng mới        vd. feature/incidents, feature/staff-shifts, feature/ai-core
+  fix/      sửa lỗi              vd. fix/invoice-pdf-download
+  chore/    script, cấu hình, CI vd. chore/smoke-runner
+  docs/     chỉ tài liệu         vd. docs/demo-script
 ```
+
+Đặt tên như StreetBiz: tiếng Anh, chữ thường, nối bằng `-`, mô tả chức năng. **Không** ghi mã task (`s3-h1`) vào tên nhánh; mã task và mã UC ghi trong tiêu đề PR, commit và file task.
 
 ```powershell
 git checkout develop; git pull
-git checkout -b feature/s3-h1-incidents
+git checkout -b feature/incidents
 # ... code, build, test ...
 git add -A
 git commit -m "feat(incidents): UC-58 bao cao su co, UC-59 dong su co"
-git push -u origin feature/s3-h1-incidents   # rồi mở Pull Request vào develop, người kia review
+git push -u origin feature/incidents   # rồi mở Pull Request vào develop, người kia review
 ```
 
 - Commit nhỏ, mỗi commit build được. Tiền tố: `feat`, `fix`, `refactor`, `docs`, `test`, `db`.

@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Huy | Must | 5 | 5 (07–13/12) | mọi task Sprint 3–4 | sửa lỗi trên `feature/s5-h1-fixes` → `develop` |
+| Huy | Must | 5 | 5 (07–13/12) | mọi task Sprint 3–4 | sửa lỗi trên `fix/care-family-qa` → `develop` |
 
 ## Mục tiêu
 

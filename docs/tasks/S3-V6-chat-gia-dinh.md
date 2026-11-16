@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Viên | Should | 5 | 3.2 | (tùy chọn) S3-V2 để lọc người phụ trách | `feature/s3-v6-chat` |
+| Viên | Should | 5 | 3.2 | (tùy chọn) S3-V2 để lọc người phụ trách | `feature/family-chat` |
 
 ## Mục tiêu
 

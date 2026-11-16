@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Huy | Should | 5 | 4 | S3-H4, S3-H5, S3-H6, S4-V1 PR 1 | `feature/s4-h2-ai-insights` |
+| Huy | Should | 5 | 4 | S3-H4, S3-H5, S3-H6, S4-V1 PR 1 | `feature/ai-care-insights` |
 
 ## Mục tiêu
 

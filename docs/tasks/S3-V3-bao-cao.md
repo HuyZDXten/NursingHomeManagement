@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Viên | Must (UC-123) / Should | 5 | 3.1 (doanh thu, công suất) – 3.2 (thuốc, sự cố) | UC-125 cần bảng `Incidents` của S3-H1 | `feature/s3-v3-reports` |
+| Viên | Must (UC-123) / Should | 5 | 3.1 (doanh thu, công suất) – 3.2 (thuốc, sự cố) | UC-125 cần bảng `Incidents` của S3-H1 | `feature/reports` |
 
 ## Mục tiêu
 

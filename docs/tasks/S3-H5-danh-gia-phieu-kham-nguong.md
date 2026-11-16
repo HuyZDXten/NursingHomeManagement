@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Huy | Should | 5 | 3.2 | — | `feature/s3-h5-assessments` |
+| Huy | Should | 5 | 3.2 | — | `feature/assessments` |
 
 ## Mục tiêu
 

@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Viên | Must | 5 | 3.1 | — | `feature/s3-v2-shifts` |
+| Viên | Must | 5 | 3.1 | — | `feature/staff-shifts` |
 
 ## Mục tiêu
 
@@ -15,7 +15,7 @@ Admin lập lịch ca theo tuần (Sáng/Chiều/Đêm) cho Doctor, Nurse, Careg
 - [x] Nút "Sao chép tuần trước" (bỏ qua ô đã có).
 - [x] `nurse`/`caregiver` mở "Lịch ca của tôi" thấy 14 ngày tới; không thấy nút sửa.
 - [x] Tab "Phân công phụ trách": chọn cư dân + nhân viên + ca (tùy chọn) + từ ngày; kết thúc phân công; một cư dân chỉ một người phụ trách chính đang hiệu lực mỗi ca.
-- [x] Caregiver được phân công phụ trách cư dân **xem được hồ sơ** cư dân đó kể cả khi chưa có việc (mở rộng `ResidentAccessService`, có test). *(nhánh/PR riêng `feature/s3-v2-access`: `ResidentAccessServiceTests` 4 test với repository giả NSubstitute + 5 kiểm tra smoke; tổng smoke 82/82, unit 39/39)*
+- [x] Caregiver được phân công phụ trách cư dân **xem được hồ sơ** cư dân đó kể cả khi chưa có việc (mở rộng `ResidentAccessService`, có test). *(nhánh/PR riêng `feature/caregiver-access`: `ResidentAccessServiceTests` 4 test với repository giả NSubstitute + 5 kiểm tra smoke; tổng smoke 82/82, unit 39/39)*
 - [x] Receptionist/Accountant/Family gọi API sửa → 403.
 
 ### Kết quả triển khai (13/11/2026)
@@ -29,7 +29,7 @@ Admin lập lịch ca theo tuần (Sáng/Chiều/Đêm) cho Doctor, Nurse, Careg
   - Bỏ ca (`DELETE`) cũng báo cho người bị bỏ ca. Không sửa/bỏ ca của ngày đã qua.
   - `GET /api/care-assignments`: Caregiver chỉ thấy phân công của chính mình (không lộ danh sách cư dân ngoài phạm vi được xem).
   - Khung giờ ca và `WeekStart` nằm ở `Services/Helpers/StaffingRules.cs` để S3-V4 dùng lại.
-- Phần quyền (`ResidentAccessService`) tách nhánh `feature/s3-v2-access` (tạo từ nhánh này) để Huy review riêng vì ảnh hưởng mọi màn chăm sóc.
+- Phần quyền (`ResidentAccessService`) tách nhánh `feature/caregiver-access` (tạo từ nhánh này) để Huy review riêng vì ảnh hưởng mọi màn chăm sóc.
 
 ## 1. Database — `01_Schema.sql` mục 9
 

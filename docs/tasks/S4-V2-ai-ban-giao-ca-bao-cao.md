@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Viên | Should (AI-04) / Could (AI-12) | 5 | 4 | S3-V4 (bàn giao), S3-V3 (báo cáo), S4-V1 PR 1 | `feature/s4-v2-ai-handover` |
+| Viên | Should (AI-04) / Could (AI-12) | 5 | 4 | S3-V4 (bàn giao), S3-V3 (báo cáo), S4-V1 PR 1 | `feature/ai-handover-reports` |
 
 ## Mục tiêu
 

@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Viên | Must | 5 | 3.1 | — | `feature/s3-v1-admissions` |
+| Viên | Must | 5 | 3.1 | — | `feature/admissions-tours` |
 
 ## Mục tiêu
 

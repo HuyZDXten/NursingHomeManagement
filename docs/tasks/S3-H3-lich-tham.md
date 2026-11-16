@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Huy | Must | 5 | 3.1 | — | `feature/s3-h3-visits` |
+| Huy | Must | 5 | 3.1 | — | `feature/family-visits` |
 
 ## Mục tiêu
 

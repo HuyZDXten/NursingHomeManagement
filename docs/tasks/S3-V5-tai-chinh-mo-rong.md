@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Viên | Should | 8 (có thể tách 2 PR: BE trước, FE sau) | 3.2 | — | `feature/s3-v5-billing-extras` |
+| Viên | Should | 8 (có thể tách 2 PR: BE trước, FE sau) | 3.2 | — | `feature/billing-extras` |
 
 ## Mục tiêu
 
