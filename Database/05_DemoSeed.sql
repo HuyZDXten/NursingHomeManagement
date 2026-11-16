@@ -291,7 +291,9 @@ BEGIN
     SET IDENTITY_INSERT dbo.Payments OFF;
 END;
 
-IF NOT EXISTS (SELECT 1 FROM dbo.MedicationLogs WHERE ScheduledAt < DATEADD(DAY, -1, @TodayUtc))
+-- Nhật ký thuốc 7 ngày trước hôm nay: chỉ thêm buổi CÒN THIẾU (NOT EXISTS theo từng lịch + giờ,
+-- có UQ_MedicationLogs_Schedule_Time) nên chạy lại không nhân bản. Không chặn bằng điều kiện theo ngày:
+-- DB seed từ mấy hôm trước có log cũ hơn hôm qua và sẽ bị bỏ qua cả khối (lỗi gặp ngày 16/11).
 BEGIN
     INSERT INTO dbo.MedicationLogs (MedicationScheduleId, ScheduledAt, RecordedAt, Status, RecordedById, Notes)
     SELECT s.Id, x.ScheduledAt, DATEADD(MINUTE, 15, x.ScheduledAt),
