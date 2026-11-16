@@ -8,7 +8,11 @@ import { BILLING_STAFF, CLINICAL_STAFF, FRONT_DESK, hasRole } from '../../auth/r
 import { PageTitle, StatusTag } from '../../components/Common';
 import { dateOnly, dateTime } from '../../utils/format';
 import type { ResidentDetail as Resident } from '../../types';
-import { BedTab, BillingTab, CareTab, ContactsTab, FamilyTab, IncidentsTab, MedicationTab, VitalsTab } from './resident/Tabs';
+import {
+  AssessmentsTab, BedTab, BillingTab, CarePlansTab, CareTab, ContactsTab, DailyLogsTab, DietPlansTab,
+  DoctorVisitsTab, FamilyTab, IncidentsTab, MedicalConditionsTab, MedicationTab, VitalsTab,
+} from './resident/Tabs';
+import { AllergyBadge } from '../Care/AllergyBadge';
 import { ResidentFormModal } from './resident/ResidentFormModal';
 
 /** UC-26: hồ sơ 360°. Mỗi tab chỉ hiện với role được phép; API vẫn kiểm tra quyền theo cư dân. */
@@ -66,7 +70,13 @@ export default function ResidentDetail() {
     ] : []),
     ...(hasRole(user?.role, CLINICAL_STAFF) ? [
       { key: 'care', label: 'Chăm sóc', children: <CareTab residentId={id} /> },
+      { key: 'care-plans', label: 'Kế hoạch chăm sóc', children: <CarePlansTab residentId={id} active={active} /> },
+      { key: 'daily-logs', label: 'ADL & bữa ăn', children: <DailyLogsTab residentId={id} active={active} /> },
       { key: 'incidents', label: 'Sự cố', children: <IncidentsTab residentId={id} active={active} /> },
+      { key: 'medical', label: 'Bệnh nền & dị ứng', children: <MedicalConditionsTab residentId={id} active={active} /> },
+      { key: 'diet', label: 'Chế độ ăn', children: <DietPlansTab residentId={id} active={active} /> },
+      { key: 'assessments', label: 'Đánh giá', children: <AssessmentsTab residentId={id} active={active} /> },
+      { key: 'doctor-visits', label: 'Khám bác sĩ', children: <DoctorVisitsTab residentId={id} active={active} /> },
       { key: 'vitals', label: 'Sinh hiệu', children: <VitalsTab residentId={id} canRecord={active} /> },
       { key: 'medication', label: 'Thuốc', children: <MedicationTab residentId={id} active={active} /> },
     ] : []),
@@ -78,7 +88,12 @@ export default function ResidentDetail() {
   return (
     <>
       <PageTitle
-        title={<>{resident.fullName} <StatusTag kind="resident" value={resident.status} /></>}
+        title={
+          <>
+            {resident.fullName} <StatusTag kind="resident" value={resident.status} />
+            {hasRole(user?.role, CLINICAL_STAFF) && <AllergyBadge residentId={id} />}
+          </>
+        }
         extra={frontDesk && (
           <Space>
             <Button onClick={() => setEditing(true)}>Sửa hồ sơ</Button>

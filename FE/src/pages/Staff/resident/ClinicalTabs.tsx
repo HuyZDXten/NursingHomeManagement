@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { App, Button, Checkbox, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Space, Table, Tag, TimePicker, Typography } from 'antd';
+import { Alert, App, Button, Checkbox, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Space, Table, Tag, TimePicker, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { aiInsightsApi } from '../../../api/aiInsights';
 import { careApi, type VitalForm } from '../../../api/care';
 import { extractErrorMessage } from '../../../api/client';
 import { incidentsApi } from '../../../api/incidents';
+import { medicalProfileApi } from '../../../api/medicalProfile';
 import { residentsApi } from '../../../api/residents';
 import { useAuth } from '../../../auth/AuthContext';
 import { CARE_PLANNERS, PRESCRIBERS, hasRole } from '../../../auth/roles';
@@ -11,9 +13,10 @@ import { CreateTaskModal, TaskRecordsDrawer, UpdateTaskModal } from '../../../co
 import { IncidentDetailDrawer, ReportIncidentModal } from '../../../components/IncidentModals';
 import { StatusTag } from '../../../components/Common';
 import { VitalsChart } from '../../../components/VitalsChart';
+import { VitalThresholdCard } from './AssessmentTabs';
 import { dateOnly, dateTime, dayjs, hhmm } from '../../../utils/format';
 import type { CareTask, MedicationLog, MedicationSchedule, VitalSign } from '../../../types';
-import type { Incident } from '../../../types/care';
+import type { AiInsight, Incident } from '../../../types/care';
 
 // ======================= UC-50..UC-55: Chăm sóc của cư dân =======================
 export function CareTab({ residentId }: { residentId: number }) {
@@ -55,9 +58,13 @@ export function CareTab({ residentId }: { residentId: number }) {
 export function VitalsTab({ residentId, canRecord }: { residentId: number; canRecord: boolean }) {
   const { message } = App.useApp();
   const [rows, setRows] = useState<VitalSign[]>([]);
+  const [trends, setTrends] = useState<AiInsight[]>([]);
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<VitalForm>();
-  const load = useCallback(() => residentsApi.vitals(residentId, dayjs().subtract(30, 'day').format('YYYY-MM-DD')).then(setRows).catch(() => undefined), [residentId]);
+  const load = useCallback(() => {
+    residentsApi.vitals(residentId, dayjs().subtract(30, 'day').format('YYYY-MM-DD')).then(setRows).catch(() => undefined);
+    aiInsightsApi.vitalTrends(residentId).then(setTrends).catch(() => setTrends([]));
+  }, [residentId]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -76,6 +83,28 @@ export function VitalsTab({ residentId, canRecord }: { residentId: number; canRe
 
   return (
     <>
+      <VitalThresholdCard residentId={residentId} canEdit={canRecord} />
+      {trends[0] && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12 }}
+          title={
+            <Space size={6}>
+              <span>Cảnh báo xu hướng sinh hiệu</span>
+              <Tag color="gold">Do AI soạn</Tag>
+            </Space>
+          }
+          description={
+            <>
+              <div>{trends[0].content}</div>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {trends[0].disclaimer}
+              </Typography.Text>
+            </>
+          }
+        />
+      )}
       {canRecord && <Button icon={<PlusOutlined />} style={{ marginBottom: 12 }} onClick={() => { form.resetFields(); setOpen(true); }}>Ghi sinh hiệu</Button>}
       <VitalsChart vitals={rows} />
       <Table rowKey="id" size="small" dataSource={rows} pagination={{ pageSize: 10 }} style={{ marginTop: 12 }} columns={[
@@ -108,7 +137,7 @@ export function VitalsTab({ residentId, canRecord }: { residentId: number; canRe
 
 // ======================= UC-73..UC-78: Thuốc =======================
 export function MedicationTab({ residentId, active }: { residentId: number; active: boolean }) {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const { user } = useAuth();
   const canPrescribe = hasRole(user?.role, PRESCRIBERS);
   const [schedules, setSchedules] = useState<MedicationSchedule[]>([]);
@@ -123,14 +152,50 @@ export function MedicationTab({ residentId, active }: { residentId: number; acti
 
   const save = async () => {
     const v = await form.validateFields();
+    const payload = {
+      ...v,
+      residentId,
+      startDate: v.startDate.format('YYYY-MM-DD'),
+      endDate: v.endDate?.format('YYYY-MM-DD'),
+      scheduledTime: v.scheduledTime.format('HH:mm:00'),
+    };
     try {
-      await careApi.createSchedule({
-        ...v,
-        residentId,
-        startDate: v.startDate.format('YYYY-MM-DD'),
-        endDate: v.endDate?.format('YYYY-MM-DD'),
-        scheduledTime: v.scheduledTime.format('HH:mm:00'),
-      });
+      const warnings = await medicalProfileApi.checkMedication(residentId, v.medicationName);
+      if (warnings.length > 0) {
+        let acknowledged = false;
+        modal.confirm({
+          title: 'Cảnh báo an toàn thuốc',
+          okText: 'Xác nhận lưu lịch thuốc',
+          cancelText: 'Hủy',
+          content: (
+            <div>
+              <ul style={{ paddingLeft: 18, marginBottom: 12 }}>
+                {warnings.map((w, idx) => (
+                  <li key={idx} style={{ color: w.kind === 'Allergy' ? '#cf1322' : '#d46b08' }}>{w.message}</li>
+                ))}
+              </ul>
+              <Checkbox onChange={(e) => { acknowledged = e.target.checked; }}>
+                Tôi đã xem cảnh báo
+              </Checkbox>
+              <Typography.Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
+                Cảnh báo theo quy tắc so khớp tên, không thay thế kiểm tra của bác sĩ.
+              </Typography.Paragraph>
+            </div>
+          ),
+          onOk: async () => {
+            if (!acknowledged) {
+              message.warning('Vui lòng tick "Tôi đã xem cảnh báo" trước khi lưu.');
+              return Promise.reject();
+            }
+            await careApi.createSchedule({ ...payload, acknowledgeWarnings: true });
+            setOpen(false);
+            load();
+          },
+        });
+        return;
+      }
+
+      await careApi.createSchedule(payload);
       setOpen(false);
       load();
     } catch (e) {

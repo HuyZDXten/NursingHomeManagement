@@ -38,17 +38,17 @@ Task S3-V1 → S4-V2 của Viên đã merge thẳng vào `develop` ngày 16/11, 
 | [S3-V5](S3-V5-tai-chinh-mo-rong.md) | Dịch vụ phát sinh, hóa đơn hàng loạt, PDF, nhắc nợ, email | UC-85, 86, 88, 97, 98, 118 | Viên | Should | 8 | 3.2 | — | Đã merge 16/11, chưa review |
 | [S3-V6](S3-V6-chat-gia-dinh.md) | Chat gia đình – nhân viên | UC-106 | Viên | Should | 5 | 3.2 | — | Đã merge 16/11, chưa review |
 | [S3-H1](S3-H1-su-co.md) | Báo cáo & xử lý sự cố | UC-58, 59, 107 | Huy | Must | 5 | 3.1 | — | Chờ review |
-| [S3-H2](S3-H2-benh-nen-di-ung-che-do-an.md) | Bệnh nền, dị ứng, chế độ ăn, cảnh báo dị ứng | UC-66, 71, 82 | Huy | Must/Should | 5 | 3.1 | — | Chưa làm |
-| [S3-H3](S3-H3-lich-tham.md) | Đặt & duyệt lịch thăm | UC-103, 104 | Huy | Must | 5 | 3.1 | — | Chưa làm |
-| [S3-H4](S3-H4-ke-hoach-cham-soc-adl-bua-an.md) | Kế hoạch chăm sóc tự sinh việc, ADL, bữa ăn, nhắc việc | UC-51, 56, 57, 61 | Huy | Should | 8 | 3.2 | — | Chưa làm |
-| [S3-H5](S3-H5-danh-gia-phieu-kham-nguong.md) | Đánh giá định kỳ, phiếu khám, ngưỡng sinh hiệu riêng | UC-64, 67, 68 | Huy | Should | 5 | 3.2 | — | Chưa làm |
-| [S3-H6](S3-H6-nhat-ky-phan-hoi-gia-dinh.md) | Nhật ký hằng ngày cho gia đình & phản hồi | UC-108, 109, 110 | Huy | Should | 5 | 3.2 | S3-H1, S3-H4 | Chưa làm |
+| [S3-H2](S3-H2-benh-nen-di-ung-che-do-an.md) | Bệnh nền, dị ứng, chế độ ăn, cảnh báo dị ứng | UC-66, 71, 82 | Huy | Must/Should | 5 | 3.1 | — | Chờ review |
+| [S3-H3](S3-H3-lich-tham.md) | Đặt & duyệt lịch thăm | UC-103, 104 | Huy | Must | 5 | 3.1 | — | Chờ review |
+| [S3-H4](S3-H4-ke-hoach-cham-soc-adl-bua-an.md) | Kế hoạch chăm sóc tự sinh việc, ADL, bữa ăn, nhắc việc | UC-51, 56, 57, 61 | Huy | Should | 8 | 3.2 | — | Chờ review |
+| [S3-H5](S3-H5-danh-gia-phieu-kham-nguong.md) | Đánh giá định kỳ, phiếu khám, ngưỡng sinh hiệu riêng | UC-64, 67, 68 | Huy | Should | 5 | 3.2 | — | Chờ review |
+| [S3-H6](S3-H6-nhat-ky-phan-hoi-gia-dinh.md) | Nhật ký hằng ngày cho gia đình & phản hồi | UC-108, 109, 110 | Huy | Should | 5 | 3.2 | S3-H1, S3-H4 | Chờ review |
 | [S4-V1](S4-V1-ai-ha-tang-chatbot.md) | Hạ tầng AI + chatbot tư vấn công khai | AI-01, UC-20 | Viên | Must | 8 | 4 | S3-V1 | Đã merge 16/11, chưa review |
 | [S4-V2](S4-V2-ai-ban-giao-ca-bao-cao.md) | AI tóm tắt bàn giao ca (+ hỏi đáp báo cáo) | AI-04, AI-12 | Viên | Should | 5 | 4 | S3-V4, S3-V3, S4-V1 | Đã merge 16/11, chưa review (tool sự cố chờ S3-H1) |
-| [S4-H1](S4-H1-ai-tro-ly-gia-dinh.md) | Trợ lý AI cho gia đình | AI-02 | Huy | Must | 5 | 4 | S4-V1 (phần 1) | Chưa làm |
-| [S4-H2](S4-H2-ai-nhat-ky-sinh-hieu.md) | Nhật ký hằng ngày bằng AI + diễn giải sinh hiệu | AI-03, AI-06 | Huy | Should | 5 | 4 | S3-H4, S3-H5, S3-H6, S4-V1 | Chưa làm |
+| [S4-H1](S4-H1-ai-tro-ly-gia-dinh.md) | Trợ lý AI cho gia đình | AI-02 | Huy | Must | 5 | 4 | S4-V1 (phần 1) | Chờ review |
+| [S4-H2](S4-H2-ai-nhat-ky-sinh-hieu.md) | Nhật ký hằng ngày bằng AI + diễn giải sinh hiệu | AI-03, AI-06 | Huy | Should | 5 | 4 | S3-H4, S3-H5, S3-H6, S4-V1 | Chờ review |
 | [S5-V1](S5-V1-hoan-thien.md) | Hoàn thiện module Vận hành & Tài chính, slide, kịch bản demo | — | Viên | Must | 5 | 5 | tất cả | Chưa làm |
-| [S5-H1](S5-H1-hoan-thien.md) | Hoàn thiện module Chăm sóc & Gia đình, test, video dự phòng | — | Huy | Must | 5 | 5 | tất cả | Chưa làm |
+| [S5-H1](S5-H1-hoan-thien.md) | Hoàn thiện module Chăm sóc & Gia đình, test, video dự phòng | — | Huy | Must | 5 | 5 | tất cả | Chờ review (đã xong seed/test/tài liệu, chờ QA trình duyệt & video) |
 
 **Tổng điểm:** Viên 33 (S3) + 13 (S4) + 5 (S5) = 51 · Huy 33 (S3) + 10 (S4) + 5 (S5) = 48. Một điểm ≈ nửa ngày làm việc (đã gồm test và seed).
 

@@ -50,4 +50,7 @@ public static class RateLimitPolicies
 
     /// <summary>S4-V1: chatbot công khai — RateLimit:AiMessagesPerMinute (mặc định 20) theo IP.</summary>
     public const string AiPublic = nameof(AiPublic);
+
+    /// <summary>S4-H1: trợ lý gia đình — RateLimit:AiMessagesPerMinute theo tài khoản (tách bucket với Chat S3-V6).</summary>
+    public const string AiFamily = nameof(AiFamily);
 }

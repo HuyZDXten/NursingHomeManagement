@@ -574,10 +574,242 @@ const incClosed = await call('POST', `/api/incidents/${inc.data.id}/updates`, nu
   rowVersion: inc.data.rowVersion,
 });
 check('Nurse đóng sự cố + báo gia đình', incClosed.status === 200 && incClosed.data.status === 'Closed' && incClosed.data.shareWithFamily);
-const famInc = await call('GET', '/api/family/residents/2/incidents', family.accessToken);
+const famInc = await call('GET', '/api/family/residents/2/incidents', family2.accessToken);
 check('Gia đình thấy sự cố đã chia sẻ', famInc.status === 200 && famInc.data.some((x) => x.id === inc.data.id));
 check('Gia đình khác không xem được sự cố cư dân 2 -> 403',
-  (await call('GET', '/api/family/residents/2/incidents', family2.accessToken)).status === 403);
+  (await call('GET', '/api/family/residents/2/incidents', family.accessToken)).status === 403);
+
+// ---- Sprint 3 · S3-H2: Bệnh nền, dị ứng, chế độ ăn & cảnh báo thuốc ----
+check('Caregiver xem hồ sơ y tế cư dân được giao',
+  (await call('GET', '/api/residents/2/medical-profile', caregiver.accessToken)).status === 200);
+check('Caregiver thêm dị ứng -> 403',
+  (await call('POST', '/api/residents/1/allergies', caregiver.accessToken, {
+    allergen: 'Ibuprofen', type: 'Drug', severity: 'Mild',
+  })).status === 403);
+const medWarn = await call('POST', '/api/medication-schedules/check', doctor.accessToken, {
+  residentId: 1, medicationName: 'Amoxicillin/Pênicillin 500mg',
+});
+check('Check thuốc trùng dị ứng Penicillin (bỏ dấu)',
+  medWarn.status === 200 && medWarn.data.some((w) => w.kind === 'Allergy'));
+check('Kê thuốc có cảnh báo mà không xác nhận -> 400',
+  (await call('POST', '/api/medication-schedules', doctor.accessToken, {
+    residentId: 1,
+    medicationName: 'Amoxicillin/Pênicillin 500mg',
+    dose: '1 viên',
+    route: 'Uống',
+    startDate: plusDays(0),
+    scheduledTime: '08:00:00',
+    approvalReference: 'CD-TEST-ALLERGY',
+    acknowledgeWarnings: false,
+  })).status === 400);
+check('Kê thuốc có xác nhận cảnh báo -> 200',
+  (await call('POST', '/api/medication-schedules', doctor.accessToken, {
+    residentId: 1,
+    medicationName: 'Amoxicillin/Pênicillin 500mg',
+    dose: '1 viên',
+    route: 'Uống',
+    startDate: plusDays(0),
+    scheduledTime: '08:00:00',
+    approvalReference: 'CD-TEST-ALLERGY',
+    acknowledgeWarnings: true,
+  })).status === 200);
+const newDiet = await call('POST', '/api/residents/4/diet-plans', doctor.accessToken, {
+  dietType: 'LowSalt', texture: 'Soft', restrictions: 'Giảm mặn', startDate: plusDays(0),
+});
+const medProf4 = await call('GET', '/api/residents/4/medical-profile', doctor.accessToken);
+check('Đặt chế độ ăn mới tự kết thúc chế độ cũ hôm qua',
+  newDiet.status === 200 && medProf4.data.dietHistory.filter((d) => d.endDate === null).length === 1
+  && medProf4.data.dietHistory.some((d) => d.endDate === plusDays(-1)));
+
+// ---- Sprint 3 · S3-H3: Đặt & duyệt lịch thăm (UC-103, UC-104) ----
+const visitSlots = await call('GET', `/api/visits/slots?date=${plusDays(1)}`, family.accessToken);
+check('Lấy danh sách khung giờ thăm', visitSlots.status === 200 && visitSlots.data.length === 9);
+check('Family đặt thêm lịch cùng ngày đã có lịch -> 400',
+  (await call('POST', '/api/visits', family.accessToken, {
+    residentId: 1, visitDate: plusDays(1), slotStart: '14:00:00', guestCount: 1,
+  })).status === 400);
+check('Family2 đặt lịch cho cư dân không liên kết (NH-0001) -> 403/404',
+  [403, 404].includes((await call('POST', '/api/visits', family2.accessToken, {
+    residentId: 1, visitDate: plusDays(2), slotStart: '09:00:00', guestCount: 1,
+  })).status));
+const bookedVisit = await call('POST', '/api/visits', family.accessToken, {
+  residentId: 1, visitDate: plusDays(2), slotStart: '10:00:00', guestCount: 2, guestNames: 'Nguyễn Thị Bích',
+});
+check('Family đặt lịch thăm ngày kia', bookedVisit.status === 200 && bookedVisit.data.status === 'Requested');
+check('Caregiver duyệt lịch thăm -> 403',
+  (await call('POST', `/api/visits/${bookedVisit.data.id}/approve`, caregiver.accessToken, {})).status === 403);
+const approvedVisit = await call('POST', `/api/visits/${bookedVisit.data.id}/approve`, recep.accessToken, { note: 'Chào mừng gia đình' });
+check('Lễ tân duyệt lịch thăm', approvedVisit.status === 200 && approvedVisit.data.status === 'Approved');
+check('Family nhận thông báo duyệt lịch thăm',
+  (await call('GET', '/api/notifications', family.accessToken)).data.items.some((n) => n.title.includes('Đã duyệt')));
+const checkedInVisit = await call('POST', `/api/visits/${bookedVisit.data.id}/check-in`, recep.accessToken);
+check('Lễ tân check-in lịch thăm', checkedInVisit.status === 200 && checkedInVisit.data.status === 'CheckedIn');
+const completedVisit = await call('POST', `/api/visits/${bookedVisit.data.id}/complete`, recep.accessToken);
+check('Lễ tân hoàn tất lịch thăm', completedVisit.status === 200 && completedVisit.data.status === 'Completed');
+
+// ---- Sprint 3 · S3-H4: Kế hoạch chăm sóc, ADL & bữa ăn (UC-51, UC-56, UC-57) ----
+const newPlan = await call('POST', '/api/care-plans', nurse.accessToken, {
+  residentId: 2,
+  title: 'Kế hoạch smoke test',
+  startDate: plusDays(0),
+  items: [
+    { title: 'Kiểm tra thân nhiệt', timeOfDay: '10:00:00', daysOfWeek: '1111111' },
+  ],
+});
+check('Điều dưỡng tạo kế hoạch chăm sóc mới', newPlan.status === 200 && newPlan.data?.id > 0);
+const gen1 = await call('POST', '/api/care-plans/generate?days=2&residentId=2', nurse.accessToken);
+check('Điều dưỡng bấm sinh việc từ kế hoạch chăm sóc', gen1.status === 200 && gen1.data.createdCount >= 1);
+const gen2 = await call('POST', '/api/care-plans/generate?days=2&residentId=2', nurse.accessToken);
+check('Sinh việc lần 2 không tạo trùng', gen2.status === 200 && gen2.data.createdCount === 0);
+
+const meal1 = await call('PUT', '/api/residents/2/meals', caregiver.accessToken, {
+  mealDate: plusDays(0), meal: 'Lunch', intakePercent: 50, fluidMl: 150, note: 'Ăn nửa suất', shareWithFamily: true,
+});
+const meal2 = await call('PUT', '/api/residents/2/meals', caregiver.accessToken, {
+  mealDate: plusDays(0), meal: 'Lunch', intakePercent: 75, fluidMl: 200, note: 'Ăn thêm sau 15 phút', shareWithFamily: true,
+});
+const mealsToday = await call('GET', `/api/residents/2/meals?date=${plusDays(0)}`, caregiver.accessToken);
+check('Caregiver ghi bữa trưa rồi cập nhật lại -> chỉ 1 bản ghi 75%',
+  meal1.status === 200 && meal2.status === 200 && mealsToday.status === 200
+  && mealsToday.data.filter((m) => m.meal === 'Lunch').length === 1
+  && mealsToday.data.find((m) => m.meal === 'Lunch')?.intakePercent === 75);
+check('Caregiver ghi ADL cho cư dân ngoài phạm vi (NH-0003) -> 403',
+  (await call('POST', '/api/residents/3/daily-logs', caregiver.accessToken, {
+    logDate: plusDays(0), category: 'Bathing', level: 'NeedsHelp', shareWithFamily: true,
+  })).status === 403);
+
+// ---- Sprint 3 · S3-H5: Đánh giá định kỳ, phiếu khám, ngưỡng sinh hiệu riêng ----
+const scalesRes = await call('GET', '/api/assessments/scales', nurse.accessToken);
+check('Lấy thang đánh giá sàng lọc (3 thang)', scalesRes.status === 200 && scalesRes.data.length === 3);
+check('Gửi đánh giá thiếu câu hỏi -> 400',
+  (await call('POST', '/api/assessments', nurse.accessToken, {
+    residentId: 1, type: 'FallRisk', answers: { history: 'no' },
+  })).status === 400);
+const morseRes = await call('POST', '/api/assessments', nurse.accessToken, {
+  residentId: 1,
+  type: 'FallRisk',
+  answers: { history: 'yes', secondary: 'yes', aid: 'crutch', iv: 'no', gait: 'normal', mental: 'oriented' },
+});
+check('Nurse đánh giá Morse -> server tự tính điểm 55 (High)',
+  morseRes.status === 200 && morseRes.data.score === 55 && morseRes.data.riskLevel === 'High');
+const dueRes = await call('GET', '/api/assessments/due', nurse.accessToken);
+check('Danh sách đến hạn có NH-0002 quá hạn Morse',
+  dueRes.status === 200 && dueRes.data.some((d) => d.residentId === 2 && d.type === 'FallRisk'));
+
+// Ngưỡng riêng NH-0001 là 150 (mặc định cơ sở 160): đo 155 phải bắn cảnh báo mới
+const vitalCustom = await call('POST', '/api/vitals', nurse.accessToken, {
+  residentId: 1, systolic: 155, diastolic: 85, heartRate: 76, temperature: 36.6, spO2: 98, shareWithFamily: false,
+});
+check('Ghi sinh hiệu NH-0001 tâm thu 155 kích hoạt cảnh báo theo ngưỡng riêng 150',
+  vitalCustom.status === 200 &&
+  (await call('GET', '/api/notifications', doctor.accessToken)).data.items.some((n) => n.title.includes('Sinh hiệu cần xem lại: Nguyễn Văn An')));
+
+const dvCreate = await call('POST', '/api/residents/3/doctor-visits', doctor.accessToken, {
+  assessment: 'Ổn định, tiếp tục theo dõi.', plan: 'Uống đủ nước', shareWithFamily: true,
+});
+check('Bác sĩ ghi phiếu khám SOAP', dvCreate.status === 200 && dvCreate.data?.id > 0);
+check('Điều dưỡng ghi phiếu khám -> 403',
+  (await call('POST', '/api/residents/3/doctor-visits', nurse.accessToken, {
+    assessment: 'test', shareWithFamily: false,
+  })).status === 403);
+
+// ---- Sprint 3 · S3-H6: Nhật ký hằng ngày cho gia đình & phản hồi (UC-108, UC-109, UC-110) ----
+const tlYesterday = await call('GET', `/api/family/residents/1/timeline?date=${plusDays(-1)}`, family.accessToken);
+check('Family xem nhật ký hôm qua của NH-0001 (có bữa ăn + ADL)',
+  tlYesterday.status === 200 && tlYesterday.data.some((x) => x.kind === 'Meal') && tlYesterday.data.some((x) => x.kind === 'Adl'));
+check('Family xem nhật ký NH-0002 không liên kết -> 404',
+  (await call('GET', `/api/family/residents/2/timeline?date=${plusDays(-1)}`, family.accessToken)).status === 404);
+
+const fbCreate = await call('POST', '/api/feedbacks', family2.accessToken, {
+  residentId: 2, category: 'Care', rating: 5, subject: 'Cảm ơn điều dưỡng', content: 'Chăm sóc rất chu đáo.',
+});
+check('Family2 gửi phản hồi', fbCreate.status === 200 && fbCreate.data.status === 'New');
+check('Admin nhận thông báo phản hồi mới',
+  (await call('GET', '/api/notifications', adminToken)).data.items.some((n) => n.title.includes('Phản hồi mới từ gia đình')));
+const fbRespond = await call('POST', `/api/feedbacks/${fbCreate.data.id}/respond`, adminToken, {
+  status: 'Resolved', response: 'Cảm ơn gia đình đã tin tưởng.',
+});
+check('Admin trả lời phản hồi -> Resolved', fbRespond.status === 200 && fbRespond.data.status === 'Resolved');
+check('Family2 nhận thông báo phản hồi',
+  (await call('GET', '/api/notifications', family2.accessToken)).data.items.some((n) => n.title.includes('Cơ sở đã phản hồi')));
+check('Family1 không thấy phản hồi của family2',
+  !(await call('GET', '/api/feedbacks/mine', family.accessToken)).data.some((f) => f.id === fbCreate.data.id));
+
+// ---- Sprint 4 · S4-H1: Trợ lý AI cho gia đình (AI-02) ----
+const famAiDay = await call('POST', '/api/ai/family/chat', family.accessToken, {
+  message: `/tool get_day_summary {"residentId":1,"date":"${plusDays(-1)}"}`,
+});
+check('Trợ lý gia đình tra nhật ký hôm qua của NH-0001',
+  famAiDay.status === 200 && famAiDay.data.reply.includes('ăn 75%'));
+const fam2Med = await call('POST', '/api/ai/family/chat', family2.accessToken, {
+  message: '/tool get_active_medications {"residentId":2}',
+});
+check('Family2 không có quyền thuốc -> trợ lý báo chưa được cấp quyền',
+  fam2Med.status === 200 && fam2Med.data.reply.includes('chưa được cấp quyền'));
+const fam2Other = await call('POST', '/api/ai/family/chat', family2.accessToken, {
+  message: '/tool get_day_summary {"residentId":1}',
+});
+check('Family2 hỏi về cư dân không liên kết (NH-0001) -> không có thông tin',
+  fam2Other.status === 200 && fam2Other.data.reply.includes('Không tìm thấy'));
+check('Điều dưỡng gọi trợ lý gia đình -> 403',
+  (await call('POST', '/api/ai/family/chat', nurse.accessToken, { message: 'hi' })).status === 403);
+check('Lịch sử trợ lý gia đình',
+  (await call('GET', '/api/ai/family/history', family.accessToken)).status === 200);
+
+// ---- Sprint 4 · S4-H2: Nhật ký hằng ngày AI + xu hướng sinh hiệu (AI-03, AI-06) ----
+const digestTestDate = plusDays(-2);
+const genDigest = await call('POST', `/api/ai-insights/generate?type=DailyDigest&date=${digestTestDate}`, nurse.accessToken);
+check('Tạo nháp nhật ký AI hôm kia (NH-0001 & NH-0002)',
+  genDigest.status === 200 && genDigest.data.createdCount >= 2);
+
+const draftDigests = await call('GET', `/api/ai-insights?date=${digestTestDate}&type=DailyDigest&status=Draft`, nurse.accessToken);
+const nh1Draft = draftDigests.data?.find((d) => d.residentId === 1);
+const nh2Draft = draftDigests.data?.find((d) => d.residentId === 2);
+const nh3Draft = draftDigests.data?.find((d) => d.residentId === 3);
+check('Danh sách nháp có NH-0001 & NH-0002, không có NH-0003',
+  draftDigests.status === 200 && !!nh1Draft && !!nh2Draft && !nh3Draft);
+
+const famBeforeApprove = await call('GET', `/api/family/residents/1/digests?date=${digestTestDate}`, family.accessToken);
+check('Gia đình chưa thấy bản nháp chưa duyệt',
+  famBeforeApprove.status === 200 && Array.isArray(famBeforeApprove.data) && famBeforeApprove.data.length === 0);
+
+const approvedDigest = await call('POST', `/api/ai-insights/${nh1Draft.id}/approve`, nurse.accessToken, {
+  content: `${nh1Draft.content}\n(Điều dưỡng đã kiểm tra.)`,
+});
+check('Điều dưỡng duyệt nhật ký AI cho NH-0001',
+  approvedDigest.status === 200 && approvedDigest.data.status === 'Approved');
+
+const famAfterApprove = await call('GET', `/api/family/residents/1/digests?date=${digestTestDate}`, family.accessToken);
+check('Gia đình xem được nhật ký AI đã duyệt',
+  famAfterApprove.status === 200 && famAfterApprove.data.some((d) => d.id === nh1Draft.id));
+
+check('Gia đình nhận thông báo nhật ký AI mới',
+  (await call('GET', '/api/notifications', family.accessToken)).data.items.some((n) => n.title.includes('Nhật ký')));
+
+check('Gia đình không xem được xu hướng sinh hiệu nội bộ -> 403',
+  (await call('GET', '/api/residents/1/vital-trends', family.accessToken)).status === 403);
+
+for (const sys of [120, 130, 145, 160]) {
+  await call('POST', '/api/vitals', nurse.accessToken, {
+    residentId: 1,
+    systolic: sys,
+    diastolic: 80,
+    heartRate: 76,
+    temperature: 36.8,
+    spO2: 98,
+    notes: 'Smoke test S4-H2 trend',
+  });
+}
+const genTrend = await call('POST', '/api/ai-insights/generate?type=VitalTrend', nurse.accessToken);
+check('Phân tích xu hướng sinh hiệu AI -> tạo cảnh báo cho NH-0001',
+  genTrend.status === 200 && genTrend.data.createdCount >= 1);
+
+const trends = await call('GET', '/api/residents/1/vital-trends', nurse.accessToken);
+check('GET /api/residents/1/vital-trends trả về phân tích xu hướng',
+  trends.status === 200 && trends.data.some((t) => t.type === 'VitalTrend' && t.content.length > 0));
+
+check('Điều dưỡng nhận thông báo xu hướng sinh hiệu',
+  (await call('GET', '/api/notifications', nurse.accessToken)).data.items.some((n) => n.title.includes('Xu hướng sinh hiệu')));
 
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);

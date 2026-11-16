@@ -4,6 +4,7 @@ import { Avatar, Badge, Button, Dropdown, Empty, Layout, List, Menu, Popover, Ty
 import { BellOutlined, HomeOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import { useAuth } from '../auth/AuthContext';
 import { PublicChatbot } from '../components/PublicChatbot';
+import { FamilyAssistant } from '../pages/Family/FamilyAssistant';
 import { hasRole } from '../auth/roles';
 import { useNotifications } from '../hooks/useNotifications';
 import { dateTime } from '../utils/format';
@@ -90,6 +91,7 @@ export function AppLayout() {
           <Outlet />
         </Layout.Content>
       </Layout>
+      {user?.role === 'Family' && <FamilyAssistant />}
     </Layout>
   );
 }

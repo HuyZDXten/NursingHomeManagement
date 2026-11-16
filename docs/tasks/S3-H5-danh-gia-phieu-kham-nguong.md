@@ -128,3 +128,20 @@ NH-0002 có Morse = 45 (High) cách đây 100 ngày (→ đến hạn), NH-0001 
 
 - Câu hỏi/thang điểm đặt ở **một chỗ** (BE `AssessmentScales`), FE lấy qua API — không chép thang điểm sang FE.
 - Đổi chữ ký `OutOfRange` thì sửa luôn test cũ cho xanh.
+
+## Kết quả triển khai
+
+- **Database:** Thêm `VitalThresholds`, `Assessments` (+ `IX_Assessments_Resident_Type`), `DoctorVisits` vào `Database/01_Schema.sql` (mục 10), dữ liệu mẫu vào `Database/05_DemoSeed.sql` (mục 11), sinh lại `Database/NursingHomeDB_AllInOne.sql`.
+- **Backend:**
+  - `BE/NursingHome.BusinessObjects/Entities/CareClinical.cs` + mapping ở `NursingHomeContext.Care.cs`.
+  - `BE/NursingHome.DataAccessObjects/ClinicalDAO.cs`, `IClinicalRepository.cs`, `ClinicalRepository.cs`.
+  - `BE/NursingHome.Services/Helpers/AssessmentScales.cs` (+ unit test `BE/NursingHome.Tests/AssessmentScalesTests.cs`), `ClinicalDtos.cs`, mapper ở `ModuleMappers.cs`.
+  - `IClinicalService` (`ICareModuleServices.cs`), `ClinicalService.cs`, cập nhật `HealthService.RecordAsync` (`CareServices.cs`) để dùng ngưỡng riêng nếu có (giữ nguyên chữ ký `OutOfRange(vital, limits)`), DI ở `ServiceCollectionExtensions.Care.cs`, `ClinicalController.cs`.
+- **Frontend:**
+  - `FE/src/types/care.ts`, `FE/src/utils/status.care.ts`, `FE/src/api/clinical.ts`.
+  - `FE/src/pages/Staff/resident/AssessmentTabs.tsx` (`AssessmentsTab`, `DoctorVisitsTab`, `VitalThresholdCard`), gắn vào `VitalsTab` (`ClinicalTabs.tsx`), `Tabs.tsx` & `ResidentDetail.tsx`.
+  - `FE/src/pages/Care/DueAssessments.tsx` (`/staff/assessments`), khai báo route & menu trong `FE/src/modules/care.tsx`.
+- **Kiểm thử & Build:**
+  - `BE/NursingHome.sln`: build 0 lỗi, 0 cảnh báo.
+  - `FE`: `npm run build` và `npm run lint` sạch.
+  - Đã thêm test S3-H5 vào `scripts/smoke-test.mjs` và `AssessmentScalesTests.cs`.

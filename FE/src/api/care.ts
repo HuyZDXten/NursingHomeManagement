@@ -32,6 +32,7 @@ export interface MedicationScheduleForm {
   scheduledTime: string;
   approvalReference: string;
   instructions?: string;
+  acknowledgeWarnings?: boolean;
 }
 
 export const careApi = {

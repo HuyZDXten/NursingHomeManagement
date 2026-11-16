@@ -20,9 +20,9 @@ Luồng của Doctor, Nurse, Caregiver và Family chạy ổn định, dữ li�
 | Family / family2 | Người thân, nhật ký, sự cố chia sẻ, lịch thăm, góp ý, trợ lý AI, chat | family2 không thấy thuốc; không xem được NH-0001 |
 
 **Thứ Tư: dữ liệu & kiểm thử**
-- [ ] `05_DemoSeed.sql` mục 11: mọi màn có dữ liệu (kế hoạch chăm sóc, bữa ăn 3 ngày gần nhất có chia sẻ, đánh giá đến hạn, lịch thăm ngày mai, góp ý, nhật ký AI đã duyệt hôm qua).
-- [ ] Unit test: `AssessmentScales`, `VisitingHours.Slots`, `VitalTrends.Analyze`, `TextMatch.Normalize`, chọn ngày trong tuần của kế hoạch chăm sóc.
-- [ ] `scripts/smoke-test.mjs` có check cho mọi task H và xanh.
+- [x] `05_DemoSeed.sql` mục 11: mọi màn có dữ liệu (kế hoạch chăm sóc, bữa ăn 3 ngày gần nhất có chia sẻ, đánh giá đến hạn, lịch thăm ngày mai, góp ý, nhật ký AI đã duyệt hôm qua).
+- [x] Unit test: `AssessmentScales`, `VisitingHours.Slots`, `VitalTrends.Analyze`, `TextMatch.Normalize`, chọn ngày trong tuần của kế hoạch chăm sóc.
+- [x] `scripts/smoke-test.mjs` có check cho mọi task H và xanh.
 - [ ] `.\Database\setup-local-db.ps1 -Recreate` trên máy **Viên** chạy sạch.
 
 **Thứ Năm (11/12): đóng băng tính năng**, review và approve PR `develop` → `main` của Viên.
@@ -30,8 +30,8 @@ Luồng của Doctor, Nurse, Caregiver và Family chạy ổn định, dữ li�
 **Thứ Sáu (12/12): tổng duyệt** + **ghi video dự phòng** 10 phút theo kịch bản ở [S5-V1](S5-V1-hoan-thien.md) (OBS, 1080p, có tiếng thuyết minh), lưu Google Drive nhóm.
 
 **Tài liệu**
-- [ ] Cập nhật cột Trạng thái trong `docs/tasks/README.md` và `docs/SPRINTS.md`.
-- [ ] Bổ sung vào `docs/HANDOVER.md` mục "Đã làm và chưa làm" các giới hạn của module Chăm sóc (vd. cảnh báo dị ứng chỉ so khớp tên).
+- [x] Cập nhật cột Trạng thái trong `docs/tasks/README.md` và `docs/SPRINTS.md`.
+- [x] Bổ sung vào `docs/HANDOVER.md` mục "Đã làm và chưa làm" các giới hạn của module Chăm sóc (vd. cảnh báo dị ứng chỉ so khớp tên).
 
 ## Bảng lỗi QA
 

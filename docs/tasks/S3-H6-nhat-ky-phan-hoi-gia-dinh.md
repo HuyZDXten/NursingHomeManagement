@@ -95,3 +95,20 @@ Quy tắc:
 
 - Mỗi nguồn dữ liệu tự kiểm `ShareWithFamily`; quên một nguồn là lộ dữ liệu y tế.
 - Lọc theo ngày VN (`StartOfDayUtc`), không theo ngày UTC.
+
+## Kết quả triển khai
+
+- **Database:** Thêm `dbo.Feedbacks` vào `Database/01_Schema.sql` (mục 10), 2 phản hồi mẫu vào `Database/05_DemoSeed.sql` (mục 11), sinh lại `Database/NursingHomeDB_AllInOne.sql`.
+- **Backend:**
+  - `BE/NursingHome.BusinessObjects/Entities/CareFamily.cs` + mapping ở `NursingHomeContext.Care.cs`.
+  - `BE/NursingHome.DataAccessObjects/FamilyTimelineDAO.cs` (`FamilyTimelineDAO` gộp 6 nguồn có `ShareWithFamily = 1` theo quyền `CanViewCare`/`CanViewHealth`, `FeedbackDAO`), `IFamilyCareRepository.cs`, `FamilyCareRepository.cs`.
+  - `BE/NursingHome.DTOs/Care/FamilyTimelineDtos.cs`, mapper ở `ModuleMappers.cs`.
+  - `IFamilyTimelineService`, `IFeedbackService` (`ICareModuleServices.cs`), `FamilyCareService.cs`, DI ở `ServiceCollectionExtensions.Care.cs`, `FamilyTimelineController.cs` (`FamilyTimelineController`, `FeedbacksController`).
+- **Frontend:**
+  - `FE/src/types/care.ts`, `FE/src/utils/status.care.ts`, `FE/src/api/familyCare.ts`.
+  - Tab đầu tiên **"Nhật ký hôm nay"** (DatePicker 30 ngày + Timeline có icon theo loại) trong `FE/src/pages/Family/FamilyResident.tsx`.
+  - `FE/src/pages/Family/FamilyFeedback.tsx` (`/family/feedback`), `FE/src/pages/Care/Feedbacks.tsx` (`/staff/feedback`), khai báo route & menu trong `FE/src/modules/care.tsx`.
+- **Kiểm thử & Build:**
+  - `BE/NursingHome.sln`: build 0 lỗi, 0 cảnh báo.
+  - `FE`: `npm run build` và `npm run lint` sạch.
+  - Đã thêm test S3-H6 vào `scripts/smoke-test.mjs`.
