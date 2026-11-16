@@ -78,7 +78,11 @@ try {
         PAYOS_FAKE_BASE = $fake
     }
     $fakeProc = Start-Process node -ArgumentList "`"$(Join-Path $root 'scripts\payos-fake\server.mjs')`"" -PassThru -WindowStyle Hidden
-    $apiProc = Start-Process dotnet -ArgumentList "NursingHome.API.dll --urls $api" -WorkingDirectory $out -PassThru -WindowStyle Hidden
+    # Xoa trang key that co the nam trong user-secrets (moi truong Development van nap user-secrets):
+    # khong gui mail that toi dia chi demo, khong goi Gemini/Cloudinary/Google. Tham so dong lenh thang user-secrets;
+    # bien moi truong rong tren Windows bi xoa chu khong ghi de duoc, nen phai dung dong lenh.
+    $blankSecrets = "--Email:SmtpUser= --Email:SmtpPassword= --Ai:Gemini:ApiKey= --Cloudinary:ApiSecret= --Google:ClientId="
+    $apiProc = Start-Process dotnet -ArgumentList "NursingHome.API.dll --urls $api $blankSecrets" -WorkingDirectory $out -PassThru -WindowStyle Hidden
 
     Write-Host ">> Cho API $api ..." -ForegroundColor Cyan
     $ready = $false
