@@ -60,6 +60,62 @@ public interface IFamilyInvitationService
     Task<LoginResponse> AcceptAsync(AcceptInvitationRequest request);
 }
 
+// ======================= BL-V2: hồ sơ lưu trú =======================
+
+/// <summary>File giấy tờ/hợp đồng: lưu RIÊNG TƯ (không phục vụ tĩnh), chỉ đọc qua endpoint có kiểm quyền. Cài ở API.</summary>
+public interface IDocumentStorage
+{
+    /// <summary>Trả tên lưu (GUID + đuôi).</summary>
+    Task<string> SaveAsync(Stream content, string extension, CancellationToken cancellationToken = default);
+
+    Stream OpenRead(string storedName);
+
+    void Delete(string storedName);
+}
+
+/// <summary>Nội dung file trả về cho controller (FileStreamResult).</summary>
+public sealed record StoredFile(Stream Content, string ContentType, string FileName);
+
+/// <summary>UC-29 giấy tờ, UC-30 hợp đồng, UC-31 tạm vắng, UC-33 tái nhập viện, UC-99 tiền cọc.</summary>
+public interface IResidentRecordsService
+{
+    Task<List<ResidentDocumentDto>> ListDocumentsAsync(int residentId);
+
+    Task<ResidentDocumentDto> UploadDocumentAsync(CurrentUser user, int residentId, UploadDocumentRequest request, Stream content, string? fileName, long length);
+
+    Task<StoredFile> OpenDocumentAsync(int residentId, int documentId);
+
+    Task DeleteDocumentAsync(int residentId, int documentId);
+
+    /// <summary>Kiểm phần Billing của cư dân: lễ tân, kế toán, Admin, gia đình có quyền xem hóa đơn.</summary>
+    Task<List<ResidentContractDto>> ListContractsAsync(CurrentUser user, int residentId);
+
+    Task<ResidentContractDto> CreateContractAsync(CurrentUser user, int residentId, CreateContractRequest request, Stream? content, string? fileName, long length);
+
+    Task<ResidentContractDto> EndContractAsync(int residentId, int contractId, EndContractRequest request);
+
+    Task<StoredFile> OpenContractFileAsync(CurrentUser user, int residentId, int contractId);
+
+    Task<List<ResidentLeaveDto>> ListLeavesAsync(CurrentUser user, int residentId);
+
+    /// <summary>Cư dân đang tạm vắng (lọc theo cư dân người xem được).</summary>
+    Task<List<ResidentLeaveDto>> OpenLeavesAsync(CurrentUser user);
+
+    Task<ResidentLeaveDto> StartLeaveAsync(CurrentUser user, int residentId, StartLeaveRequest request);
+
+    Task<ResidentLeaveDto> ReturnFromLeaveAsync(CurrentUser user, int residentId, int leaveId, ReturnLeaveRequest request);
+
+    Task<List<ResidentStayDto>> ListStaysAsync(int residentId);
+
+    Task<ResidentDetailDto> ReadmitAsync(CurrentUser user, int residentId, ReadmitRequest request);
+
+    Task<DepositSummaryDto> DepositsAsync(int residentId);
+
+    Task<DepositSummaryDto> CreateDepositAsync(CurrentUser user, int residentId, CreateDepositRequest request);
+
+    Task<DepositSummaryDto> RefundDepositAsync(CurrentUser user, int depositId, RefundDepositRequest request);
+}
+
 // MODULE VẬN HÀNH & TÀI CHÍNH (Viên): khai báo interface service của module ở file này
 // (không thêm vào IServices.cs của phần lõi).
 

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { App, Button, Input, Segmented, Space, Table } from 'antd';
+import { App, Button, Input, Segmented, Space, Table, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { extractErrorMessage } from '../../api/client';
 import { containsAny } from '../../api/odata';
+import { residentRecordsApi } from '../../api/residentRecords';
 import { residentsApi } from '../../api/residents';
 import { useAuth } from '../../auth/AuthContext';
 import { FRONT_DESK, hasRole } from '../../auth/roles';
@@ -26,6 +27,11 @@ export default function Residents() {
   const [status, setStatus] = useState<string>('Active');
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  // BL-V2, UC-31: cư dân đang tạm vắng → nhãn cạnh trạng thái.
+  const [onLeave, setOnLeave] = useState<Map<number, boolean>>(new Map());
+  useEffect(() => {
+    residentRecordsApi.openLeaves().then((rows) => setOnLeave(new Map(rows.map((l) => [l.residentId, l.overdue])))).catch(() => undefined);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,7 +81,14 @@ export default function Residents() {
           { title: 'Ngày sinh', dataIndex: 'dateOfBirth', render: dateOnly },
           { title: 'Giường', dataIndex: 'bedLabel', render: (v?: string) => v ?? '—' },
           { title: 'Nhập viện', dataIndex: 'admittedAt', render: dateTime },
-          { title: 'Trạng thái', dataIndex: 'status', render: (v: string) => <StatusTag kind="resident" value={v} /> },
+          {
+            title: 'Trạng thái', dataIndex: 'status', render: (v: string, r: ResidentListItem) => (
+              <>
+                <StatusTag kind="resident" value={v} />
+                {onLeave.has(r.id) && <Tag color={onLeave.get(r.id) ? 'red' : 'orange'}>Tạm vắng</Tag>}
+              </>
+            ),
+          },
         ]}
       />
       <ResidentFormModal

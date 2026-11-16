@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { App, Button, Card, Descriptions, Input, Modal, Space, Tabs } from 'antd';
+import { App, Button, Card, Descriptions, Input, Modal, Space, Tabs, Tag } from 'antd';
 import { extractErrorMessage } from '../../api/client';
+import { residentRecordsApi } from '../../api/residentRecords';
 import { residentsApi } from '../../api/residents';
 import { useAuth } from '../../auth/AuthContext';
-import { BILLING_STAFF, CLINICAL_STAFF, FRONT_DESK, hasRole } from '../../auth/roles';
+import { BILLING_STAFF, CLINICAL_STAFF, FINANCE_STAFF, FRONT_DESK, hasRole } from '../../auth/roles';
 import { PageTitle, StatusTag } from '../../components/Common';
 import { PhotoPicker } from '../../components/PhotoPicker';
 import { dateOnly, dateTime } from '../../utils/format';
-import type { ResidentDetail as Resident } from '../../types';
+import type { ResidentDetail as Resident, Role } from '../../types';
+import type { ResidentLeave } from '../../types/operations';
+import { DepositsPanel, LeavesPanel, ReadmitModal, RecordsTab } from '../Operations/ResidentRecords';
 import { BedTab, BillingTab, CareTab, ContactsTab, FamilyTab, MedicationTab, VitalsTab } from './resident/Tabs';
 import { ResidentFormModal } from './resident/ResidentFormModal';
+
+/** BL-V2: ai ghi nhận tạm vắng / trở về (policy LeaveRecorders). */
+const LEAVE_RECORDERS: Role[] = ['Admin', 'Receptionist', 'Nurse'];
 
 /** UC-26: hồ sơ 360°. Mỗi tab chỉ hiện với role được phép; API vẫn kiểm tra quyền theo cư dân. */
 export default function ResidentDetail() {
@@ -19,11 +25,15 @@ export default function ResidentDetail() {
   const { user } = useAuth();
   const [resident, setResident] = useState<Resident>();
   const [editing, setEditing] = useState(false);
+  const [readmitting, setReadmitting] = useState(false);
+  const [onLeave, setOnLeave] = useState<ResidentLeave>();
 
   const load = useCallback(() => residentsApi.get(id).then(setResident).catch((e) => message.error(extractErrorMessage(e))), [id, message]);
+  const loadLeave = useCallback(() => residentRecordsApi.leaves(id).then((rows) => setOnLeave(rows.find((l) => l.isOpen))).catch(() => undefined), [id]);
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadLeave();
+  }, [load, loadLeave]);
 
   const frontDesk = hasRole(user?.role, FRONT_DESK);
   const active = resident?.status === 'Active';
@@ -64,28 +74,39 @@ export default function ResidentDetail() {
     ...(frontDesk ? [
       { key: 'bed', label: 'Giường', children: <BedTab resident={resident} onChanged={load} /> },
       { key: 'family', label: 'Tài khoản gia đình', children: <FamilyTab residentId={id} active={active} /> },
+      { key: 'records', label: 'Hồ sơ lưu trú', children: <RecordsTab resident={resident} /> },
     ] : []),
+    {
+      key: 'leaves', label: 'Tạm vắng',
+      children: <LeavesPanel residentId={id} active={active} canRecord={hasRole(user?.role, LEAVE_RECORDERS)} onChanged={loadLeave} />,
+    },
     ...(hasRole(user?.role, CLINICAL_STAFF) ? [
       { key: 'care', label: 'Chăm sóc', children: <CareTab residentId={id} /> },
       { key: 'vitals', label: 'Sinh hiệu', children: <VitalsTab residentId={id} canRecord={active} /> },
       { key: 'medication', label: 'Thuốc', children: <MedicationTab residentId={id} active={active} /> },
     ] : []),
     ...(hasRole(user?.role, BILLING_STAFF) ? [
-      { key: 'billing', label: 'Gói & hóa đơn', children: <BillingTab residentId={id} active={active} /> },
+      {
+        key: 'billing', label: 'Gói & hóa đơn',
+        children: <><DepositsPanel residentId={id} canCollect={hasRole(user?.role, FINANCE_STAFF)} /><BillingTab residentId={id} active={active} /></>,
+      },
     ] : []),
   ];
 
   return (
     <>
       <PageTitle
-        title={<>{resident.fullName} <StatusTag kind="resident" value={resident.status} /></>}
+        title={<>{resident.fullName} <StatusTag kind="resident" value={resident.status} />{onLeave && <Tag color={onLeave.overdue ? 'red' : 'orange'}>Tạm vắng</Tag>}</>}
         extra={frontDesk && (
           <Space>
             <Button onClick={() => setEditing(true)}>Sửa hồ sơ</Button>
             {active && <Button danger onClick={discharge}>Ngừng lưu trú</Button>}
+            {!active && <Button type="primary" onClick={() => setReadmitting(true)}>Tái nhập viện</Button>}
           </Space>
         )}
       />
+      <ReadmitModal resident={resident} open={readmitting} onClose={() => setReadmitting(false)}
+        onDone={(r) => { setReadmitting(false); setResident(r); }} />
       <Card style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <PhotoPicker

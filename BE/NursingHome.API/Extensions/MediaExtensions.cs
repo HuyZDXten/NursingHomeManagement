@@ -21,6 +21,8 @@ public static class MediaExtensions
             provider.GetRequiredService<IOptions<CloudinaryOptions>>().Value.IsConfigured
                 ? provider.GetRequiredService<CloudinaryImageStorage>()
                 : provider.GetRequiredService<LocalImageStorage>());
+        // BL-V2: giấy tờ/hợp đồng luôn lưu riêng tư trên máy (App_Data/documents), không lên Cloudinary.
+        services.AddSingleton<IDocumentStorage, LocalDocumentStorage>();
         return services;
     }
 

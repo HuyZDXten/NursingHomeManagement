@@ -68,3 +68,5 @@ Desktop.ini
 
 # BL-V1: anh tai len luu local khi chua co Cloudinary
 BE/NursingHome.API/wwwroot/uploads/
+# BL-V2: giay to/hop dong luu rieng tu tren may chay API
+BE/NursingHome.API/App_Data/

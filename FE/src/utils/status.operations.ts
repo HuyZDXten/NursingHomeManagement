@@ -64,4 +64,24 @@ export const OPERATIONS_STATUS: Record<string, Record<string, StatusMeta>> = {
     Expired: { label: 'Hết hạn', color: 'default' },
     Revoked: { label: 'Đã thu hồi', color: 'error' },
   },
+  // BL-V2 hồ sơ lưu trú
+  documentKind: {
+    IdCard: { label: 'CCCD/CMND', color: 'blue' },
+    Insurance: { label: 'Thẻ BHYT', color: 'cyan' },
+    Medical: { label: 'Giấy tờ y tế', color: 'purple' },
+    Other: { label: 'Khác', color: 'default' },
+  },
+  contract: {
+    Active: { label: 'Đang hiệu lực', color: 'success' },
+    Ended: { label: 'Đã kết thúc', color: 'default' },
+  },
+  leaveKind: {
+    Home: { label: 'Về nhà', color: 'blue' },
+    Hospital: { label: 'Nằm viện', color: 'volcano' },
+    Other: { label: 'Khác', color: 'default' },
+  },
+  depositMethod: {
+    Cash: { label: 'Tiền mặt', color: 'gold' },
+    BankTransfer: { label: 'Chuyển khoản', color: 'geekblue' },
+  },
 };

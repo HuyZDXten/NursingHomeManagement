@@ -50,10 +50,22 @@ public partial class NursingHomeContext
     // BL-V1 mã mời tài khoản gia đình
     public DbSet<FamilyInvitation> FamilyInvitations => Set<FamilyInvitation>();
 
+    // BL-V2 hồ sơ lưu trú
+    public DbSet<ResidentDocument> ResidentDocuments => Set<ResidentDocument>();
+
+    public DbSet<ResidentContract> ResidentContracts => Set<ResidentContract>();
+
+    public DbSet<ResidentLeave> ResidentLeaves => Set<ResidentLeave>();
+
+    public DbSet<ResidentStay> ResidentStays => Set<ResidentStay>();
+
+    public DbSet<Deposit> Deposits => Set<Deposit>();
+
     partial void ConfigureOperations(ModelBuilder modelBuilder)
     {
         ConfigureStaffing(modelBuilder);
         ConfigureBillingExtras(modelBuilder);
+        ConfigureResidentRecords(modelBuilder);
         modelBuilder.Entity<FamilyInvitation>(entity =>
         {
             entity.ToTable("FamilyInvitations");
@@ -94,6 +106,41 @@ public partial class NursingHomeContext
             entity.Property(e => e.TimeSlot).HasConversion<string>();
             entity.Property(e => e.Status).HasConversion<string>();
             entity.HasOne(e => e.ConfirmedBy).WithMany().HasForeignKey(e => e.ConfirmedById);
+        });
+    }
+
+    private static void ConfigureResidentRecords(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ResidentDocument>(entity =>
+        {
+            entity.ToTable("ResidentDocuments");
+            entity.Property(e => e.Kind).HasConversion<string>();
+            entity.HasOne(e => e.UploadedBy).WithMany().HasForeignKey(e => e.UploadedById);
+        });
+        modelBuilder.Entity<ResidentContract>(entity =>
+        {
+            entity.ToTable("ResidentContracts");
+            entity.Property(e => e.Status).HasConversion<string>();
+            entity.Property(e => e.MonthlyPrice).HasPrecision(18, 0);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById);
+        });
+        modelBuilder.Entity<ResidentLeave>(entity =>
+        {
+            entity.ToTable("ResidentLeaves");
+            entity.Property(e => e.Kind).HasConversion<string>();
+            entity.HasOne(e => e.Resident).WithMany().HasForeignKey(e => e.ResidentId);
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById);
+        });
+        modelBuilder.Entity<ResidentStay>().ToTable("ResidentStays");
+        modelBuilder.Entity<Deposit>(entity =>
+        {
+            entity.ToTable("Deposits");
+            entity.Property(e => e.Method).HasConversion<string>();
+            entity.Property(e => e.Amount).HasPrecision(18, 0);
+            entity.Property(e => e.RefundAmount).HasPrecision(18, 0);
+            entity.HasOne(e => e.Resident).WithMany().HasForeignKey(e => e.ResidentId);
+            entity.HasOne(e => e.ReceivedBy).WithMany().HasForeignKey(e => e.ReceivedById);
+            entity.HasOne(e => e.RefundedBy).WithMany().HasForeignKey(e => e.RefundedById);
         });
     }
 

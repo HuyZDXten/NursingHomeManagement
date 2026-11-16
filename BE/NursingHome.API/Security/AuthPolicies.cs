@@ -22,8 +22,12 @@ public static class AuthPolicies
     /// <summary>S3-V5: ghi dịch vụ phát sinh — lễ tân, kế toán, điều dưỡng, hộ lý (và Admin).</summary>
     public const string ServiceRecorders = nameof(ServiceRecorders);
 
+    /// <summary>BL-V2: ghi nhận tạm vắng / trở về — lễ tân, điều dưỡng (và Admin).</summary>
+    public const string LeaveRecorders = nameof(LeaveRecorders);
+
     public static readonly IReadOnlyDictionary<string, string[]> Map = new Dictionary<string, string[]>
     {
+        [LeaveRecorders] = [Roles.Admin, Roles.Receptionist, Roles.Nurse],
         [AdminOnly] = [Roles.Admin],
         [Staff] = Roles.Staff,
         [FrontDesk] = [Roles.Admin, Roles.Receptionist],

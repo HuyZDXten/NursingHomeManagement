@@ -489,3 +489,97 @@ export interface InvitationLookup {
   expiresAt: string;
   facilityName: string;
 }
+
+// ---------------- BL-V2 hồ sơ lưu trú ----------------
+
+export type DocumentKind = 'IdCard' | 'Insurance' | 'Medical' | 'Other';
+
+export interface ResidentDocument {
+  id: number;
+  residentId: number;
+  kind: DocumentKind;
+  title: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedByName?: string | null;
+  createdAt: string;
+}
+
+export interface ResidentContract {
+  id: number;
+  residentId: number;
+  number: string;
+  signedOn: string;
+  startDate: string;
+  endDate?: string | null;
+  monthlyPrice?: number | null;
+  notes?: string | null;
+  hasFile: boolean;
+  fileName?: string | null;
+  status: 'Active' | 'Ended';
+  createdByName?: string | null;
+  createdAt: string;
+  endedAt?: string | null;
+}
+
+export interface ContractForm {
+  number: string;
+  signedOn: string;
+  startDate: string;
+  endDate?: string | null;
+  monthlyPrice?: number | null;
+  notes?: string | null;
+}
+
+export type LeaveKind = 'Home' | 'Hospital' | 'Other';
+
+export interface ResidentLeave {
+  id: number;
+  residentId: number;
+  residentCode: string;
+  residentName: string;
+  kind: LeaveKind;
+  startAt: string;
+  expectedReturnOn?: string | null;
+  returnedAt?: string | null;
+  reason: string;
+  createdByName?: string | null;
+  isOpen: boolean;
+  overdue: boolean;
+}
+
+export interface ResidentStay {
+  id: number;
+  admittedAt: string;
+  dischargedAt: string;
+}
+
+export interface ReadmitForm {
+  bedId: number;
+  servicePackageId: number;
+  agreedMonthlyPrice?: number | null;
+  startDate: string;
+}
+
+export interface Deposit {
+  id: number;
+  residentId: number;
+  amount: number;
+  method: 'Cash' | 'BankTransfer';
+  reference?: string | null;
+  receivedAt: string;
+  receivedByName?: string | null;
+  refundedAt?: string | null;
+  refundAmount?: number | null;
+  refundNote?: string | null;
+  refundedByName?: string | null;
+  held: boolean;
+}
+
+export interface DepositSummary {
+  residentStatus: string;
+  heldAmount: number;
+  outstanding: number;
+  deposits: Deposit[];
+}

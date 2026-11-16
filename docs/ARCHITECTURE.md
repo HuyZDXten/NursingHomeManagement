@@ -310,6 +310,14 @@ Sprint 3+ (module):
 | | Ảnh lưu Cloudinary khi đủ 3 khóa, không thì `wwwroot/uploads`, phục vụ ở `/uploads/...` (DB lưu đường dẫn tương đối, FE ghép `API_BASE_URL` qua `utils/media.ts`) | — |
 | Mã mời gia đình (BL-V1, UC-08) | `POST /api/family-invitations` (trả mã + link **một lần**, gửi email nếu có SMTP), `GET ?residentId`, `POST /{id}/revoke` | FrontDesk |
 | | `GET /api/family-invitations/lookup?code`, `POST /accept {code, fullName, phone, password}` → phiên đăng nhập (rate limit `Credentials`) | ẩn danh |
+| Hồ sơ lưu trú (BL-V2) | `GET·POST /api/residents/{id}/documents` (multipart `kind`, `title`, `file` PDF/JPG/PNG ≤ 10 MB), `GET /documents/{docId}/file`, `DELETE /documents/{docId}` — file lưu riêng tư `App_Data/documents` | FrontDesk |
+| | `GET /api/residents/{id}/contracts`, `GET /contracts/{cid}/file` (kiểm phần Billing: cả gia đình có quyền hóa đơn) | InvoiceReaders |
+| | `POST /api/residents/{id}/contracts` (multipart, file không bắt buộc; tối đa 1 hợp đồng Active), `POST /contracts/{cid}/end` | FrontDesk |
+| | `GET /api/resident-leaves/open`, `GET /api/residents/{id}/leaves` (lọc theo cư dân xem được) | Staff |
+| | `POST /api/residents/{id}/leaves {kind, expectedReturnOn, reason}`, `POST /leaves/{leaveId}/return` | LeaveRecorders (Admin, Receptionist, Nurse) |
+| | `GET /api/residents/{id}/stays`, `POST /api/residents/{id}/readmit {bedId, servicePackageId, agreedMonthlyPrice?, startDate}` | FrontDesk |
+| | `GET /api/residents/{id}/deposits` (cọc + công nợ) | BillingStaff |
+| | `POST /api/residents/{id}/deposits {amount, method, reference}`, `POST /api/deposits/{id}/refund {amount, note}` (chỉ sau ngừng lưu trú) | FinanceStaff |
 
 **OData chỉ dùng attribute routing** (`Program.cs` bỏ các convention theo tên controller): mỗi entity set cần một `ODataController` có `[Route("odata/TenEntitySet")]`. Controller REST trùng tên entity set (vd. `InvoicesController`) không còn bị OData bắt nhầm.
 

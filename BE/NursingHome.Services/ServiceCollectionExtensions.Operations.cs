@@ -64,5 +64,9 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IMediaService, MediaService>();
         services.AddScoped<IFamilyInvitationRepository, FamilyInvitationRepository>();
         services.AddScoped<IFamilyInvitationService, FamilyInvitationService>();
+
+        // BL-V2 hồ sơ lưu trú: giấy tờ, hợp đồng, tạm vắng, tái nhập viện, tiền cọc (IDocumentStorage cài ở API).
+        services.AddScoped<IResidentRecordsRepository, ResidentRecordsRepository>();
+        services.AddScoped<IResidentRecordsService, ResidentRecordsService>();
     }
 }

@@ -827,6 +827,119 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_FamilyInvitations_Res
 CREATE INDEX IX_FamilyInvitations_Resident ON dbo.FamilyInvitations (ResidentId, CreatedAt DESC);
 GO
 
+/* ---- 9.8 Hồ sơ lưu trú (BL-V2: UC-29 giấy tờ, UC-30 hợp đồng, UC-31 tạm vắng, UC-33 tái nhập viện, UC-99 tiền cọc) ----
+   File giấy tờ/hợp đồng lưu RIÊNG TƯ trên máy chạy API (App_Data/documents), chỉ tải qua endpoint có kiểm quyền. */
+IF OBJECT_ID(N'dbo.ResidentDocuments', N'U') IS NULL
+CREATE TABLE dbo.ResidentDocuments (
+    Id           INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ResidentDocuments PRIMARY KEY,
+    ResidentId   INT            NOT NULL CONSTRAINT FK_ResidentDocuments_Residents REFERENCES dbo.Residents (Id),
+    Kind         NVARCHAR(20)   NOT NULL,
+    Title        NVARCHAR(200)  NOT NULL,
+    FileName     NVARCHAR(260)  NOT NULL,
+    StoredName   VARCHAR(80)    NOT NULL CONSTRAINT UQ_ResidentDocuments_Stored UNIQUE,
+    ContentType  VARCHAR(100)   NOT NULL,
+    SizeBytes    BIGINT         NOT NULL,
+    UploadedById INT            NOT NULL CONSTRAINT FK_ResidentDocuments_Uploader REFERENCES dbo.Accounts (Id),
+    CreatedAt    DATETIME2      NOT NULL CONSTRAINT DF_ResidentDocuments_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_ResidentDocuments_Kind CHECK (Kind IN (N'IdCard', N'Insurance', N'Medical', N'Other')),
+    CONSTRAINT CK_ResidentDocuments_Size CHECK (SizeBytes > 0)
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ResidentDocuments_Resident' AND object_id = OBJECT_ID(N'dbo.ResidentDocuments'))
+CREATE INDEX IX_ResidentDocuments_Resident ON dbo.ResidentDocuments (ResidentId, CreatedAt DESC);
+GO
+
+IF OBJECT_ID(N'dbo.ResidentContracts', N'U') IS NULL
+CREATE TABLE dbo.ResidentContracts (
+    Id           INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ResidentContracts PRIMARY KEY,
+    ResidentId   INT            NOT NULL CONSTRAINT FK_ResidentContracts_Residents REFERENCES dbo.Residents (Id),
+    Number       NVARCHAR(30)   NOT NULL CONSTRAINT UQ_ResidentContracts_Number UNIQUE,
+    SignedOn     DATE           NOT NULL,
+    StartDate    DATE           NOT NULL,
+    EndDate      DATE           NULL,
+    MonthlyPrice DECIMAL(18,0)  NULL,
+    Notes        NVARCHAR(500)  NULL,
+    FileName     NVARCHAR(260)  NULL,
+    StoredName   VARCHAR(80)    NULL,
+    ContentType  VARCHAR(100)   NULL,
+    SizeBytes    BIGINT         NULL,
+    Status       NVARCHAR(20)   NOT NULL CONSTRAINT DF_ResidentContracts_Status DEFAULT (N'Active'),
+    CreatedById  INT            NOT NULL CONSTRAINT FK_ResidentContracts_Creator REFERENCES dbo.Accounts (Id),
+    CreatedAt    DATETIME2      NOT NULL CONSTRAINT DF_ResidentContracts_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    EndedAt      DATETIME2      NULL,
+    CONSTRAINT CK_ResidentContracts_Status CHECK (Status IN (N'Active', N'Ended')),
+    CONSTRAINT CK_ResidentContracts_Dates CHECK (EndDate IS NULL OR EndDate >= StartDate),
+    CONSTRAINT CK_ResidentContracts_Price CHECK (MonthlyPrice IS NULL OR MonthlyPrice >= 0),
+    CONSTRAINT CK_ResidentContracts_File CHECK ((StoredName IS NULL AND FileName IS NULL) OR (StoredName IS NOT NULL AND FileName IS NOT NULL))
+);
+GO
+
+-- Mỗi cư dân tối đa một hợp đồng đang hiệu lực.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ResidentContracts_Active' AND object_id = OBJECT_ID(N'dbo.ResidentContracts'))
+CREATE UNIQUE INDEX UX_ResidentContracts_Active ON dbo.ResidentContracts (ResidentId) WHERE Status = N'Active';
+GO
+
+IF OBJECT_ID(N'dbo.ResidentLeaves', N'U') IS NULL
+CREATE TABLE dbo.ResidentLeaves (
+    Id               INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ResidentLeaves PRIMARY KEY,
+    ResidentId       INT           NOT NULL CONSTRAINT FK_ResidentLeaves_Residents REFERENCES dbo.Residents (Id),
+    Kind             NVARCHAR(20)  NOT NULL,
+    StartAt          DATETIME2     NOT NULL,
+    ExpectedReturnOn DATE          NULL,
+    ReturnedAt       DATETIME2     NULL,
+    Reason           NVARCHAR(500) NOT NULL,
+    CreatedById      INT           NOT NULL CONSTRAINT FK_ResidentLeaves_Creator REFERENCES dbo.Accounts (Id),
+    ReturnedById     INT           NULL CONSTRAINT FK_ResidentLeaves_Returner REFERENCES dbo.Accounts (Id),
+    CreatedAt        DATETIME2     NOT NULL CONSTRAINT DF_ResidentLeaves_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_ResidentLeaves_Kind CHECK (Kind IN (N'Home', N'Hospital', N'Other')),
+    CONSTRAINT CK_ResidentLeaves_Return CHECK (ReturnedAt IS NULL OR ReturnedAt >= StartAt)
+);
+GO
+
+-- Mỗi cư dân tối đa một lần tạm vắng chưa về.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ResidentLeaves_Open' AND object_id = OBJECT_ID(N'dbo.ResidentLeaves'))
+CREATE UNIQUE INDEX UX_ResidentLeaves_Open ON dbo.ResidentLeaves (ResidentId) WHERE ReturnedAt IS NULL;
+GO
+
+-- Lần lưu trú đã kết thúc, ghi lại khi tái nhập viện (Residents.AdmittedAt/DischargedAt chỉ giữ lần hiện tại).
+IF OBJECT_ID(N'dbo.ResidentStays', N'U') IS NULL
+CREATE TABLE dbo.ResidentStays (
+    Id           INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ResidentStays PRIMARY KEY,
+    ResidentId   INT           NOT NULL CONSTRAINT FK_ResidentStays_Residents REFERENCES dbo.Residents (Id),
+    AdmittedAt   DATETIME2     NOT NULL,
+    DischargedAt DATETIME2     NOT NULL,
+    RecordedById INT           NOT NULL CONSTRAINT FK_ResidentStays_Recorder REFERENCES dbo.Accounts (Id),
+    RecordedAt   DATETIME2     NOT NULL CONSTRAINT DF_ResidentStays_RecordedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_ResidentStays_Dates CHECK (DischargedAt >= AdmittedAt)
+);
+GO
+
+IF OBJECT_ID(N'dbo.Deposits', N'U') IS NULL
+CREATE TABLE dbo.Deposits (
+    Id           INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Deposits PRIMARY KEY,
+    ResidentId   INT           NOT NULL CONSTRAINT FK_Deposits_Residents REFERENCES dbo.Residents (Id),
+    Amount       DECIMAL(18,0) NOT NULL,
+    Method       NVARCHAR(20)  NOT NULL,
+    Reference    NVARCHAR(100) NULL,
+    ReceivedAt   DATETIME2     NOT NULL,
+    ReceivedById INT           NOT NULL CONSTRAINT FK_Deposits_Receiver REFERENCES dbo.Accounts (Id),
+    RefundedAt   DATETIME2     NULL,
+    RefundAmount DECIMAL(18,0) NULL,
+    RefundNote   NVARCHAR(500) NULL,
+    RefundedById INT           NULL CONSTRAINT FK_Deposits_Refunder REFERENCES dbo.Accounts (Id),
+    CONSTRAINT CK_Deposits_Amount CHECK (Amount > 0),
+    CONSTRAINT CK_Deposits_Method CHECK (Method IN (N'Cash', N'BankTransfer')),
+    CONSTRAINT CK_Deposits_Refund CHECK ((RefundedAt IS NULL AND RefundAmount IS NULL AND RefundedById IS NULL)
+        OR (RefundedAt IS NOT NULL AND RefundAmount IS NOT NULL AND RefundedById IS NOT NULL AND RefundAmount >= 0 AND RefundAmount <= Amount))
+);
+GO
+
+-- Mỗi cư dân tối đa một khoản cọc đang giữ.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Deposits_Held' AND object_id = OBJECT_ID(N'dbo.Deposits'))
+CREATE UNIQUE INDEX UX_Deposits_Held ON dbo.Deposits (ResidentId) WHERE RefundedAt IS NULL;
+GO
+
 /* ---- 9. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 
@@ -1494,6 +1607,40 @@ BEGIN
     VALUES (1, CONVERT(CHAR(64), HASHBYTES('SHA2_256', 'DEMO-NH0003-MOI'), 2), N'giadinh.nh0003@example.com', 3, N'Con trai',
             1, 1, 0, 1, 2, @NowUtc, DATEADD(DAY, 30, @NowUtc));
     SET IDENTITY_INSERT dbo.FamilyInvitations OFF;
+END;
+
+/* ---- 10.8 Hồ sơ lưu trú (BL-V2) ----
+   NH-0001: hợp đồng đang hiệu lực (chưa đính kèm file) + cọc 10 triệu đang giữ.
+   NH-0004: đang tạm vắng (nằm viện, dự kiến về sau 3 ngày).
+   NH-0005: đã ngừng lưu trú, còn cọc 8 triệu chưa hoàn → thử hoàn cọc / tái nhập viện. */
+IF NOT EXISTS (SELECT 1 FROM dbo.ResidentContracts WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.ResidentContracts ON;
+    INSERT INTO dbo.ResidentContracts (Id, ResidentId, Number, SignedOn, StartDate, MonthlyPrice, Notes, Status, CreatedById, CreatedAt)
+    SELECT 1, r.Id, N'HD-2026-0001', CAST(DATEADD(HOUR, 7, r.AdmittedAt) AS DATE), CAST(DATEADD(HOUR, 7, r.AdmittedAt) AS DATE),
+           s.AgreedMonthlyPrice, N'Hợp đồng lưu trú dài hạn (mô phỏng).', N'Active', 2, r.AdmittedAt
+    FROM dbo.Residents AS r
+    OUTER APPLY (SELECT TOP 1 AgreedMonthlyPrice FROM dbo.ResidentSubscriptions WHERE ResidentId = r.Id ORDER BY StartDate) AS s
+    WHERE r.Id = 1;
+    SET IDENTITY_INSERT dbo.ResidentContracts OFF;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.ResidentLeaves WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.ResidentLeaves ON;
+    INSERT INTO dbo.ResidentLeaves (Id, ResidentId, Kind, StartAt, ExpectedReturnOn, Reason, CreatedById, CreatedAt)
+    VALUES (1, 4, N'Hospital', DATEADD(DAY, -1, @NowUtc), DATEADD(DAY, 3, @Today), N'Nhập viện theo dõi tim mạch (mô phỏng).', 2, DATEADD(DAY, -1, @NowUtc));
+    SET IDENTITY_INSERT dbo.ResidentLeaves OFF;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.Deposits WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Deposits ON;
+    INSERT INTO dbo.Deposits (Id, ResidentId, Amount, Method, Reference, ReceivedAt, ReceivedById)
+    SELECT 1, 1, 10000000, N'Cash', N'PT-COC-0001', r.AdmittedAt, 3 FROM dbo.Residents AS r WHERE r.Id = 1
+    UNION ALL
+    SELECT 2, 5, 8000000, N'BankTransfer', N'CK-COC-0005', r.AdmittedAt, 3 FROM dbo.Residents AS r WHERE r.Id = 5;
+    SET IDENTITY_INSERT dbo.Deposits OFF;
 END;
 
 /* ---- 10. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
