@@ -72,7 +72,8 @@ try {
         PayOs__ApiKey = "nursinghome-demo-api-key"
         PayOs__ChecksumKey = "nursinghome-demo-checksum-key"
         RateLimit__CredentialsPerMinute = "500"
-        Ai__Enabled = "false"
+        Ai__Enabled = "true"
+        Ai__Provider = "Fake"
         API_BASE = $api
         PAYOS_FAKE_BASE = $fake
     }

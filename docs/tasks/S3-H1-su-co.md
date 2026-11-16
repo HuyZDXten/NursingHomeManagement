@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Huy | Must | 5 | 3.1 (task đầu tiên — làm trước) | — | `feature/s3-h1-incidents` |
+| Huy | Must | 5 | 3.1 (task đầu tiên — làm trước) | — | `feature/incidents` |
 
 ## Mục tiêu
 

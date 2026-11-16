@@ -58,6 +58,9 @@ public class FacilityOptions
     public string? Hotline { get; set; }
     public string? VisitingHours { get; set; }
 
+    /// <summary>Tổng số khách tối đa của một buổi tham quan (S3-V1, UC-18).</summary>
+    public int TourSlotCapacity { get; set; } = 5;
+
     /// <summary>Ngưỡng cảnh báo mặc định (UC-65). Chỉ để báo nhân viên xem lại, không phải chẩn đoán.</summary>
     public VitalAlertOptions VitalAlerts { get; set; } = new();
 }
@@ -70,4 +73,13 @@ public class VitalAlertOptions
     public int HeartRateLow { get; set; } = 50;
     public decimal TemperatureHigh { get; set; } = 38.0m;
     public decimal SpO2Low { get; set; } = 92m;
+}
+
+/// <summary>S3-V5: job nhắc nợ (InvoiceReminderJob).</summary>
+public class BillingJobOptions
+{
+    public const string SectionName = "Billing";
+
+    public bool ReminderJobEnabled { get; set; } = true;
+    public int ReminderIntervalMinutes { get; set; } = 60;
 }

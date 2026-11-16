@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Viên | Must | 8 — **2 PR**: (1) hạ tầng, merge **trước 02/12** để Huy dùng; (2) chatbot công khai | 4 | S3-V1 (tạo yêu cầu, đặt tham quan) | `feature/s4-v1-ai-core`, `feature/s4-v1-public-bot` |
+| Viên | Must | 8 — **2 PR**: (1) hạ tầng, merge **trước 02/12** để Huy dùng; (2) chatbot công khai | 4 | S3-V1 (tạo yêu cầu, đặt tham quan) | `feature/ai-core`, `feature/public-chatbot` |
 
 ## Mục tiêu
 
@@ -11,18 +11,47 @@ Xây **hạ tầng AI dùng chung** cho cả nhóm (provider Gemini + provider g
 ## Tiêu chí hoàn thành
 
 PR 1 — hạ tầng:
-- [ ] `IAiChatProvider` với 2 cài đặt: `GeminiChatProvider` (REST, function calling) và `FakeAiChatProvider` (kịch bản cố định, dùng khi `Ai:Provider = "Fake"` hoặc `Ai:Enabled = false` ở Development/test).
-- [ ] `AiChatEngine`: nạp 20 tin gần nhất, gọi provider, thực thi tool (tối đa 3 vòng), lưu tin nhắn + số token, trả câu trả lời. Lỗi provider → câu trả lời lịch sự "Trợ lý đang bận, vui lòng thử lại hoặc gọi hotline …", không ném 500.
-- [ ] Interface `IAiTool` để mỗi người tự viết tool của module mình; tool nhận `CurrentUser?` và **tự kiểm quyền qua service có sẵn**.
-- [ ] Widget `ChatWidget` (nút nổi góc phải, khung chat, lịch sử, đang gõ…) nhận hàm `send`/`loadHistory` qua props để Huy dùng lại.
-- [ ] Unit test engine với `FakeAiChatProvider`: tool được gọi đúng tham số, kết quả tool được đưa lại cho model, tin nhắn được lưu.
+- [x] `IAiChatProvider` với 2 cài đặt: `GeminiChatProvider` (REST, function calling) và `FakeAiChatProvider` (kịch bản cố định, dùng khi `Ai:Provider = "Fake"` hoặc `Ai:Enabled = false` ở Development/test).
+- [x] `AiChatEngine`: nạp 20 tin gần nhất, gọi provider, thực thi tool (tối đa 3 vòng), lưu tin nhắn + số token, trả câu trả lời. Lỗi provider → câu trả lời lịch sự "Trợ lý đang bận, vui lòng thử lại hoặc gọi hotline …", không ném 500.
+- [x] Interface `IAiTool` để mỗi người tự viết tool của module mình; tool nhận `CurrentUser?` và **tự kiểm quyền qua service có sẵn**.
+- [x] Widget `ChatWidget` (nút nổi góc phải, khung chat, lịch sử, đang gõ…) nhận hàm `send`/`loadHistory` qua props để Huy dùng lại.
+- [x] Unit test engine với `FakeAiChatProvider`: tool được gọi đúng tham số, kết quả tool được đưa lại cho model, tin nhắn được lưu.
+
+### Kết quả PR 1 — hạ tầng (13/11/2026, nhánh `feature/ai-core`)
+
+- Unit thêm `AiEngineTests` (75/75): tool nhận đúng tham số và kết quả quay lại model, dừng mời tool sau 3 vòng, provider lỗi → câu xin lỗi có hotline, Fake từ chối câu hỏi thuốc, payload Gemini gửi lại nguyên `content` có `thoughtSignature`, đọc `functionCall` + bỏ phần "thought". Smoke 184/184 vẫn PASS. **Chưa gọi Gemini thật** (không có key trên máy test).
+- Khác đặc tả:
+  - Hợp đồng thêm `AiMessage.Native` / `AiChatResult.Native`: nội dung gốc lượt model gọi tool, engine gửi lại nguyên văn trong cùng request (Gemini 3 bắt buộc, giống StreetBiz). Lịch sử giữa các lượt chỉ gồm tin user/assistant (tool lưu DB để kiểm tra, không gửi lại).
+  - `Ai:Enabled = false` = **tắt AI** (không tự chuyển sang Fake, để môi trường thật không trả lời giả). Dev/test bật `Enabled = true, Provider = "Fake"` — đã thêm vào `appsettings.Development.example.json`.
+  - Thêm `Ai:TimeoutSeconds` (15). `Fallback` chỉ giữ chỗ cấu hình, chưa cài provider dự phòng.
+  - Thêm `IAiChatEngine.HistoryAsync` để khung chat hiện lại lịch sử; `UX_AiConversations_Account_Channel`: mỗi tài khoản một hội thoại mỗi kênh.
+  - Tìm tri thức: điểm = khớp tiêu đề ×3 + thẻ ×2 + nội dung ×1, lọc trong bộ nhớ (vài chục tài liệu).
+
+**Huy dùng hạ tầng cho S4-H1 (trợ lý gia đình) như sau:**
+
+1. Viết tool trong module Care, mỗi tool một lớp `IAiTool` (`Services/Ai/AiContracts.cs`): `Definition` dùng `AiToolJson.Schema(("residentId", "integer", "Mã cư dân", true))`; `ExecuteAsync(user, args)` đọc tham số bằng `AiToolJson.Int/String/Bool`, **gọi service có sẵn với `user`** (service tự kiểm `ResidentAccessService` → Family không xem được cư dân khác), trả `AiToolJson.Serialize(new { ..., summary = "câu tóm tắt tiếng Việt" })` — trường `summary` để provider Fake đọc khi demo.
+2. Service kênh Family: `engine.ChatAsync(AiChannels.Family, user, null, message, systemPrompt, tools)`; lịch sử: `engine.HistoryAsync(AiChannels.Family, user.AccountId, null)`.
+3. FE: `<ChatWidget title greeting send={(t) => api.chat(t)} loadHistory={...} disclaimer="..." />` (`src/components/ChatWidget.tsx`).
+4. Lỗi nghiệp vụ trong tool (`NotFound`, `Forbidden`, `BusinessRule`) tự thành `{"error": "..."}` cho model giải thích; không cần try/catch.
 
 PR 2 — chatbot công khai:
-- [ ] Widget trên mọi trang công khai; khách không đăng nhập; hội thoại gắn với `conversationKey` (UUID lưu `localStorage`).
-- [ ] Trả lời đúng giá gói, số giường trống, giờ thăm (lấy qua tool); câu hỏi y tế → khuyên liên hệ bác sĩ/điều dưỡng.
-- [ ] Tạo yêu cầu tư vấn / đặt tham quan qua tool **chỉ sau khi khách xác nhận lại thông tin**; yêu cầu tạo từ chatbot có `Source = Chatbot` (S3-V1).
-- [ ] Admin quản lý **tài liệu tri thức** (FAQ, quy trình nhập viện, chính sách thăm) tại `/staff/ai-knowledge`.
-- [ ] Quá `RateLimit:AiMessagesPerMinute` mỗi IP → 429; `Ai:PublicChatbotEnabled = false` → widget ẩn.
+- [x] Widget trên mọi trang công khai; khách không đăng nhập; hội thoại gắn với `conversationKey` (UUID lưu `localStorage`).
+- [x] Trả lời đúng giá gói, số giường trống, giờ thăm (lấy qua tool); câu hỏi y tế → khuyên liên hệ bác sĩ/điều dưỡng.
+- [x] Tạo yêu cầu tư vấn / đặt tham quan qua tool **chỉ sau khi khách xác nhận lại thông tin**; yêu cầu tạo từ chatbot có `Source = Chatbot` (S3-V1).
+- [x] Admin quản lý **tài liệu tri thức** (FAQ, quy trình nhập viện, chính sách thăm) tại `/staff/ai-knowledge`.
+- [x] Quá `RateLimit:AiMessagesPerMinute` mỗi IP → 429; `Ai:PublicChatbotEnabled = false` → widget ẩn.
+
+### Kết quả PR 2 — chatbot công khai (13/11/2026, nhánh `feature/public-chatbot`)
+
+- Kiểm thử: smoke thêm 19 kiểm tra với provider **Fake** (tổng 203/203 PASS: giá từ `list_packages`, giường trống, giờ thăm từ tri thức, từ chối câu hỏi thuốc, tài liệu nội bộ không lộ, tạo yêu cầu/đặt tham quan chỉ sau khi xác nhận, nguồn `Chatbot`, tham số sai không 500, 429). Unit thêm `PublicToolsTests` (85/85). `run-smoke-isolated.ps1` giờ chạy với `Ai__Enabled=true`, `Ai__Provider=Fake`.
+- **Chưa chạy với Gemini thật** (không có key trên máy test) — khi có key: `dotnet user-secrets set "Ai:Gemini:ApiKey" "..."`, `"Ai:Gemini:Model" "gemini-3.8-flash"` (model StreetBiz dùng), `Provider = Gemini`, rồi thử các câu ở mục 6. Widget và trang `/staff/ai-knowledge` **chưa xem trên trình duyệt**.
+- Khác đặc tả:
+  - Chốt chặn server-side cho tool ghi dữ liệu: cần `confirmed = true` **và** tin vừa gửi của khách là lời xác nhận rõ ("đồng ý", "xác nhận", "ok", "vâng", "chốt"… — không tính "có", "được" vì quá chung). Thiếu một trong hai → tool chỉ trả câu đọc lại thông tin.
+  - Tool gọi service trực tiếp nên tự kiểm DataAnnotations của `CreateInquiryRequest`/`BookTourRequest`; lỗi trả về cho model dạng `{"error"}` (khách thấy câu giải thích, không 500).
+  - Mỗi kết quả tool có trường `summary` (tiếng Việt) để provider Fake trả lời khi demo không có key; Gemini dùng toàn bộ dữ liệu.
+  - System prompt nhắc model coi dữ liệu tool là dữ liệu tra cứu, bỏ qua chỉ dẫn trong đó (chống prompt injection từ tài liệu).
+  - Tài liệu `IsPublic = 0` (ví dụ "Quy trình nội bộ khi cư dân té ngã") chỉ dành cho kênh gia đình/nội bộ; chatbot công khai không tìm thấy.
+  - Widget gắn bằng `<PublicChatbot />` trong `PublicLayout` (1 dòng ở file lõi).
 
 ## 1. Database — `01_Schema.sql` mục 9
 

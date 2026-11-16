@@ -87,7 +87,9 @@ sequenceDiagram
 
 Một ví dụ "đọc dữ liệu có kiểm quyền" để so sánh: `HealthService.ListAsync` gọi `access.RequireAsync(user, residentId, ResidentSection.Health)` trước khi đọc. **Mọi service đọc dữ liệu của một cư dân đều phải làm vậy.**
 
-## 3. Sơ đồ dữ liệu (21 bảng hiện có)
+## 3. Sơ đồ dữ liệu (21 bảng lõi)
+
+Bảng của module Sprint 3+ nằm ở `01_Schema.sql` mục 9 (Viên) / mục 10 (Huy), ví dụ `Inquiries` (yêu cầu tư vấn) 1–n `TourBookings` (lịch tham quan), `Inquiries.ResidentId` trỏ về `Residents` khi khách nhập viện.
 
 ```mermaid
 erDiagram
@@ -227,7 +229,7 @@ Từ Sprint 3, code mới chia làm 2 module để Viên và Huy làm song song 
 | DbSet + mapping | `NursingHomeContext.Operations.cs` | `NursingHomeContext.Care.cs` |
 | DAO, Repository | file mới trong project tương ứng | file mới |
 | Interface service | `Services/Interfaces/IOperationsServices.cs` | `Services/Interfaces/ICareModuleServices.cs` |
-| Map entity → DTO | `Services/Helpers/ModuleMappers.cs` → `OperationsMapper` | `CareMapper` |
+| Map entity → DTO | `OperationsMapper` (partial): mỗi task một file `Helpers/OperationsMapper.<Task>.cs`, vd. `OperationsMapper.Admissions.cs` | `CareMapper` trong `Helpers/ModuleMappers.cs` (có thể đổi thành `partial` và tách file như bên Operations) |
 | Đăng ký DI | `ServiceCollectionExtensions.Operations.cs` | `ServiceCollectionExtensions.Care.cs` |
 | Entity set OData | `API/OData/EdmModelBuilder.Operations.cs` | `EdmModelBuilder.Care.cs` |
 | Controller, DTO | file mới | file mới |
@@ -270,6 +272,39 @@ Tất cả trả JSON camelCase; lỗi `{ "message": "..." }`. Swagger: `http://
 | Tổng quan | `GET /api/dashboard` | BillingStaff |
 | | `GET /api/public/overview` | ẩn danh |
 | Thông báo | `GET /api/notifications`, `POST /{id}/read`, `POST /read-all`, hub `/hubs/notifications` | đăng nhập |
+
+Sprint 3+ (module):
+
+| Nhóm | Method + đường dẫn | Policy |
+| --- | --- | --- |
+| Tiếp nhận (S3-V1) | `POST /api/public/inquiries`, `POST /api/public/tour-bookings` | ẩn danh, rate limit `PublicForms` (5/phút/IP) |
+| | `GET /api/public/tour-slots?from&to` (chỉ số chỗ còn lại) | ẩn danh |
+| | `GET /odata/Inquiries`, `PUT /api/inquiries/{id}`, `POST /{id}/admit`, `GET /api/tour-bookings?from&to`, `POST /api/tour-bookings/{id}/confirm` · `cancel` · `done` · `no-show` | FrontDesk |
+| Ca trực (S3-V2) | `GET /api/shifts`, `GET /api/shift-assignments/mine?days=14` | Staff |
+| | `GET /api/shift-assignments?from&to` (Admin/Nurse thấy tất cả, Doctor/Caregiver chỉ của mình), `GET /api/care-assignments?residentId&accountId&activeOnly` (Caregiver chỉ của mình) | ClinicalStaff |
+| | `POST /api/shift-assignments`, `DELETE /{id}`, `POST /copy-week` | AdminOnly |
+| | `POST /api/care-assignments`, `POST /{id}/end` | CarePlanners |
+| Nghỉ phép & bàn giao (S3-V4) | `GET /api/leave-requests?status` (Admin thấy tất cả; người khác: đơn của mình + đơn xin đổi ca với mình), `POST /api/leave-requests`, `GET /swap-candidates?shiftAssignmentId`, `POST /{id}/cancel` (chủ đơn) | ClinicalStaff |
+| | `POST /api/leave-requests/{id}/approve` · `reject` | AdminOnly |
+| | `GET /api/handovers/draft?shiftId&date`, `GET /api/handovers?date`, `GET /api/handovers/inbox`, `POST /api/handovers`, `POST /{id}/acknowledge` | ClinicalStaff |
+| Tài chính mở rộng (S3-V5) | `GET /api/extra-services?activeOnly` | Staff |
+| | `POST /api/extra-services`, `PUT /{id}` | AdminOnly |
+| | `GET /api/service-usages?from&to`, `GET·POST /api/residents/{id}/service-usages`, `DELETE /api/service-usages/{id}` (chỉ khi chưa vào hóa đơn) | ServiceRecorders (Admin, Receptionist, Accountant, Nurse, Caregiver) |
+| | `POST /api/invoices/batch`, `GET /api/invoices/{id}/reminders` | BillingStaff |
+| | `GET /api/invoices/{id}/pdf` (Family: như xem hóa đơn) | InvoiceReaders |
+| | `POST /api/invoices/reminders/run` (job `InvoiceReminderJob` cũng chạy mỗi giờ) | FinanceStaff |
+| Chat gia đình (S3-V6) | `GET /api/conversations`, `GET·POST /api/conversations/{id}/messages?beforeId&take` (gửi: rate limit `Chat` 20/phút/tài khoản), `POST /{id}/read` — quyền kiểm ở `ChatService` (Family: người thân được liên kết; Admin, Receptionist, Nurse; Caregiver phụ trách chính) | đăng nhập |
+| | `POST /api/conversations {residentId}` (mở hoặc lấy lại) | FamilyOnly |
+| | Sự kiện realtime `chat` (ChatMessageDto) trên hub `/hubs/notifications` | — |
+| AI công khai (S4-V1) | `GET /api/ai/public/config`, `POST /api/ai/public/chat {conversationKey, message}` (rate limit `AiPublic` 20/phút/IP), `GET /api/ai/public/history?conversationKey` | ẩn danh |
+| | `GET·POST /api/ai/knowledge`, `PUT·DELETE /{id}` | AdminOnly |
+| AI nội bộ (S4-V2) | `POST /api/handovers/ai-draft {shiftId, date}` (nháp, không tự lưu) | ClinicalStaff |
+| | `POST /api/ai/staff/report-chat {message}`, `GET /api/ai/staff/report-chat/history` (tool tự kiểm quyền từng báo cáo) | FinanceStaff |
+| Báo cáo (S3-V3) | `GET /api/reports/revenue?year` · `/revenue/export` (.xlsx) | FinanceStaff |
+| | `GET /api/reports/occupancy?year` · `/occupancy/export` | BillingStaff |
+| | `GET /api/reports/medication-adherence?from&to` · `/medication-adherence/export` | Prescribers |
+
+**OData chỉ dùng attribute routing** (`Program.cs` bỏ các convention theo tên controller): mỗi entity set cần một `ODataController` có `[Route("odata/TenEntitySet")]`. Controller REST trùng tên entity set (vd. `InvoicesController`) không còn bị OData bắt nhầm.
 
 ## 8. Frontend trong 1 phút
 

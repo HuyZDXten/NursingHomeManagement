@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Huy | Must (UC-66) / Should | 5 | 3.1 | — | `feature/s3-h2-medical-profile` |
+| Huy | Must (UC-66) / Should | 5 | 3.1 | — | `feature/medical-profile` |
 
 ## Mục tiêu
 

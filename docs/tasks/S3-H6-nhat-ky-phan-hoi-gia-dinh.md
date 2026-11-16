@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Huy | Should | 5 | 3.2 (cuối tuần) | S3-H1 (sự cố), S3-H4 (ADL, bữa ăn) | `feature/s3-h6-family-timeline` |
+| Huy | Should | 5 | 3.2 (cuối tuần) | S3-H1 (sự cố), S3-H4 (ADL, bữa ăn) | `feature/family-timeline` |
 
 ## Mục tiêu
 

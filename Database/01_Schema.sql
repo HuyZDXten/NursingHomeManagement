@@ -443,6 +443,292 @@ GO
    Chỉ Viên thêm bảng trong vùng này; chèn NGAY TRÊN dòng "KẾT THÚC" bên dưới.
    =============================================================== */
 
+/* ---- 9.1 Tiếp nhận & tham quan (S3-V1: UC-17, 18, 21, 22) ---- */
+IF OBJECT_ID(N'dbo.Inquiries', N'U') IS NULL
+CREATE TABLE dbo.Inquiries (
+    Id                  INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Inquiries PRIMARY KEY,
+    FullName            NVARCHAR(150)  NOT NULL,
+    Phone               NVARCHAR(30)   NOT NULL,
+    Email               NVARCHAR(256)  NULL,
+    ElderName           NVARCHAR(150)  NULL,
+    ElderAge            INT            NULL,
+    CareNeeds           NVARCHAR(1000) NULL,
+    InterestedPackageId INT            NULL CONSTRAINT FK_Inquiries_Packages REFERENCES dbo.ServicePackages (Id),
+    Source              NVARCHAR(20)   NOT NULL CONSTRAINT DF_Inquiries_Source DEFAULT (N'Web'),
+    Status              NVARCHAR(20)   NOT NULL CONSTRAINT DF_Inquiries_Status DEFAULT (N'New'),
+    AssignedToId        INT            NULL CONSTRAINT FK_Inquiries_Accounts REFERENCES dbo.Accounts (Id),
+    Notes               NVARCHAR(2000) NULL,
+    ResidentId          INT            NULL CONSTRAINT FK_Inquiries_Residents REFERENCES dbo.Residents (Id),
+    CreatedAt           DATETIME2      NOT NULL CONSTRAINT DF_Inquiries_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt           DATETIME2      NULL,
+    CONSTRAINT CK_Inquiries_Source CHECK (Source IN (N'Web', N'Phone', N'WalkIn', N'Chatbot')),
+    CONSTRAINT CK_Inquiries_Status CHECK (Status IN (N'New', N'Contacted', N'Visited', N'Admitted', N'Lost')),
+    CONSTRAINT CK_Inquiries_Age CHECK (ElderAge IS NULL OR ElderAge BETWEEN 40 AND 120),
+    CONSTRAINT CK_Inquiries_Admitted CHECK (Status <> N'Admitted' OR ResidentId IS NOT NULL)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Inquiries_Status_CreatedAt')
+    CREATE INDEX IX_Inquiries_Status_CreatedAt ON dbo.Inquiries (Status, CreatedAt DESC);
+GO
+IF OBJECT_ID(N'dbo.TourBookings', N'U') IS NULL
+CREATE TABLE dbo.TourBookings (
+    Id            INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_TourBookings PRIMARY KEY,
+    InquiryId     INT           NOT NULL CONSTRAINT FK_TourBookings_Inquiries REFERENCES dbo.Inquiries (Id),
+    VisitDate     DATE          NOT NULL,                  -- ngày theo giờ cơ sở (UTC+7)
+    TimeSlot      NVARCHAR(20)  NOT NULL,
+    GuestCount    INT           NOT NULL,
+    Note          NVARCHAR(500) NULL,
+    Status        NVARCHAR(20)  NOT NULL CONSTRAINT DF_TourBookings_Status DEFAULT (N'Requested'),
+    ConfirmedById INT           NULL CONSTRAINT FK_TourBookings_Accounts REFERENCES dbo.Accounts (Id),
+    CreatedAt     DATETIME2     NOT NULL CONSTRAINT DF_TourBookings_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt     DATETIME2     NULL,
+    CONSTRAINT CK_TourBookings_Slot CHECK (TimeSlot IN (N'Morning', N'Afternoon')),
+    CONSTRAINT CK_TourBookings_Guests CHECK (GuestCount BETWEEN 1 AND 10),
+    CONSTRAINT CK_TourBookings_Status CHECK (Status IN (N'Requested', N'Confirmed', N'Done', N'Cancelled', N'NoShow'))
+);
+GO
+-- Sức chứa mỗi buổi (Facility:TourSlotCapacity) được kiểm trong transaction Serializable của AdmissionDAO.BookTourAsync;
+-- index này giúp khóa phạm vi đúng ngày + buổi thay vì cả bảng.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_TourBookings_Date_Slot')
+    CREATE INDEX IX_TourBookings_Date_Slot ON dbo.TourBookings (VisitDate, TimeSlot, Status) INCLUDE (GuestCount);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_TourBookings_Inquiry')
+    CREATE INDEX IX_TourBookings_Inquiry ON dbo.TourBookings (InquiryId);
+GO
+
+/* ---- 9.2 Ca trực & phân công phụ trách (S3-V2: UC-44, 45, 46). Danh mục ca ở 04_ReferenceData.sql ---- */
+IF OBJECT_ID(N'dbo.Shifts', N'U') IS NULL
+CREATE TABLE dbo.Shifts (
+    Id        INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Shifts PRIMARY KEY,
+    Code      NVARCHAR(20) NOT NULL CONSTRAINT UQ_Shifts_Code UNIQUE,
+    Name      NVARCHAR(50) NOT NULL,
+    StartTime TIME(0)      NOT NULL,                -- giờ cơ sở (UTC+7)
+    EndTime   TIME(0)      NOT NULL,                -- ca đêm: EndTime < StartTime (kết thúc ngày hôm sau)
+    IsActive  BIT          NOT NULL CONSTRAINT DF_Shifts_IsActive DEFAULT (1)
+);
+GO
+IF OBJECT_ID(N'dbo.ShiftAssignments', N'U') IS NULL
+CREATE TABLE dbo.ShiftAssignments (
+    Id          INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ShiftAssignments PRIMARY KEY,
+    AccountId   INT           NOT NULL CONSTRAINT FK_ShiftAssignments_Accounts REFERENCES dbo.Accounts (Id),
+    ShiftId     INT           NOT NULL CONSTRAINT FK_ShiftAssignments_Shifts REFERENCES dbo.Shifts (Id),
+    WorkDate    DATE          NOT NULL,              -- ngày BẮT ĐẦU ca (giờ cơ sở)
+    Note        NVARCHAR(500) NULL,
+    CreatedById INT           NOT NULL CONSTRAINT FK_ShiftAssignments_CreatedBy REFERENCES dbo.Accounts (Id),
+    CreatedAt   DATETIME2     NOT NULL CONSTRAINT DF_ShiftAssignments_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT UQ_ShiftAssignments UNIQUE (AccountId, WorkDate, ShiftId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ShiftAssignments_Date')
+    CREATE INDEX IX_ShiftAssignments_Date ON dbo.ShiftAssignments (WorkDate, ShiftId);
+GO
+IF OBJECT_ID(N'dbo.ResidentCareAssignments', N'U') IS NULL
+CREATE TABLE dbo.ResidentCareAssignments (
+    Id           INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ResidentCareAssignments PRIMARY KEY,
+    ResidentId   INT       NOT NULL CONSTRAINT FK_RCA_Residents REFERENCES dbo.Residents (Id),
+    AccountId    INT       NOT NULL CONSTRAINT FK_RCA_Accounts REFERENCES dbo.Accounts (Id),
+    ShiftId      INT       NULL CONSTRAINT FK_RCA_Shifts REFERENCES dbo.Shifts (Id),   -- NULL = mọi ca
+    StartDate    DATE      NOT NULL,
+    EndDate      DATE      NULL,                                                      -- NULL = đang hiệu lực
+    AssignedById INT       NOT NULL CONSTRAINT FK_RCA_AssignedBy REFERENCES dbo.Accounts (Id),
+    CreatedAt    DATETIME2 NOT NULL CONSTRAINT DF_RCA_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_RCA_Dates CHECK (EndDate IS NULL OR EndDate >= StartDate)
+);
+GO
+-- Một người phụ trách chính đang hiệu lực cho mỗi (cư dân, ca). Các NULL coi là bằng nhau trong unique index,
+-- nên mỗi cư dân chỉ một phân công "mọi ca" đang hiệu lực. "Mọi ca" + ca cụ thể do StaffingDAO kiểm thêm.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_RCA_ActivePrimary')
+    CREATE UNIQUE INDEX UX_RCA_ActivePrimary ON dbo.ResidentCareAssignments (ResidentId, ShiftId) WHERE EndDate IS NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_RCA_Account_Active')
+    CREATE INDEX IX_RCA_Account_Active ON dbo.ResidentCareAssignments (AccountId, ResidentId) WHERE EndDate IS NULL;
+GO
+
+/* ---- 9.3 Nghỉ phép/đổi ca & bàn giao ca (S3-V4: UC-47, 49) ---- */
+-- Đổi ca: ShiftAssignmentId = ca của người xin, SwapShiftAssignmentId = ca của đồng nghiệp. Duyệt = hoán AccountId
+-- của 2 dòng ShiftAssignments trong một transaction (StaffingDAO.ApproveSwapAsync).
+-- Khi một ca bị bỏ (Admin bỏ ca, duyệt nghỉ phép), StaffingDAO hủy các đơn đổi ca đang chờ và gỡ tham chiếu tới ca đó,
+-- nên CK_LeaveRequests_Swap chỉ bắt buộc đủ 2 ca khi đơn còn Pending.
+IF OBJECT_ID(N'dbo.LeaveRequests', N'U') IS NULL
+CREATE TABLE dbo.LeaveRequests (
+    Id                    INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_LeaveRequests PRIMARY KEY,
+    AccountId             INT           NOT NULL CONSTRAINT FK_LeaveRequests_Accounts REFERENCES dbo.Accounts (Id),
+    Type                  NVARCHAR(10)  NOT NULL,
+    FromDate              DATE          NOT NULL,                      -- đổi ca: ngày của 2 ca (nhỏ → lớn)
+    ToDate                DATE          NOT NULL,
+    ShiftAssignmentId     INT           NULL CONSTRAINT FK_LeaveRequests_MyShift REFERENCES dbo.ShiftAssignments (Id),
+    SwapWithAccountId     INT           NULL CONSTRAINT FK_LeaveRequests_SwapWith REFERENCES dbo.Accounts (Id),
+    SwapShiftAssignmentId INT           NULL CONSTRAINT FK_LeaveRequests_TheirShift REFERENCES dbo.ShiftAssignments (Id),
+    Reason                NVARCHAR(500) NOT NULL,
+    Status                NVARCHAR(20)  NOT NULL CONSTRAINT DF_LeaveRequests_Status DEFAULT (N'Pending'),
+    ReviewedById          INT           NULL CONSTRAINT FK_LeaveRequests_Reviewer REFERENCES dbo.Accounts (Id),
+    ReviewedAt            DATETIME2     NULL,
+    ReviewNote            NVARCHAR(500) NULL,
+    CreatedAt             DATETIME2     NOT NULL CONSTRAINT DF_LeaveRequests_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_LeaveRequests_Type CHECK (Type IN (N'Leave', N'Swap')),
+    CONSTRAINT CK_LeaveRequests_Status CHECK (Status IN (N'Pending', N'Approved', N'Rejected', N'Cancelled')),
+    CONSTRAINT CK_LeaveRequests_Dates CHECK (ToDate >= FromDate),
+    CONSTRAINT CK_LeaveRequests_Swap CHECK (Type = N'Leave' OR Status <> N'Pending'
+        OR (ShiftAssignmentId IS NOT NULL AND SwapShiftAssignmentId IS NOT NULL AND SwapWithAccountId IS NOT NULL))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_LeaveRequests_Account_Status')
+    CREATE INDEX IX_LeaveRequests_Account_Status ON dbo.LeaveRequests (AccountId, Status);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_LeaveRequests_Status_CreatedAt')
+    CREATE INDEX IX_LeaveRequests_Status_CreatedAt ON dbo.LeaveRequests (Status, CreatedAt DESC);
+GO
+IF OBJECT_ID(N'dbo.ShiftHandovers', N'U') IS NULL
+CREATE TABLE dbo.ShiftHandovers (
+    Id               BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ShiftHandovers PRIMARY KEY,
+    ShiftId          INT            NOT NULL CONSTRAINT FK_ShiftHandovers_Shifts REFERENCES dbo.Shifts (Id),
+    WorkDate         DATE           NOT NULL,                          -- ngày BẮT ĐẦU ca (giờ cơ sở)
+    FromAccountId    INT            NOT NULL CONSTRAINT FK_ShiftHandovers_From REFERENCES dbo.Accounts (Id),
+    Summary          NVARCHAR(4000) NOT NULL,
+    HighlightsJson   NVARCHAR(MAX)  NULL,                              -- các mục gợi ý đã chọn (JSON), S4-V2 dùng lại
+    AiGenerated      BIT            NOT NULL CONSTRAINT DF_ShiftHandovers_Ai DEFAULT (0),
+    AcknowledgedById INT            NULL CONSTRAINT FK_ShiftHandovers_Ack REFERENCES dbo.Accounts (Id),
+    AcknowledgedAt   DATETIME2      NULL,
+    CreatedAt        DATETIME2      NOT NULL CONSTRAINT DF_ShiftHandovers_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT UQ_ShiftHandovers UNIQUE (WorkDate, ShiftId, FromAccountId),
+    CONSTRAINT CK_ShiftHandovers_Ack CHECK ((AcknowledgedById IS NULL AND AcknowledgedAt IS NULL)
+        OR (AcknowledgedById IS NOT NULL AND AcknowledgedAt IS NOT NULL))
+);
+GO
+
+/* ---- 9.4 Dịch vụ phát sinh, nhắc nợ (S3-V5: UC-85, 86, 88, 97, 98, 118). Danh mục mẫu ở 04_ReferenceData.sql ---- */
+IF OBJECT_ID(N'dbo.ExtraServices', N'U') IS NULL
+CREATE TABLE dbo.ExtraServices (
+    Id        INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ExtraServices PRIMARY KEY,
+    Name      NVARCHAR(150) NOT NULL CONSTRAINT UQ_ExtraServices_Name UNIQUE,
+    Unit      NVARCHAR(30)  NOT NULL,
+    UnitPrice DECIMAL(18,0) NOT NULL,
+    IsActive  BIT           NOT NULL CONSTRAINT DF_ExtraServices_IsActive DEFAULT (1),
+    CreatedAt DATETIME2     NOT NULL CONSTRAINT DF_ExtraServices_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt DATETIME2     NULL,
+    CONSTRAINT CK_ExtraServices_Price CHECK (UnitPrice >= 0)
+);
+GO
+-- Một lần sử dụng: đơn giá chốt lúc ghi. InvoiceItemId gán khi tạo hóa đơn (BillingDAO.CreateInvoiceAsync, cùng transaction);
+-- đã có InvoiceItemId thì không sửa/xóa. Hủy hóa đơn → gỡ InvoiceItemId để vào hóa đơn kỳ sau.
+IF OBJECT_ID(N'dbo.ServiceUsages', N'U') IS NULL
+CREATE TABLE dbo.ServiceUsages (
+    Id             INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_ServiceUsages PRIMARY KEY,
+    ResidentId     INT           NOT NULL CONSTRAINT FK_ServiceUsages_Residents REFERENCES dbo.Residents (Id),
+    ExtraServiceId INT           NOT NULL CONSTRAINT FK_ServiceUsages_Services REFERENCES dbo.ExtraServices (Id),
+    UsedOn         DATE          NOT NULL,                              -- giờ cơ sở
+    Quantity       DECIMAL(9,2)  NOT NULL,
+    UnitPrice      DECIMAL(18,0) NOT NULL,                              -- giá chốt lúc ghi
+    Note           NVARCHAR(500) NULL,
+    RecordedById   INT           NOT NULL CONSTRAINT FK_ServiceUsages_Accounts REFERENCES dbo.Accounts (Id),
+    InvoiceItemId  INT           NULL CONSTRAINT FK_ServiceUsages_InvoiceItems REFERENCES dbo.InvoiceItems (Id),
+    CreatedAt      DATETIME2     NOT NULL CONSTRAINT DF_ServiceUsages_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_ServiceUsages_Quantity CHECK (Quantity > 0),
+    CONSTRAINT CK_ServiceUsages_Price CHECK (UnitPrice >= 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ServiceUsages_Resident_Uninvoiced')
+    CREATE INDEX IX_ServiceUsages_Resident_Uninvoiced ON dbo.ServiceUsages (ResidentId, UsedOn) WHERE InvoiceItemId IS NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ServiceUsages_InvoiceItem')
+    CREATE UNIQUE INDEX UX_ServiceUsages_InvoiceItem ON dbo.ServiceUsages (InvoiceItemId) WHERE InvoiceItemId IS NOT NULL;
+GO
+IF OBJECT_ID(N'dbo.InvoiceReminders', N'U') IS NULL
+CREATE TABLE dbo.InvoiceReminders (
+    Id        INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_InvoiceReminders PRIMARY KEY,
+    InvoiceId INT          NOT NULL CONSTRAINT FK_InvoiceReminders_Invoices REFERENCES dbo.Invoices (Id),
+    Stage     NVARCHAR(20) NOT NULL,
+    SentAt    DATETIME2    NOT NULL CONSTRAINT DF_InvoiceReminders_SentAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_InvoiceReminders_Stage CHECK (Stage IN (N'Before3Days', N'Overdue', N'Overdue7')),
+    CONSTRAINT UQ_InvoiceReminders UNIQUE (InvoiceId, Stage)    -- mỗi mốc chỉ nhắc một lần (job ghi dòng TRƯỚC rồi mới gửi)
+);
+GO
+
+/* ---- 9.5 Chat gia đình – nhân viên (S3-V6: UC-106) ---- */
+-- Mỗi (cư dân, tài khoản gia đình) một cuộc trò chuyện; mọi nhân viên được phép cùng trả lời trong đó.
+IF OBJECT_ID(N'dbo.Conversations', N'U') IS NULL
+CREATE TABLE dbo.Conversations (
+    Id              INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Conversations PRIMARY KEY,
+    ResidentId      INT       NOT NULL CONSTRAINT FK_Conversations_Residents REFERENCES dbo.Residents (Id),
+    FamilyAccountId INT       NOT NULL CONSTRAINT FK_Conversations_Accounts REFERENCES dbo.Accounts (Id),
+    CreatedAt       DATETIME2 NOT NULL CONSTRAINT DF_Conversations_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    LastMessageAt   DATETIME2 NULL,
+    CONSTRAINT UQ_Conversations UNIQUE (ResidentId, FamilyAccountId)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Conversations_LastMessageAt')
+    CREATE INDEX IX_Conversations_LastMessageAt ON dbo.Conversations (LastMessageAt DESC) INCLUDE (ResidentId, FamilyAccountId);
+GO
+IF OBJECT_ID(N'dbo.Messages', N'U') IS NULL
+CREATE TABLE dbo.Messages (
+    Id             BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Messages PRIMARY KEY,
+    ConversationId INT            NOT NULL CONSTRAINT FK_Messages_Conversations REFERENCES dbo.Conversations (Id),
+    SenderId       INT            NOT NULL CONSTRAINT FK_Messages_Accounts REFERENCES dbo.Accounts (Id),
+    FromFamily     BIT            NOT NULL,
+    Body           NVARCHAR(2000) NOT NULL,
+    SentAt         DATETIME2      NOT NULL CONSTRAINT DF_Messages_SentAt DEFAULT (SYSUTCDATETIME()),
+    ReadAt         DATETIME2      NULL,                                 -- bên kia đã đọc
+    CONSTRAINT CK_Messages_Body CHECK (LEN(Body) > 0)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Messages_Conversation_SentAt')
+    CREATE INDEX IX_Messages_Conversation_SentAt ON dbo.Messages (ConversationId, SentAt DESC);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Messages_Unread')
+    CREATE INDEX IX_Messages_Unread ON dbo.Messages (ConversationId, FromFamily) WHERE ReadAt IS NULL;
+GO
+
+/* ---- 9.6 Hạ tầng AI dùng chung (S4-V1: AI-01, UC-20). Huy dùng lại cho trợ lý gia đình (S4-H1) ---- */
+-- Hội thoại AI: Public gắn AnonymousKey (UUID lưu localStorage của khách), Family/Staff gắn AccountId.
+IF OBJECT_ID(N'dbo.AiConversations', N'U') IS NULL
+CREATE TABLE dbo.AiConversations (
+    Id            BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AiConversations PRIMARY KEY,
+    Channel       NVARCHAR(10)  NOT NULL,
+    AccountId     INT           NULL CONSTRAINT FK_AiConversations_Accounts REFERENCES dbo.Accounts (Id),
+    AnonymousKey  NVARCHAR(64)  NULL,
+    Title         NVARCHAR(200) NULL,
+    CreatedAt     DATETIME2     NOT NULL CONSTRAINT DF_AiConversations_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    LastMessageAt DATETIME2     NULL,
+    CONSTRAINT CK_AiConversations_Channel CHECK (Channel IN (N'Public', N'Family', N'Staff')),
+    CONSTRAINT CK_AiConversations_Owner CHECK (AccountId IS NOT NULL OR AnonymousKey IS NOT NULL)
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_AiConversations_AnonymousKey')
+    CREATE UNIQUE INDEX UX_AiConversations_AnonymousKey ON dbo.AiConversations (AnonymousKey) WHERE AnonymousKey IS NOT NULL;
+GO
+-- Mỗi tài khoản một hội thoại cho mỗi kênh (Family, Staff).
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_AiConversations_Account_Channel')
+    CREATE UNIQUE INDEX UX_AiConversations_Account_Channel ON dbo.AiConversations (AccountId, Channel) WHERE AccountId IS NOT NULL;
+GO
+IF OBJECT_ID(N'dbo.AiMessages', N'U') IS NULL
+CREATE TABLE dbo.AiMessages (
+    Id             BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AiMessages PRIMARY KEY,
+    ConversationId BIGINT        NOT NULL CONSTRAINT FK_AiMessages_Conversations REFERENCES dbo.AiConversations (Id),
+    Role           NVARCHAR(10)  NOT NULL,                              -- user | assistant | tool (tool: kết quả JSON, để kiểm tra lại)
+    Content        NVARCHAR(MAX) NOT NULL,
+    ToolName       NVARCHAR(100) NULL,
+    InputTokens    INT           NULL,
+    OutputTokens   INT           NULL,
+    CreatedAt      DATETIME2     NOT NULL CONSTRAINT DF_AiMessages_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_AiMessages_Role CHECK (Role IN (N'user', N'assistant', N'tool'))
+);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_AiMessages_Conversation')
+    CREATE INDEX IX_AiMessages_Conversation ON dbo.AiMessages (ConversationId, Id);
+GO
+-- Tài liệu tri thức cho tool search_knowledge. IsPublic = 0: chỉ trợ lý nội bộ/gia đình được dùng.
+IF OBJECT_ID(N'dbo.AiKnowledgeDocs', N'U') IS NULL
+CREATE TABLE dbo.AiKnowledgeDocs (
+    Id        INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AiKnowledgeDocs PRIMARY KEY,
+    Title     NVARCHAR(200) NOT NULL,
+    Content   NVARCHAR(MAX) NOT NULL,
+    Tags      NVARCHAR(200) NULL,
+    IsPublic  BIT           NOT NULL CONSTRAINT DF_AiKnowledgeDocs_IsPublic DEFAULT (1),
+    IsActive  BIT           NOT NULL CONSTRAINT DF_AiKnowledgeDocs_IsActive DEFAULT (1),
+    UpdatedAt DATETIME2     NOT NULL CONSTRAINT DF_AiKnowledgeDocs_UpdatedAt DEFAULT (SYSUTCDATETIME())
+);
+GO
+
 /* ---- 9. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 

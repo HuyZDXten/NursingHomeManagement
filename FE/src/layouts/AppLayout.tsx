@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, Badge, Button, Dropdown, Empty, Layout, List, Menu, Popover, Typography } from 'antd';
 import { BellOutlined, HomeOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import { useAuth } from '../auth/AuthContext';
+import { PublicChatbot } from '../components/PublicChatbot';
 import { hasRole } from '../auth/roles';
 import { useNotifications } from '../hooks/useNotifications';
 import { dateTime } from '../utils/format';
@@ -100,12 +101,16 @@ export function PublicLayout() {
     <Layout style={{ minHeight: '100vh', background: '#f6faf9' }}>
       <Layout.Header className="app-header public">
         <Link to="/" className="brand"><HomeOutlined /> <span>Viện Dưỡng Lão</span></Link>
-        {user
-          ? <Button type="primary" onClick={() => navigate('/app')}>Vào hệ thống</Button>
-          : <Button type="primary" onClick={() => navigate('/login')}>Đăng nhập</Button>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button onClick={() => navigate('/dat-lich-tham-quan')}>Đặt lịch tham quan</Button>
+          {user
+            ? <Button type="primary" onClick={() => navigate('/app')}>Vào hệ thống</Button>
+            : <Button type="primary" onClick={() => navigate('/login')}>Đăng nhập</Button>}
+        </div>
       </Layout.Header>
       <Layout.Content><Outlet /></Layout.Content>
       <Layout.Footer style={{ textAlign: 'center' }}>Nursing Home Management · PRN232</Layout.Footer>
+      <PublicChatbot />
     </Layout>
   );
 }

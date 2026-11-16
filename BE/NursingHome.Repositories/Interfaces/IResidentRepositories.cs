@@ -41,6 +41,9 @@ public interface IResidentRepository
 
     Task<List<int>> FamilyAccountIdsAsync(int residentId, bool requireBilling);
 
+    /// <summary>S3-V5: email Family đang hoạt động (gửi hóa đơn, nhắc nợ).</summary>
+    Task<List<string>> FamilyEmailsAsync(int residentId, bool requireBilling);
+
     Task<ResidentFamilyLink> AddLinkAsync(ResidentFamilyLink link);
 
     Task UpdateLinkAsync(ResidentFamilyLink link);

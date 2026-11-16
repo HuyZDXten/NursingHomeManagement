@@ -6,6 +6,8 @@ Sprint 0–2 đã xong (56/142 use case, xem [../SPRINTS.md](../SPRINTS.md)). C�
 
 ## Đọc trước khi nhận task
 
+> **Huy:** bắt đầu từ [HUONG-DAN-HUY.md](HUONG-DAN-HUY.md) (cập nhật 16/11): dựng máy trên nhánh mới nhất, tạo nhánh từ đâu, thứ tự review 10 PR của Viên, những chỗ trong mã của Viên cần biết.
+
 1. [../HANDOVER.md](../HANDOVER.md) mục 1 — cài máy, chạy được API + FE + PayOS giả lập.
 2. [../ARCHITECTURE.md](../ARCHITECTURE.md) — kiến trúc, lần theo request "phân giường", ERD, **mục 6: điểm mở rộng cho 2 module**.
 3. [../HANDOVER.md](../HANDOVER.md) mục 3–5 — phân quyền, quy ước, ví dụ thêm một use case qua từng layer.
@@ -15,7 +17,7 @@ Sprint 0–2 đã xong (56/142 use case, xem [../SPRINTS.md](../SPRINTS.md)). C�
 
 | Sprint | Thời gian | Mục tiêu | Mốc kiểm tra |
 | --- | --- | --- | --- |
-| Chuẩn bị | 14–15/11 | Huy cài máy, đọc tài liệu, làm bài khởi động (bên dưới) | Huy chạy được smoke test 31/31 |
+| Chuẩn bị | 14–15/11 | Huy cài máy, đọc tài liệu, làm bài khởi động (bên dưới) | Huy chạy được smoke test (213/213 trên `develop` từ 16/11) |
 | **3** | 16/11 – 29/11 | Module mới. Tuần 1: các task **Must**; tuần 2: **Should** | 20/11: merge Must vào `develop` · 29/11: sprint review |
 | **4** | 30/11 – 06/12 | AI: hạ tầng, chatbot tư vấn, trợ lý gia đình, nhật ký AI | 02/12: hạ tầng AI (S4-V1 phần 1) merge để Huy dùng |
 | **5** | 07/12 – 13/12 | Hoàn thiện, QA từng role, seed demo, slide, tổng duyệt | 11/12: đóng băng tính năng · 12/12: tổng duyệt |
@@ -24,23 +26,25 @@ Sprint 0–2 đã xong (56/142 use case, xem [../SPRINTS.md](../SPRINTS.md)). C�
 
 Trạng thái: `Chưa làm` → `Đang làm` → `Chờ review` → `Xong`. Người làm tự cập nhật cột này khi mở/merge PR.
 
+Task S3-V1 → S4-V2 của Viên đã merge thẳng vào `develop` ngày 16/11, không qua PR; Huy xem lại theo [HUONG-DAN-HUY.md](HUONG-DAN-HUY.md) mục 2 rồi đổi thành `Xong`.
+
 | ID | Task | Use case | Người | Ưu tiên | Điểm | Tuần | Phụ thuộc | Trạng thái |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | S3-00 | Điểm mở rộng 2 module (partial file, vùng SQL, `src/modules`) | — | (đã làm) | — | — | — | — | Xong |
-| [S3-V1](S3-V1-tiep-nhan-tham-quan.md) | Tiếp nhận & đặt lịch tham quan | UC-17, 18, 21, 22 | Viên | Must | 5 | 3.1 | — | Chưa làm |
-| [S3-V2](S3-V2-ca-truc-phu-trach.md) | Ca trực & phân công phụ trách | UC-44, 45, 46 | Viên | Must | 5 | 3.1 | — | Chưa làm |
-| [S3-V3](S3-V3-bao-cao.md) | Báo cáo + xuất Excel | UC-122, 123, 124, 125, 128 | Viên | Must/Should | 5 | 3.1–3.2 | UC-125 cần S3-H1 | Chưa làm |
-| [S3-V4](S3-V4-ban-giao-ca-nghi-phep.md) | Nghỉ phép/đổi ca & bàn giao ca | UC-47, 49 | Viên | Should | 5 | 3.2 | S3-V2 | Chưa làm |
-| [S3-V5](S3-V5-tai-chinh-mo-rong.md) | Dịch vụ phát sinh, hóa đơn hàng loạt, PDF, nhắc nợ, email | UC-85, 86, 88, 97, 98, 118 | Viên | Should | 8 | 3.2 | — | Chưa làm |
-| [S3-V6](S3-V6-chat-gia-dinh.md) | Chat gia đình – nhân viên | UC-106 | Viên | Should | 5 | 3.2 | — | Chưa làm |
+| [S3-V1](S3-V1-tiep-nhan-tham-quan.md) | Tiếp nhận & đặt lịch tham quan | UC-17, 18, 21, 22 | Viên | Must | 5 | 3.1 | — | Đã merge 16/11, chưa review |
+| [S3-V2](S3-V2-ca-truc-phu-trach.md) | Ca trực & phân công phụ trách | UC-44, 45, 46 | Viên | Must | 5 | 3.1 | — | Đã merge 16/11, chưa review |
+| [S3-V3](S3-V3-bao-cao.md) | Báo cáo + xuất Excel | UC-122, 123, 124, 125, 128 | Viên | Must/Should | 5 | 3.1–3.2 | UC-125 cần S3-H1 | Đã merge 16/11, chưa review (UC-125 chờ S3-H1) |
+| [S3-V4](S3-V4-ban-giao-ca-nghi-phep.md) | Nghỉ phép/đổi ca & bàn giao ca | UC-47, 49 | Viên | Should | 5 | 3.2 | S3-V2 | Đã merge 16/11, chưa review |
+| [S3-V5](S3-V5-tai-chinh-mo-rong.md) | Dịch vụ phát sinh, hóa đơn hàng loạt, PDF, nhắc nợ, email | UC-85, 86, 88, 97, 98, 118 | Viên | Should | 8 | 3.2 | — | Đã merge 16/11, chưa review |
+| [S3-V6](S3-V6-chat-gia-dinh.md) | Chat gia đình – nhân viên | UC-106 | Viên | Should | 5 | 3.2 | — | Đã merge 16/11, chưa review |
 | [S3-H1](S3-H1-su-co.md) | Báo cáo & xử lý sự cố | UC-58, 59, 107 | Huy | Must | 5 | 3.1 | — | Chưa làm |
 | [S3-H2](S3-H2-benh-nen-di-ung-che-do-an.md) | Bệnh nền, dị ứng, chế độ ăn, cảnh báo dị ứng | UC-66, 71, 82 | Huy | Must/Should | 5 | 3.1 | — | Chưa làm |
 | [S3-H3](S3-H3-lich-tham.md) | Đặt & duyệt lịch thăm | UC-103, 104 | Huy | Must | 5 | 3.1 | — | Chưa làm |
 | [S3-H4](S3-H4-ke-hoach-cham-soc-adl-bua-an.md) | Kế hoạch chăm sóc tự sinh việc, ADL, bữa ăn, nhắc việc | UC-51, 56, 57, 61 | Huy | Should | 8 | 3.2 | — | Chưa làm |
 | [S3-H5](S3-H5-danh-gia-phieu-kham-nguong.md) | Đánh giá định kỳ, phiếu khám, ngưỡng sinh hiệu riêng | UC-64, 67, 68 | Huy | Should | 5 | 3.2 | — | Chưa làm |
 | [S3-H6](S3-H6-nhat-ky-phan-hoi-gia-dinh.md) | Nhật ký hằng ngày cho gia đình & phản hồi | UC-108, 109, 110 | Huy | Should | 5 | 3.2 | S3-H1, S3-H4 | Chưa làm |
-| [S4-V1](S4-V1-ai-ha-tang-chatbot.md) | Hạ tầng AI + chatbot tư vấn công khai | AI-01, UC-20 | Viên | Must | 8 | 4 | S3-V1 | Chưa làm |
-| [S4-V2](S4-V2-ai-ban-giao-ca-bao-cao.md) | AI tóm tắt bàn giao ca (+ hỏi đáp báo cáo) | AI-04, AI-12 | Viên | Should | 5 | 4 | S3-V4, S3-V3, S4-V1 | Chưa làm |
+| [S4-V1](S4-V1-ai-ha-tang-chatbot.md) | Hạ tầng AI + chatbot tư vấn công khai | AI-01, UC-20 | Viên | Must | 8 | 4 | S3-V1 | Đã merge 16/11, chưa review |
+| [S4-V2](S4-V2-ai-ban-giao-ca-bao-cao.md) | AI tóm tắt bàn giao ca (+ hỏi đáp báo cáo) | AI-04, AI-12 | Viên | Should | 5 | 4 | S3-V4, S3-V3, S4-V1 | Đã merge 16/11, chưa review (tool sự cố chờ S3-H1) |
 | [S4-H1](S4-H1-ai-tro-ly-gia-dinh.md) | Trợ lý AI cho gia đình | AI-02 | Huy | Must | 5 | 4 | S4-V1 (phần 1) | Chưa làm |
 | [S4-H2](S4-H2-ai-nhat-ky-sinh-hieu.md) | Nhật ký hằng ngày bằng AI + diễn giải sinh hiệu | AI-03, AI-06 | Huy | Should | 5 | 4 | S3-H4, S3-H5, S3-H6, S4-V1 | Chưa làm |
 | [S5-V1](S5-V1-hoan-thien.md) | Hoàn thiện module Vận hành & Tài chính, slide, kịch bản demo | — | Viên | Must | 5 | 5 | tất cả | Chưa làm |
@@ -90,7 +94,7 @@ Thêm một **tab** vào hồ sơ cư dân: tab chăm sóc/y tế → Huy sửa 
 
 ```powershell
 git checkout develop; git pull
-git checkout -b feature/s3-v1-admissions          # feature/<id>-<ten-ngan>
+git checkout -b feature/admissions-tours          # <loại>/<mô-tả-chức-năng>, không ghi mã task (HANDOVER mục 9)
 # 1. SQL (vùng của mình) → .\Database\setup-local-db.ps1   (bảng mới được tạo, dữ liệu cũ giữ nguyên)
 # 2. BE: Entity → mapping → DAO → Repository → DTO → Service → Controller → đăng ký DI
 # 3. dotnet build BE/NursingHome.sln  (0 lỗi, 0 cảnh báo) ; thử bằng Swagger
@@ -98,7 +102,7 @@ git checkout -b feature/s3-v1-admissions          # feature/<id>-<ten-ngan>
 # 5. Seed demo (vùng của mình), thêm check(...) vào scripts/smoke-test.mjs
 # 6. .\Database\setup-local-db.ps1 -Recreate ; chạy smoke test ; thử tay với role được phép VÀ bị chặn
 git add -A; git commit -m "feat(admissions): UC-17 UC-18 dat lich tham quan"
-git push -u origin feature/s3-v1-admissions       # mở PR vào develop, người kia review
+git push -u origin feature/admissions-tours       # mở PR vào develop, người kia review
 ```
 
 - **Review chéo bắt buộc**: Viên review PR của Huy và ngược lại. Người review chạy `setup-local-db.ps1 -Recreate` + smoke test trên máy mình trước khi approve.

@@ -168,6 +168,15 @@ public sealed class ResidentDAO : GenericDAO<Resident>
             .Select(link => link.FamilyAccountId).ToListAsync();
     }
 
+    /// <summary>S3-V5: email các tài khoản Family đang hoạt động của cư dân (gửi hóa đơn, nhắc nợ).</summary>
+    public async Task<List<string>> FamilyEmailsAsync(int residentId, bool requireBilling)
+    {
+        await using var context = CreateContext();
+        return await context.ResidentFamilyLinks
+            .Where(link => link.ResidentId == residentId && (!requireBilling || link.CanViewBilling) && link.FamilyAccount.IsActive)
+            .Select(link => link.FamilyAccount.Email).Distinct().ToListAsync();
+    }
+
     public Task<ResidentFamilyLink> AddLinkAsync(ResidentFamilyLink link) => AddEntityAsync(link);
 
     public Task UpdateLinkAsync(ResidentFamilyLink link) => UpdateEntityAsync(link);

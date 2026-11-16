@@ -98,6 +98,7 @@ Role (cột `Accounts.Role`): `Admin, Receptionist, Accountant, Doctor, Nurse, C
 | `CarePlanners` | Admin, Nurse |
 | `Prescribers` | Admin, Doctor |
 | `FamilyOnly` | Family |
+| `ServiceRecorders` (S3-V5) | Admin, Receptionist, Accountant, Nurse, Caregiver — ghi dịch vụ phát sinh |
 
 Quyền theo từng cư dân (`ResidentAccessService`, chống IDOR) — **mọi service đọc dữ liệu cư dân phải gọi**:
 
@@ -106,7 +107,7 @@ Quyền theo từng cư dân (`ResidentAccessService`, chống IDOR) — **mọi
 | Admin | ✔ | ✔ | ✔ |
 | Receptionist, Accountant | ✔ | — | ✔ |
 | Doctor, Nurse | ✔ | ✔ | — |
-| Caregiver | chỉ cư dân đang có việc Pending/InProgress giao cho mình | như cột trái | — |
+| Caregiver | chỉ cư dân đang có việc Pending/InProgress giao cho mình **hoặc** mình đang là người phụ trách chính (S3-V2, `/staff/shifts` → Phân công phụ trách) | như cột trái | — |
 | Family | cư dân được liên kết | theo cờ `CanViewHealth/Care/Medication` + bản ghi có `ShareWithFamily` | theo `CanViewBilling`, không thấy Draft |
 
 > **Bẫy đã gặp:** `[Authorize(Policy=...)]` ở class **và** ở action là điều kiện **AND**. Nếu action cần mở rộng hơn class (ví dụ Family xem hóa đơn), để class chỉ `[Authorize]` và đặt policy trên từng action (xem `InvoicesController`, `AccountsController`).
@@ -258,16 +259,22 @@ Chi tiết từng use case ở [SPRINTS.md](SPRINTS.md). Những điểm cần b
 ```text
 main     ← chỉ bản đã kiểm thử để nộp/demo
 develop  ← nhánh chung của nhóm
-feature/<task-id>-<ten>     vd. feature/s3-h1-incidents, feature/s3-v2-shifts, feature/s4-v1-ai-core
+<loại>/<mô-tả-chức-năng>
+  feature/  tính năng mới        vd. feature/incidents, feature/staff-shifts, feature/ai-core
+  fix/      sửa lỗi              vd. fix/invoice-pdf-download
+  chore/    script, cấu hình, CI vd. chore/smoke-runner
+  docs/     chỉ tài liệu         vd. docs/demo-script
 ```
+
+Đặt tên như StreetBiz: tiếng Anh, chữ thường, nối bằng `-`, mô tả chức năng. **Không** ghi mã task (`s3-h1`) vào tên nhánh; mã task và mã UC ghi trong tiêu đề PR, commit và file task.
 
 ```powershell
 git checkout develop; git pull
-git checkout -b feature/s3-h1-incidents
+git checkout -b feature/incidents
 # ... code, build, test ...
 git add -A
 git commit -m "feat(incidents): UC-58 bao cao su co, UC-59 dong su co"
-git push -u origin feature/s3-h1-incidents   # rồi mở Pull Request vào develop, người kia review
+git push -u origin feature/incidents   # rồi mở Pull Request vào develop, người kia review
 ```
 
 - Commit nhỏ, mỗi commit build được. Tiền tố: `feat`, `fix`, `refactor`, `docs`, `test`, `db`.
@@ -287,6 +294,12 @@ git push -u origin feature/s3-h1-incidents   # rồi mở Pull Request vào deve
 | FE báo "Không kết nối được máy chủ" | API chưa chạy hoặc `FE/.env` sai `VITE_API_BASE_URL` |
 | Quên mật khẩu trả 503 | Chưa cấu hình `Email:SmtpUser/SmtpPassword` (Gmail App Password) |
 | Tạo VietQR trả 503 | `PayOs:Enabled=false` hoặc thiếu khóa; chạy payos-fake với khóa demo |
+| Form công khai (tư vấn, đặt lịch tham quan) trả 429 | Rate limit `RateLimit:PublicFormsPerMinute` (mặc định 5/phút/IP); chờ 1 phút |
+| `GET /odata/X` trả 404 kiểu "Không tìm thấy ..." của một action `Get(id)` | Thiếu `[Route("odata/X")]` trên ODataController của entity set mới (OData chỉ dùng attribute routing, xem ARCHITECTURE mục 7) |
+| Pull code mới có bảng mới, API báo `Invalid object name` | Chạy `.\Database\setup-local-db.ps1` (không cần `-Recreate`: script tạo bảng còn thiếu và seed phần chưa có) |
 | payos-fake báo "Đơn thanh toán đã tồn tại" | Đã dựng lại DB (Id giao dịch bắt đầu lại từ 1): khởi động lại payos-fake |
-| Caregiver không thấy cư dân | Đúng thiết kế: chỉ thấy cư dân đang có việc Pending/InProgress giao cho mình |
+| Caregiver không thấy cư dân | Đúng thiết kế: chỉ thấy cư dân đang có việc Pending/InProgress giao cho mình hoặc đang được phân công phụ trách chính |
+| Không thấy nút chatbot ở trang công khai / API AI trả 503 | `Ai:Enabled=false` (mặc định). Local: thêm `"Ai": { "Enabled": true, "Provider": "Fake" }` vào `appsettings.Development.json` (đã có trong file example). Gemini thật: `Provider=Gemini` + key/model ở user-secrets |
+| Chatbot trả "Xin lỗi, trợ lý đang bận…" | Provider lỗi hoặc quá `Ai:TimeoutSeconds`: thiếu `Ai:Gemini:ApiKey/Model`, sai key, hết hạn mức. Xem log cảnh báo "Provider AI … lỗi" (không ghi nội dung hội thoại) |
+| Thêm khoản phí / ghi dịch vụ phát sinh với số lẻ trả 500 (bản cũ) | `[Range(typeof(decimal), "0.01", …)]` parse theo culture vi-VN; dùng `ParseLimitsInInvariantCulture = true` (đã sửa ở S3-V5) |
 | Tiếng Việt hiện `?` trong `sqlcmd` | Chỉ là console; dữ liệu đúng. Luôn chạy script với `-f 65001` (setup script đã có) |

@@ -213,6 +213,157 @@ END;
    Chèn NGAY TRÊN dòng "KẾT THÚC".
    =============================================================== */
 
+/* ---- 10.1 Tiếp nhận & tham quan (S3-V1): 3 yêu cầu ở 3 bước của phễu + 3 lịch tham quan ---- */
+IF NOT EXISTS (SELECT 1 FROM dbo.Inquiries WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Inquiries ON;
+    INSERT INTO dbo.Inquiries (Id, FullName, Phone, Email, ElderName, ElderAge, CareNeeds, InterestedPackageId, Source, Status, AssignedToId, Notes, CreatedAt, UpdatedAt) VALUES
+    (1, N'Võ Thanh Tùng', N'0905111222', N'tung.vo@example.com', N'Võ Văn Tư', 82,
+        N'Ông đi lại yếu, cần hỗ trợ tắm rửa và nhắc uống thuốc huyết áp.', 2, N'Web', N'New', NULL, NULL,
+        DATEADD(HOUR, -3, @NowUtc), NULL),
+    (2, N'Lê Thị Ngọc', N'0912333444', NULL, N'Phạm Thị Lan', 76,
+        N'Muốn tìm hiểu gói chăm sóc cơ bản, bà còn tự đi lại được.', 1, N'Phone', N'Contacted', 2,
+        N'Đã gọi tư vấn, gia đình hẹn đến tham quan.', DATEADD(DAY, -2, @NowUtc), DATEADD(DAY, -1, @NowUtc)),
+    (3, N'Huỳnh Quốc Bảo', N'0935555666', N'bao.huynh@example.com', N'Huỳnh Văn Sáu', 88,
+        N'Sau tai biến, cần chăm sóc toàn phần và tập vật lý trị liệu.', 3, N'WalkIn', N'Visited', 2,
+        N'Đã tham quan phòng đơn tầng 1, gia đình đang cân nhắc.', DATEADD(DAY, -6, @NowUtc), DATEADD(DAY, -3, @NowUtc));
+    SET IDENTITY_INSERT dbo.Inquiries OFF;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.TourBookings WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.TourBookings ON;
+    INSERT INTO dbo.TourBookings (Id, InquiryId, VisitDate, TimeSlot, GuestCount, Note, Status, ConfirmedById, CreatedAt, UpdatedAt) VALUES
+    (1, 1, DATEADD(DAY, 1, @Today), N'Morning', 2, N'Muốn xem phòng 2 giường gần vườn.', N'Requested', NULL, DATEADD(HOUR, -3, @NowUtc), NULL),
+    (2, 2, DATEADD(DAY, 2, @Today), N'Afternoon', 3, NULL, N'Confirmed', 2, DATEADD(DAY, -1, @NowUtc), DATEADD(DAY, -1, @NowUtc)),
+    (3, 3, DATEADD(DAY, -3, @Today), N'Morning', 2, NULL, N'Done', 2, DATEADD(DAY, -6, @NowUtc), DATEADD(DAY, -3, @NowUtc));
+    SET IDENTITY_INSERT dbo.TourBookings OFF;
+END;
+
+/* ---- 10.2 Ca trực & phân công phụ trách (S3-V2) ----
+   Tuần hiện tại T2–T6: nurse (5) ca sáng, caregiver (6) ca sáng, caregiver2 (7) ca chiều.
+   Phụ trách chính: NH-0002 → caregiver (6) ca sáng, NH-0004 → caregiver2 (7) ca chiều
+   (chọn cư dân họ đã có việc, để kịch bản "Caregiver hết việc thì hết quyền" với NH-0001 vẫn đúng). */
+DECLARE @WeekStart DATE = DATEADD(DAY, -(DATEDIFF(DAY, '19000101', @Today) % 7), @Today); -- thứ Hai (1900-01-01 là thứ Hai, không phụ thuộc DATEFIRST)
+IF NOT EXISTS (SELECT 1 FROM dbo.ShiftAssignments WHERE AccountId IN (5, 6, 7))
+BEGIN
+    INSERT INTO dbo.ShiftAssignments (AccountId, ShiftId, WorkDate, CreatedById, CreatedAt)
+    SELECT staff.AccountId, staff.ShiftId, DATEADD(DAY, d.n, @WeekStart), 1, DATEADD(DAY, -3, @NowUtc)
+    FROM (VALUES (5, 1), (6, 1), (7, 2)) AS staff (AccountId, ShiftId)
+    CROSS JOIN (VALUES (0), (1), (2), (3), (4)) AS d (n);
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.ResidentCareAssignments WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.ResidentCareAssignments ON;
+    INSERT INTO dbo.ResidentCareAssignments (Id, ResidentId, AccountId, ShiftId, StartDate, EndDate, AssignedById, CreatedAt) VALUES
+    (1, 2, 6, 1, DATEADD(DAY, -14, @Today), NULL, 5, DATEADD(DAY, -14, @NowUtc)),
+    (2, 4, 7, 2, DATEADD(DAY, -14, @Today), NULL, 5, DATEADD(DAY, -14, @NowUtc));
+    SET IDENTITY_INSERT dbo.ResidentCareAssignments OFF;
+END;
+
+/* ---- 10.3 Lịch sử cho báo cáo (S3-V3) ----
+   Hóa đơn đã trả đủ 2–4 tháng trước (Id 100–104, cùng quy tắc số INV-yyyyMM-<mã cư dân 5 số>) để biểu đồ doanh thu
+   không trống, và nhật ký dùng thuốc 7 ngày qua (Taken/Missed/Refused lẫn lộn) cho báo cáo tuân thủ. */
+DECLARE @M2 DATE = DATEADD(MONTH, -2, @ThisMonth), @M3 DATE = DATEADD(MONTH, -3, @ThisMonth), @M4 DATE = DATEADD(MONTH, -4, @ThisMonth);
+IF NOT EXISTS (SELECT 1 FROM dbo.Invoices WHERE Id = 100)
+BEGIN
+    SET IDENTITY_INSERT dbo.Invoices ON;
+    INSERT INTO dbo.Invoices (Id, ResidentId, Number, BillingPeriod, IssuedAt, DueDate, Status)
+    SELECT v.Id, v.ResidentId, CONCAT(N'INV-', FORMAT(v.Period, 'yyyyMM'), N'-', FORMAT(v.ResidentId, '00000')), v.Period,
+           DATEADD(HOUR, -7, CAST(DATEADD(MONTH, 1, v.Period) AS DATETIME2)), DATEADD(DAY, 9, DATEADD(MONTH, 1, v.Period)), N'Paid'
+    FROM (VALUES (100, 3, @M4), (101, 3, @M3), (102, 3, @M2), (103, 1, @M3), (104, 1, @M2)) AS v (Id, ResidentId, Period);
+    SET IDENTITY_INSERT dbo.Invoices OFF;
+
+    INSERT INTO dbo.InvoiceItems (InvoiceId, Description, Quantity, UnitPrice) VALUES
+    (100, CONCAT(N'Gói Cao cấp: tháng ', FORMAT(@M4, 'MM/yyyy')), 1, 18000000),
+    (101, CONCAT(N'Gói Cao cấp: tháng ', FORMAT(@M3, 'MM/yyyy')), 1, 18000000),
+    (102, CONCAT(N'Gói Cao cấp: tháng ', FORMAT(@M2, 'MM/yyyy')), 1, 18000000),
+    (103, CONCAT(N'Gói Tiêu chuẩn: tháng ', FORMAT(@M3, 'MM/yyyy')), 1, 12000000),
+    (104, CONCAT(N'Gói Tiêu chuẩn: tháng ', FORMAT(@M2, 'MM/yyyy')), 1, 12000000);
+
+    SET IDENTITY_INSERT dbo.Payments ON;
+    INSERT INTO dbo.Payments (Id, InvoiceId, Amount, Method, PaidAt, Reference, RecordedById)
+    SELECT v.Id, v.InvoiceId, v.Amount, v.Method, DATEADD(DAY, v.AfterDays, i.IssuedAt), CONCAT(N'PT-DEMO-0', v.Id), 3
+    FROM (VALUES (100, 100, 18000000, N'BankTransfer', 3), (101, 101, 18000000, N'BankTransfer', 4), (102, 102, 18000000, N'Cash', 2),
+                 (103, 103, 12000000, N'Cash', 5), (104, 104, 12000000, N'BankTransfer', 6)) AS v (Id, InvoiceId, Amount, Method, AfterDays)
+    JOIN dbo.Invoices AS i ON i.Id = v.InvoiceId;
+    SET IDENTITY_INSERT dbo.Payments OFF;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.MedicationLogs WHERE ScheduledAt < DATEADD(DAY, -1, @TodayUtc))
+BEGIN
+    INSERT INTO dbo.MedicationLogs (MedicationScheduleId, ScheduledAt, RecordedAt, Status, RecordedById, Notes)
+    SELECT s.Id, x.ScheduledAt, DATEADD(MINUTE, 15, x.ScheduledAt),
+           CASE (d.n + s.Id) % 6 WHEN 0 THEN N'Missed' WHEN 3 THEN N'Refused' ELSE N'Taken' END,
+           CASE WHEN s.ResidentId IN (1, 2) THEN 6 ELSE 5 END,
+           CASE (d.n + s.Id) % 6 WHEN 0 THEN N'Ngủ quá giờ, đã báo điều dưỡng (mô phỏng).' WHEN 3 THEN N'Từ chối uống (mô phỏng).' END
+    FROM dbo.MedicationSchedules AS s
+    CROSS JOIN (VALUES (1), (2), (3), (4), (5), (6), (7)) AS d (n)
+    CROSS APPLY (SELECT DATEADD(HOUR, -7, DATEADD(MINUTE, DATEDIFF(MINUTE, CAST('00:00' AS TIME), s.ScheduledTime),
+                     CAST(DATEADD(DAY, -d.n, @Today) AS DATETIME2))) AS ScheduledAt) AS x
+    WHERE s.Id BETWEEN 1 AND 4
+      AND DATEADD(DAY, -d.n, @Today) >= s.StartDate
+      AND NOT EXISTS (SELECT 1 FROM dbo.MedicationLogs AS l WHERE l.MedicationScheduleId = s.Id AND l.ScheduledAt = x.ScheduledAt);
+END;
+
+/* ---- 10.4 Nghỉ phép & bàn giao ca (S3-V4) ----
+   1 đơn nghỉ chờ duyệt của caregiver2 (7) tuần sau; bàn giao ca sáng hôm qua của nurse (5) đã được caregiver2 (ca chiều)
+   xác nhận, và bàn giao ca sáng hôm nay chưa ai đọc (caregiver2 thấy badge ở "Ca trực"). */
+IF NOT EXISTS (SELECT 1 FROM dbo.LeaveRequests WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.LeaveRequests ON;
+    INSERT INTO dbo.LeaveRequests (Id, AccountId, Type, FromDate, ToDate, Reason, Status, CreatedAt) VALUES
+    (1, 7, N'Leave', DATEADD(DAY, 7, @Today), DATEADD(DAY, 8, @Today), N'Về quê dự đám cưới em gái.', N'Pending', DATEADD(HOUR, -5, @NowUtc));
+    SET IDENTITY_INSERT dbo.LeaveRequests OFF;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM dbo.ShiftHandovers WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.ShiftHandovers ON;
+    INSERT INTO dbo.ShiftHandovers (Id, ShiftId, WorkDate, FromAccountId, Summary, HighlightsJson, AiGenerated, AcknowledgedById, AcknowledgedAt, CreatedAt) VALUES
+    (1, 1, DATEADD(DAY, -1, @Today), 5,
+        N'Ca sáng ổn định. Bà Trần Thị Bình (NH-0002) sốt nhẹ 38.2°C lúc 09:00, đã chườm mát và báo bác sĩ; ca chiều đo lại nhiệt độ lúc 15:00.',
+        N'[{"kind":"Vital","residentId":2,"residentName":"NH-0002 · Trần Thị Bình","text":"Sinh hiệu cần theo dõi lúc 09:00: Nhiệt độ 38.2°C."}]',
+        0, 7, DATEADD(HOUR, 7, DATEADD(DAY, -1, @TodayUtc)), DATEADD(HOUR, 7, DATEADD(DAY, -1, @TodayUtc))),
+    (2, 1, @Today, 5,
+        N'Ông NH-0001 chưa đo sinh hiệu buổi sáng (hộ lý Nam bận hỗ trợ cư dân khác), ca chiều đo giúp trước 15:00. Còn việc thay băng NH-0003 lúc 14:00.',
+        N'[{"kind":"Task","residentId":1,"residentName":"NH-0001","text":"Chưa xong: Đo sinh hiệu buổi sáng."},{"kind":"Task","residentId":3,"residentName":"NH-0003","text":"Chưa xong: Thay băng vết thương nhỏ ở cẳng chân."}]',
+        0, NULL, NULL, DATEADD(HOUR, 6, @TodayUtc));
+    SET IDENTITY_INSERT dbo.ShiftHandovers OFF;
+END;
+
+/* ---- 10.5 Dịch vụ phát sinh (S3-V5) ----
+   3 lần sử dụng tháng này CHƯA vào hóa đơn (NH-0001, NH-0003) để thử "tạo hóa đơn tự thêm dịch vụ phát sinh".
+   Danh mục dịch vụ ở 04_ReferenceData.sql. Ngày sử dụng kẹp trong tháng này, không quá hôm nay. */
+IF NOT EXISTS (SELECT 1 FROM dbo.ServiceUsages WHERE Id = 1)
+BEGIN
+    DECLARE @UsageEarly DATE = CASE WHEN DATEADD(DAY, -5, @Today) < @ThisMonth THEN @ThisMonth ELSE DATEADD(DAY, -5, @Today) END;
+    DECLARE @UsageLate DATE = CASE WHEN DATEADD(DAY, -1, @Today) < @ThisMonth THEN @ThisMonth ELSE DATEADD(DAY, -1, @Today) END;
+    SET IDENTITY_INSERT dbo.ServiceUsages ON;
+    INSERT INTO dbo.ServiceUsages (Id, ResidentId, ExtraServiceId, UsedOn, Quantity, UnitPrice, Note, RecordedById, InvoiceItemId, CreatedAt) VALUES
+    (1, 1, 1, @UsageEarly, 3.5, 30000, N'Chăn + quần áo', 6, NULL, DATEADD(HOUR, -7, CAST(@UsageEarly AS DATETIME2))),
+    (2, 1, 3, @UsageLate, 1, 50000, NULL, 2, NULL, DATEADD(HOUR, -7, CAST(@UsageLate AS DATETIME2))),
+    (3, 3, 2, @UsageEarly, 2, 250000, N'Tập phục hồi chức năng chân phải', 5, NULL, DATEADD(HOUR, -7, CAST(@UsageEarly AS DATETIME2)));
+    SET IDENTITY_INSERT dbo.ServiceUsages OFF;
+END;
+
+/* ---- 10.6 Chat gia đình – nhân viên (S3-V6) ----
+   NH-0001 ↔ family (8): gia đình hỏi, điều dưỡng (5) trả lời (đã đọc), tin cuối của gia đình CHƯA đọc
+   → nhân viên thấy 1 tin chưa đọc. */
+IF NOT EXISTS (SELECT 1 FROM dbo.Conversations WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Conversations ON;
+    INSERT INTO dbo.Conversations (Id, ResidentId, FamilyAccountId, CreatedAt, LastMessageAt) VALUES
+    (1, 1, 8, DATEADD(HOUR, -26, @NowUtc), DATEADD(HOUR, -2, @NowUtc));
+    SET IDENTITY_INSERT dbo.Conversations OFF;
+
+    INSERT INTO dbo.Messages (ConversationId, SenderId, FromFamily, Body, SentAt, ReadAt) VALUES
+    (1, 8, 1, N'Chào cơ sở, hôm qua bố tôi ăn uống có ổn không ạ? Tuần này gia đình muốn mang thêm sữa vào.', DATEADD(HOUR, -26, @NowUtc), DATEADD(HOUR, -25, @NowUtc)),
+    (1, 5, 0, N'Chào chị, ông ăn hết suất cháo trưa và ngủ trưa tốt. Gia đình cứ mang sữa vào, gửi ở quầy lễ tân giúp em nhé.', DATEADD(HOUR, -25, @NowUtc), DATEADD(HOUR, -24, @NowUtc)),
+    (1, 8, 1, N'Cảm ơn em. Cuối tuần này 9h sáng gia đình vào thăm được không?', DATEADD(HOUR, -2, @NowUtc), NULL);
+END;
+
 /* ---- 10. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 

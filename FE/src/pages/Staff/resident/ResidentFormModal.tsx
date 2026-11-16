@@ -10,18 +10,23 @@ interface Props {
   resident?: ResidentDetail;
   onClose: () => void;
   onSaved: (resident: ResidentDetail) => void;
+  /** Điền sẵn khi tạo mới, vd. "Nhập viện" từ yêu cầu tư vấn (S3-V1). */
+  defaults?: { fullName?: string | null; notes?: string | null };
 }
 
 /** UC-23 / UC-24: tạo hoặc sửa hồ sơ cư dân. */
-export function ResidentFormModal({ open, resident, onClose, onSaved }: Props) {
+export function ResidentFormModal({ open, resident, onClose, onSaved, defaults }: Props) {
   const { message } = App.useApp();
   const [form] = Form.useForm();
+  const defaultName = defaults?.fullName ?? undefined;
+  const defaultNotes = defaults?.notes ?? undefined;
 
   useEffect(() => {
     if (!open) return;
     form.resetFields();
     if (resident) form.setFieldsValue({ ...resident, dateOfBirth: dayjs(resident.dateOfBirth) });
-  }, [open, resident, form]);
+    else form.setFieldsValue({ fullName: defaultName, notes: defaultNotes });
+  }, [open, resident, defaultName, defaultNotes, form]);
 
   const save = async () => {
     const values = await form.validateFields();

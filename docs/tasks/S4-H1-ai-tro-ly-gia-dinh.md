@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Huy | Must | 5 | 4 | S4-V1 PR 1 (hợp đồng `IAiTool`, `IAiChatEngine`, `ChatWidget`) — trong lúc chờ, viết tool + test với `FakeAiChatProvider` | `feature/s4-h1-family-assistant` |
+| Huy | Must | 5 | 4 | S4-V1 PR 1 (hợp đồng `IAiTool`, `IAiChatEngine`, `ChatWidget`) — trong lúc chờ, viết tool + test với `FakeAiChatProvider` | `feature/family-ai-assistant` |
 
 ## Mục tiêu
 

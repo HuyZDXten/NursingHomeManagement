@@ -2,7 +2,7 @@
 
 | Người làm | Ưu tiên | Điểm | Tuần | Phụ thuộc | Nhánh |
 | --- | --- | --- | --- | --- | --- |
-| Huy | Should | 8 (tách 2 PR: kế hoạch + job; ADL + bữa ăn) | 3.2 | (tùy chọn) S3-V2 để lấy người phụ trách | `feature/s3-h4-care-plans` |
+| Huy | Should | 8 (tách 2 PR: kế hoạch + job; ADL + bữa ăn) | 3.2 | (tùy chọn) S3-V2 để lấy người phụ trách | `feature/care-plans` |
 
 ## Mục tiêu
 
