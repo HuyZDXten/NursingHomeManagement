@@ -17,6 +17,14 @@ Gia đình nhắn tin hỏi tình hình người thân, nhân viên (Admin, Rece
 - [x] Nội dung 1–2000 ký tự; gửi quá 20 tin/phút → 429.
 - [x] Family A không đọc được cuộc trò chuyện của Family B (thử đổi id → 404).
 
+### Bổ sung 17/11/2026: "Đã xem", "đang nhập…" và nối lại realtime
+
+- **"Đã xem" realtime**: khi một bên mở khung chat và đọc, server phát `chat-read` cho người đã gửi các tin vừa đọc (DAO trả đúng danh sách người gửi theo các dòng vừa đặt `ReadAt`) và cho chính người đọc. Trước đây chữ "Đã xem" chỉ hiện sau khi tải lại trang. Chỉ phát khi thật sự có tin mới được đánh dấu.
+- **"đang nhập…"**: client gọi `invoke("Typing", conversationId)` khi gõ (giãn cách 2 giây phía client, 1,5 giây phía server), bên kia thấy dòng "Tên đang nhập…" ở khung chat và ở danh sách cuộc trò chuyện; tự tắt sau 4 giây hoặc khi tin nhắn tới. Cùng quy tắc quyền như gửi tin; người ngoài cuộc trò chuyện bị bỏ qua. Không lưu DB.
+- **Nối lại sau khi mất kết nối**: `onReconnected` tải lại danh sách cuộc trò chuyện và các tin mới nhất của khung đang mở rồi gộp theo mã tin. Đã thử bằng trình duyệt thật (tắt mạng, gửi tin, bật lại: tin tự hiện).
+- Kiểm thử: unit `ChatServiceTests` thêm 9 test (252/252); smoke thêm 9 kiểm tra qua SignalR thật (tổng 501/501); `scripts/browser-qa/chat.mjs` chạy 8 kịch bản với hai trình duyệt (family và nurse).
+- Giới hạn: nhân viên không thuộc danh sách nhận (ví dụ Admin đang xem) không nhận sự kiện "đang nhập" và "Đã xem" của người khác ngoài những gì mình tham gia; tin mới của họ vẫn lấy qua tải danh sách định kỳ 30 giây như trước.
+
 ### Kết quả triển khai (13/11/2026)
 
 - Kiểm thử: smoke thêm 22 kiểm tra (tổng 184/184 PASS), trong đó có **nhận tin realtime thật qua SignalR** (smoke dùng client `@microsoft/signalr` trong `FE/node_modules`; chưa `npm install` ở FE thì bỏ qua kiểm tra đó). Unit thêm `ChatServiceTests` (69/69).

@@ -212,6 +212,8 @@ sequenceDiagram
 
 Thông báo: service gọi `INotificationService.NotifyAsync(...)` → lưu bảng `Notifications` → `SignalRNotificationPublisher` đẩy sự kiện `notification` tới user (id = claim `sub`) qua `/hubs/notifications`. FE: `hooks/useNotifications.ts` (chuông ở header).
 
+Chat gia đình – nhân viên dùng lại hub này với ba sự kiện: `chat` (tin mới, gửi cho người nhận và chính người gửi), `chat-read` (bên kia vừa đọc → "Đã xem" hiện ngay, gửi cho người đã gửi các tin đó và cho người đọc để tab khác xóa số chưa đọc) và `chat-typing` (đang nhập…). `chat-typing` đi theo chiều ngược lại: client gọi `connection.invoke("Typing", conversationId)`, server kiểm quyền như gửi tin (người ngoài cuộc trò chuyện bị bỏ qua im lặng), giãn cách tối đa 1 lần / 1,5 giây / người / cuộc trò chuyện (`ChatService.TypingThrottle`), không lưu DB. FE: `hooks/useChat.ts`. Mất kết nối rồi SignalR tự nối lại thì `onReconnected` tải lại danh sách và các tin mới nhất (chuông thông báo cũng vậy), nên không lỡ tin. DB vẫn là nguồn sự thật.
+
 ## 6. Điểm mở rộng cho 2 module (đọc kỹ trước khi code)
 
 Từ Sprint 3, code mới chia làm 2 module để Viên và Huy làm song song mà không sửa cùng file:

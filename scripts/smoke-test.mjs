@@ -464,6 +464,56 @@ if (signalR) {
   const live = await pushed;
   check('Gia đình nhận tin realtime (SignalR sự kiện "chat")', live?.body === 'Dạ cuối tuần 9h gia đình vào thăm được ạ.' && live.conversationId === 1);
   await hub.stop();
+
+  // "Đã xem" và "đang nhập…" realtime (sự kiện "chat-read", "chat-typing").
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const openHub = async (who) => {
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(`${API}/hubs/notifications`, { accessTokenFactory: () => who.accessToken })
+      .configureLogging(signalR.LogLevel.None)
+      .build();
+    const got = { read: [], typing: [] };
+    connection.on('chat-read', (e) => got.read.push(e));
+    connection.on('chat-typing', (e) => got.typing.push(e));
+    await connection.start();
+    return { connection, got };
+  };
+  const nurseHub = await openHub(nurse);
+  const familyHub = await openHub(family);
+  const outsiderHub = await openHub(family2);
+  await call('POST', '/api/conversations/1/messages', nurse.accessToken, { body: 'Tin để thử "Đã xem" realtime.' });
+  await call('POST', '/api/conversations/1/read', family.accessToken);
+  await wait(800);
+  check('Gia đình đọc -> điều dưỡng (người gửi) nhận "chat-read" ngay (Đã xem realtime)',
+    nurseHub.got.read.some((e) => e.conversationId === 1 && e.readerIsFamily && e.readerId === family.accountId), JSON.stringify(nurseHub.got.read));
+  check('Người đọc cũng nhận sự kiện của chính mình (tab khác xóa số chưa đọc)', familyHub.got.read.some((e) => e.readerId === family.accountId));
+  check('Người ngoài cuộc trò chuyện không nhận "chat-read"', outsiderHub.got.read.length === 0);
+  const readBefore = nurseHub.got.read.length;
+  await call('POST', '/api/conversations/1/read', family.accessToken);
+  await wait(500);
+  check('Đọc lại khi không còn tin mới -> không phát sự kiện', nurseHub.got.read.length === readBefore);
+  await call('POST', '/api/conversations/1/messages', family.accessToken, { body: 'Cảm ơn điều dưỡng ạ.' });
+  await call('POST', '/api/conversations/1/read', nurse.accessToken);
+  await wait(800);
+  check('Nhân viên đọc -> gia đình nhận "chat-read" với readerIsFamily = false',
+    familyHub.got.read.some((e) => e.readerId === nurse.accountId && e.readerIsFamily === false));
+
+  await nurseHub.connection.invoke('Typing', 1);
+  await outsiderHub.connection.invoke('Typing', 1);
+  await wait(800);
+  check('Điều dưỡng gõ -> gia đình nhận "chat-typing" (đúng người, đúng phía); người gõ không tự nhận',
+    familyHub.got.typing.length === 1 && familyHub.got.typing[0].senderId === nurse.accountId && familyHub.got.typing[0].fromFamily === false && nurseHub.got.typing.length === 0,
+    JSON.stringify(familyHub.got.typing));
+  check('Người ngoài cuộc trò chuyện gọi Typing -> bị bỏ qua, không lỗi, không ai nhận', familyHub.got.typing.length === 1 && nurseHub.got.typing.length === 0 && outsiderHub.got.typing.length === 0);
+  await nurseHub.connection.invoke('Typing', 1);
+  await nurseHub.connection.invoke('Typing', 1);
+  await wait(500);
+  check('Gõ dồn dập chỉ báo một lần mỗi 1,5 giây (chống làm ngập)', familyHub.got.typing.length === 1);
+  await wait(1100);
+  await familyHub.connection.invoke('Typing', 1);
+  await wait(600);
+  check('Gia đình gõ -> nhân viên nhận "chat-typing" (fromFamily = true)', nurseHub.got.typing.some((e) => e.fromFamily === true && e.senderId === family.accountId));
+  await Promise.all([nurseHub.connection.stop(), familyHub.connection.stop(), outsiderHub.connection.stop()]);
 }
 
 let chatStatus = 200;

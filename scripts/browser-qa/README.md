@@ -24,6 +24,7 @@ cd scripts\browser-qa
 node sweep.mjs            # duyệt mọi route × 8 vai trò (Khách, Admin, Lễ tân, Kế toán, Bác sĩ, Điều dưỡng, Hộ lý, Gia đình)
 node sweep.mjs Admin      # chỉ một vai trò
 node flows.mjs            # 13 luồng tương tác của BL-V5 (đăng bài, cấu hình, thông báo...)
+node chat.mjs             # chat gia đình – nhân viên realtime bằng hai trình duyệt: tin mới, "Đã xem", "đang nhập…", nối lại sau khi mất mạng
 ```
 
 Đổi địa chỉ bằng biến môi trường `FE_BASE`, `API_BASE`. Ảnh chụp màn hình nằm ở `shots/` (không commit).
@@ -37,4 +38,5 @@ node flows.mjs            # 13 luồng tương tác của BL-V5 (đăng bài, c�
 ## Lưu ý
 
 - `flows.mjs` **ghi dữ liệu thật** (bài viết, thông báo, danh mục, cấu hình; có tải một ảnh PNG 1×1 lên kho ảnh đang cấu hình, tức là Cloudinary nếu đã có khóa). Script tự dọn bài viết/danh mục/cấu hình nhưng **thông báo và nhật ký thao tác thì còn lại**; nên chạy trên DB test hoặc dựng lại DB sau đó.
+- `chat.mjs` gửi các tin thử bắt đầu bằng `QA-RT` vào cuộc trò chuyện số 1 (NH-0001, `family` và `nurse`) và **không tự xóa**; dọn bằng `DELETE FROM dbo.Messages WHERE Body LIKE N'QA-RT%'` (sqlcmd cần `-I`). Bài "mất kết nối" dùng chế độ offline của trình duyệt nên mất khoảng 5–25 giây để SignalR nối lại.
 - Chưa kiểm ở màn hình điện thoại cho trang quản trị (chỉ trang công khai và trang gia đình kiểm ở 390 px, trang quản trị kiểm ở 768 px).
