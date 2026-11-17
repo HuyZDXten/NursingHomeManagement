@@ -31,7 +31,7 @@ export function PhotoPicker({ url, onUpload, onRemove, size = 96, alt }: PhotoPi
   };
 
   return (
-    <Space direction="vertical" align="center">
+    <Space orientation="vertical" align="center">
       <Avatar size={size} src={mediaUrl(url)} icon={<UserOutlined />} alt={alt} />
       {onUpload && (
         <Space size="small">

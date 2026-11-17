@@ -30,9 +30,10 @@ export default function DueAssessments() {
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
-        message="Công cụ sàng lọc, không thay thế chẩn đoán."
+        title="Công cụ sàng lọc, không thay thế chẩn đoán."
       />
       <Table
+        scroll={{ x: 'max-content' }}
         rowKey={(r) => `${r.residentId}-${r.type}`}
         loading={loading}
         dataSource={rows}

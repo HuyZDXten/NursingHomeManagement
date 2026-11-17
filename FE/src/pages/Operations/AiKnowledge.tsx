@@ -56,6 +56,7 @@ export default function AiKnowledge() {
         Tài liệu "Nội bộ" chỉ trợ lý gia đình/nhân viên dùng, chatbot công khai không thấy.
       </Typography.Paragraph>
       <Table<AiKnowledgeDoc>
+        scroll={{ x: 'max-content' }}
         rowKey="id"
         dataSource={rows}
         pagination={{ pageSize: 10, hideOnSinglePage: true }}

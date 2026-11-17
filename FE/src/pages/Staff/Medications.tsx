@@ -63,7 +63,7 @@ export default function Medications() {
           { title: 'Thuốc', render: (_, d) => <>{d.medicationName}<br /><small>{d.dose} · {d.route}{d.instructions ? ` · ${d.instructions}` : ''}</small></> },
           {
             title: 'Trạng thái', render: (_, d) => (
-              <Space direction="vertical" size={0}>
+              <Space orientation="vertical" size={0}>
                 <StatusTag kind="medication" value={d.status} />
                 {d.recordedAt && <small>{timeOf(d.recordedAt)} · {d.recordedByName}</small>}
                 {d.notes && <small>{d.notes}</small>}

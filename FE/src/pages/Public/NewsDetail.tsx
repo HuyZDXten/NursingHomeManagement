@@ -35,7 +35,7 @@ export default function NewsDetail() {
       <Link to="/tin-tuc"><ArrowLeftOutlined /> Tin tức</Link>
       <Typography.Title level={2} style={{ marginTop: 12 }}>{post.title}</Typography.Title>
       <div style={{ marginBottom: 16 }}>
-        <Tag color={post.kind === 'Album' ? 'purple' : 'blue'}>{post.kind === 'Album' ? 'Album ảnh' : 'Tin tức'}</Tag>
+        <Tag color={post.kind === 'Album' ? 'purple' : 'blue'} style={{ marginInlineEnd: 8 }}>{post.kind === 'Album' ? 'Album ảnh' : 'Tin tức'}</Tag>
         <small>{dateTime(post.publishedAt).slice(0, 10)}</small>
       </div>
       {post.summary && <Typography.Paragraph strong>{post.summary}</Typography.Paragraph>}

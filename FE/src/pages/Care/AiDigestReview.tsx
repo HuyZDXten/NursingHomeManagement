@@ -135,7 +135,7 @@ export default function AiDigestReview() {
           <Empty description="Không có bản nhật ký nào theo bộ lọc hiện tại." />
         </Card>
       ) : (
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={12} style={{ width: '100%' }}>
           {items.map((item) => {
             const isDraft = item.status === 'Draft';
             const value = drafts[item.id] ?? item.content;

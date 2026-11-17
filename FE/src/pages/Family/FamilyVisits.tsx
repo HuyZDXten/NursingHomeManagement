@@ -150,6 +150,7 @@ export default function FamilyVisits() {
                       size="small"
                       dataSource={upcoming}
                       pagination={false}
+                      scroll={{ x: 560 }}
                       columns={[
                         { title: 'Ngày', dataIndex: 'visitDate', render: dateOnly },
                         { title: 'Khung giờ', render: (_, b) => `${hhmm(b.slotStart)}–${hhmm(b.slotEnd)}` },
@@ -191,6 +192,7 @@ export default function FamilyVisits() {
                       size="small"
                       dataSource={history}
                       pagination={{ pageSize: 8 }}
+                      scroll={{ x: 560 }}
                       columns={[
                         { title: 'Ngày', dataIndex: 'visitDate', render: dateOnly },
                         { title: 'Khung giờ', render: (_, b) => `${hhmm(b.slotStart)}–${hhmm(b.slotEnd)}` },

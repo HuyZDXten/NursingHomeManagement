@@ -90,6 +90,7 @@ export default function Invoices() {
         <Select placeholder="Trạng thái" allowClear style={{ width: 180 }} options={statusOptions('invoice')} onChange={(v) => { setPage(1); setStatus(v); }} />
       </Space>
       <Table
+        scroll={{ x: 'max-content' }}
         rowKey="id"
         dataSource={rows}
         onRow={(r) => ({ onClick: () => navigate(`/staff/invoices/${r.id}`), style: { cursor: 'pointer' } })}

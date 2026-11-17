@@ -144,7 +144,7 @@ export default function TourBooking() {
               </Form.Item>
             </Col>
           </Row>
-          {remaining === 0 && <Alert type="warning" showIcon message="Buổi này đã kín chỗ, vui lòng chọn buổi khác." style={{ marginBottom: 16 }} />}
+          {remaining === 0 && <Alert type="warning" showIcon title="Buổi này đã kín chỗ, vui lòng chọn buổi khác." style={{ marginBottom: 16 }} />}
           <Button type="primary" htmlType="submit" loading={loading} disabled={remaining === 0}>Gửi đăng ký</Button>
         </Form>
       </Card>

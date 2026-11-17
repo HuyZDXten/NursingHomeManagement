@@ -272,6 +272,7 @@ Webhook cần URL công khai (ngrok hoặc VS Dev Tunnels → `https://<tunnel>/
 | End-to-end | `.\scripts\run-smoke-isolated.ps1` | **Nên dùng**: tự dựng DB `NursingHomeDB_Test`, chạy API (5081) + PayOS giả (5198) riêng rồi chạy `smoke-test.mjs`; không đụng DB/API dev đang mở |
 | End-to-end (DB dev) | `node scripts/smoke-test.mjs` | Chạy trên DB/API dev (5080) — sẽ thay đổi dữ liệu; điều kiện ở đầu file |
 | FE | `npm run build`, `npm run lint` | TypeScript strict |
+| Trình duyệt thật | `node scripts/browser-qa/sweep.mjs`, `node scripts/browser-qa/flows.mjs` | Duyệt mọi route theo vai trò + luồng tương tác BL-V5; xem [scripts/browser-qa/README.md](../scripts/browser-qa/README.md) |
 
 Thử tay mỗi tính năng bằng ít nhất 2 role: một role được phép, một role bị chặn (phải ra 403/404, không lộ dữ liệu).
 
@@ -279,10 +280,9 @@ Thử tay mỗi tính năng bằng ít nhất 2 role: một role được phép,
 
 Chi tiết từng use case ở [SPRINTS.md](SPRINTS.md). Những điểm cần biết:
 
-- Email mới gửi OTP quên mật khẩu; phát hành hóa đơn mới chỉ báo in-app (email: Sprint 3, UC-118).
-- `Cloudinary`, `Google`, `Ai` đã có section trong `appsettings.json` nhưng **chưa nối code** (Sprint 3–4).
-- Upload ảnh cư dân/giấy tờ chưa có (UC-24 ảnh, UC-29).
-- Giao diện đã build và kiểm tra qua HTTP (CORS, SignalR, các module Vite), **chưa QA bằng mắt** trên trình duyệt cho từng role — làm ở Sprint 5.
+- Email (SMTP/MailKit) dùng cho OTP quên mật khẩu, mã mời gia đình, hóa đơn/nhắc nợ và thông báo hàng loạt; chỉ gửi khi đã có `Email:SmtpUser/SmtpPassword` (user-secrets), người dùng tắt được các kênh không bắt buộc (UC-120). Smoke test chạy khi chưa cấu hình SMTP nên **gửi email thật chưa kiểm tự động** (đã kiểm lọc người nhận bằng unit test).
+- Đã nối code: Cloudinary (ảnh đại diện, ảnh cư dân, ảnh tin tức/album; không có khóa thì lưu `wwwroot/uploads`), đăng nhập Google (cần thêm `http://localhost:5173` vào Authorized JavaScript origins của OAuth client), AI Gemini (hoặc `Ai:Provider=Fake`). Smoke test chạy với khóa thật bị bỏ trống; **Google OAuth thật chưa kiểm tự động**.
+- Giao diện đã duyệt bằng trình duyệt thật (Edge headless): 48 route × 8 vai trò không còn lỗi console/render/HTTP, trang công khai và trang gia đình không tràn ngang ở 390 px, trang quản trị không tràn ngang ở 768 px ([scripts/browser-qa](../scripts/browser-qa/README.md)). **Chưa có người xem bằng mắt** toàn bộ màn hình; trang quản trị chưa tối ưu cho điện thoại; còn cảnh báo `antd: List` deprecated.
 - Giới hạn của module Chăm sóc & Gia đình:
   - Cảnh báo dị ứng khi kê thuốc chỉ so khớp chuỗi tên thuốc/hoạt chất (đã chuẩn hóa dấu và chữ thường qua `TextMatch.Normalize`) với danh sách dị ứng đã ghi nhận của cư dân; chưa tích hợp cơ sở dữ liệu tương tác thuốc – thuốc hay nhóm hoạt chất chéo.
   - Nhật ký AI hằng ngày (`DailyDigest`) chỉ tạo bản nháp từ dữ liệu chia sẻ trong ngày và bắt buộc điều dưỡng duyệt (`Approved`) mới hiển thị cho gia đình.

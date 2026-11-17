@@ -90,6 +90,7 @@ export default function Accounts() {
         <Select placeholder="Vai trò" allowClear options={roleOptions} style={{ width: 160 }} onChange={(v) => { setPage(1); setRole(v); }} />
       </Space>
       <Table
+        scroll={{ x: 'max-content' }}
         rowKey="id"
         loading={loading}
         dataSource={rows}
