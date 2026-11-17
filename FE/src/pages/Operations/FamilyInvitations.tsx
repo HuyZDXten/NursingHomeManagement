@@ -4,10 +4,12 @@ import { MailOutlined } from '@ant-design/icons';
 import { extractErrorMessage } from '../../api/client';
 import { invitationsApi } from '../../api/invitations';
 import { StatusTag } from '../../components/Common';
+import { useLookupNames } from '../../hooks/useLookups';
 import { dateTime } from '../../utils/format';
 import type { FamilyInvitation, FamilyInvitationCreated, FamilyInvitationForm } from '../../types/operations';
 
-const RELATIONSHIPS = ['Con trai', 'Con gái', 'Vợ', 'Chồng', 'Cháu', 'Anh/chị/em', 'Con dâu', 'Con rể', 'Người giám hộ'];
+/** Danh sách dự phòng khi chưa tải được danh mục quan hệ (UC-130). */
+const FALLBACK_RELATIONSHIPS = ['Con trai', 'Con gái', 'Vợ', 'Chồng', 'Cháu', 'Anh/chị/em', 'Con dâu', 'Con rể', 'Người giám hộ'];
 
 /**
  * BL-V1, UC-08: lễ tân mời người thân tạo tài khoản gia đình cho một cư dân.
@@ -15,6 +17,7 @@ const RELATIONSHIPS = ['Con trai', 'Con gái', 'Vợ', 'Chồng', 'Cháu', 'Anh/
  */
 export function InvitationPanel({ residentId, active }: { residentId: number; active: boolean }) {
   const { message } = App.useApp();
+  const relationships = useLookupNames('Relationship', FALLBACK_RELATIONSHIPS);
   const [rows, setRows] = useState<FamilyInvitation[]>([]);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -84,7 +87,7 @@ export function InvitationPanel({ residentId, active }: { residentId: number; ac
             <Input placeholder="dùng để đăng nhập" />
           </Form.Item>
           <Form.Item name="relationship" label="Quan hệ với cư dân" rules={[{ required: true, max: 50, message: 'Nhập quan hệ' }]}>
-            <AutoComplete options={RELATIONSHIPS.map((value) => ({ value }))} />
+            <AutoComplete options={relationships.map((value) => ({ value }))} />
           </Form.Item>
           <Form.Item name="canViewHealth" valuePropName="checked" style={{ marginBottom: 4 }}><Checkbox>Xem sức khỏe</Checkbox></Form.Item>
           <Form.Item name="canViewCare" valuePropName="checked" style={{ marginBottom: 4 }}><Checkbox>Xem chăm sóc</Checkbox></Form.Item>

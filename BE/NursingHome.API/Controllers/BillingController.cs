@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NursingHome.API.Extensions;
+using NursingHome.API.Filters;
 using NursingHome.API.Security;
 using NursingHome.DTOs.Billing;
 using NursingHome.DTOs.Payments;
@@ -19,11 +20,13 @@ public class BillingController(IBillingService billing) : ControllerBase
 
     [HttpPost("api/service-packages")]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("Package.Create", "ServicePackage", "Tạo gói dịch vụ")]
     public async Task<ActionResult<ServicePackageDto>> CreatePackage([FromBody] SavePackageRequest request) =>
         Ok(await billing.SavePackageAsync(null, request));
 
     [HttpPut("api/service-packages/{id:int}")]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("Package.Update", "ServicePackage", "Sửa gói dịch vụ")]
     public async Task<ActionResult<ServicePackageDto>> UpdatePackage(int id, [FromBody] SavePackageRequest request) =>
         Ok(await billing.SavePackageAsync(id, request));
 
@@ -34,11 +37,13 @@ public class BillingController(IBillingService billing) : ControllerBase
 
     [HttpPost("api/subscriptions")]
     [Authorize(Policy = AuthPolicies.BillingStaff)]
+    [Audit("Subscription.Create", "Subscription", "Đăng ký gói cho cư dân")]
     public async Task<ActionResult<SubscriptionDto>> Subscribe([FromBody] CreateSubscriptionRequest request) =>
         Ok(await billing.SubscribeAsync(request));
 
     [HttpPost("api/subscriptions/{id:int}/end")]
     [Authorize(Policy = AuthPolicies.BillingStaff)]
+    [Audit("Subscription.End", "Subscription", "Kết thúc đăng ký gói")]
     public async Task<IActionResult> EndSubscription(int id)
     {
         await billing.EndSubscriptionAsync(id);
@@ -67,15 +72,18 @@ public class InvoicesController(IBillingService billing, IPaymentService payment
 
     [HttpPost("{id:int}/issue")]
     [Authorize(Policy = AuthPolicies.BillingStaff)]
+    [Audit("Invoice.Issue", "Invoice", "Phát hành hóa đơn")]
     public async Task<ActionResult<InvoiceDetailDto>> Issue(int id) => Ok(await billing.IssueAsync(id));
 
     [HttpPost("{id:int}/payments")]
     [Authorize(Policy = AuthPolicies.FinanceStaff)]
+    [Audit("Invoice.Payment", "Invoice", "Ghi nhận thanh toán hóa đơn")]
     public async Task<ActionResult<InvoiceDetailDto>> RecordPayment(int id, [FromBody] RecordPaymentRequest request) =>
         Ok(await billing.RecordPaymentAsync(User.RequireCurrentUser(), id, request));
 
     [HttpPost("{id:int}/cancel")]
     [Authorize(Policy = AuthPolicies.FinanceStaff)]
+    [Audit("Invoice.Cancel", "Invoice", "Hủy hóa đơn")]
     public async Task<IActionResult> Cancel(int id)
     {
         await billing.CancelAsync(id);

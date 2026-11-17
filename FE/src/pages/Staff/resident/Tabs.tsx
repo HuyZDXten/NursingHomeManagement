@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { App, Button, Checkbox, DatePicker, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography } from 'antd';
+import { App, AutoComplete, Button, Checkbox, DatePicker, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { AccountSelect, StatusTag } from '../../../components/Common';
 import { billingApi } from '../../../api/billing';
 import { extractErrorMessage } from '../../../api/client';
 import { residentsApi, type ContactForm } from '../../../api/residents';
 import { roomsApi } from '../../../api/rooms';
+import { useLookupNames } from '../../../hooks/useLookups';
 import { ServiceUsagePanel } from '../../Operations/ServiceUsages';
 import { InvitationPanel } from '../../Operations/FamilyInvitations';
 import { dateOnly, dateTime, dayjs, money, monthOf } from '../../../utils/format';
@@ -22,6 +23,7 @@ export { AssessmentsTab, DoctorVisitsTab } from './AssessmentTabs';
 // ======================= UC-27: Người liên hệ =======================
 export function ContactsTab({ residentId, canEdit }: { residentId: number; canEdit: boolean }) {
   const { message } = App.useApp();
+  const relationships = useLookupNames('Relationship'); // BL-V5, UC-130: gợi ý theo danh mục Admin quản lý
   const [rows, setRows] = useState<Contact[]>([]);
   const [editing, setEditing] = useState<Contact | 'new' | null>(null);
   const [form] = Form.useForm<ContactForm>();
@@ -65,7 +67,7 @@ export function ContactsTab({ residentId, canEdit }: { residentId: number; canEd
       <Modal open={editing !== null} title="Người liên hệ" onOk={save} onCancel={() => setEditing(null)} okText="Lưu" destroyOnHidden>
         <Form form={form} layout="vertical">
           <Form.Item name="fullName" label="Họ tên" rules={[{ required: true }]}><Input /></Form.Item>
-          <Form.Item name="relationship" label="Quan hệ" rules={[{ required: true }]}><Input placeholder="Con gái, cháu..." /></Form.Item>
+          <Form.Item name="relationship" label="Quan hệ" rules={[{ required: true }]}><AutoComplete placeholder="Con gái, cháu..." options={relationships.map((value) => ({ value }))} /></Form.Item>
           <Form.Item name="phone" label="Điện thoại" rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="email" label="Email" rules={[{ type: 'email' }]}><Input /></Form.Item>
           <Form.Item name="isEmergencyContact" valuePropName="checked"><Checkbox>Liên hệ khẩn cấp</Checkbox></Form.Item>

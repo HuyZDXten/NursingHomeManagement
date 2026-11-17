@@ -116,6 +116,19 @@ BEGIN
     SET IDENTITY_INSERT dbo.AiKnowledgeDocs OFF;
 END;
 
+-- BL-V5 (UC-130): danh mục dùng chung. Chỉ thêm khi bảng còn trống (Admin có thể sửa/ẩn sau đó, chạy lại không ghi đè).
+IF NOT EXISTS (SELECT 1 FROM dbo.Lookups)
+BEGIN
+    INSERT INTO dbo.Lookups (Category, Code, Name, SortOrder) VALUES
+    (N'Relationship', N'CON_TRAI', N'Con trai', 1), (N'Relationship', N'CON_GAI', N'Con gái', 2), (N'Relationship', N'VO', N'Vợ', 3),
+    (N'Relationship', N'CHONG', N'Chồng', 4), (N'Relationship', N'CHAU', N'Cháu', 5), (N'Relationship', N'ANH_CHI_EM', N'Anh/chị/em', 6),
+    (N'Relationship', N'CON_DAU', N'Con dâu', 7), (N'Relationship', N'CON_RE', N'Con rể', 8), (N'Relationship', N'GIAM_HO', N'Người giám hộ', 9),
+    (N'Department', N'HANH_CHINH', N'Hành chính', 1), (N'Department', N'TAI_CHINH', N'Tài chính', 2),
+    (N'Department', N'Y_TE', N'Y tế', 3), (N'Department', N'CHAM_SOC', N'Chăm sóc', 4),
+    (N'Position', N'LE_TAN', N'Lễ tân', 1), (N'Position', N'KE_TOAN', N'Kế toán', 2), (N'Position', N'BAC_SI', N'Bác sĩ', 3),
+    (N'Position', N'DIEU_DUONG_TRUONG', N'Điều dưỡng trưởng ca', 4), (N'Position', N'DIEU_DUONG', N'Điều dưỡng', 5), (N'Position', N'HO_LY', N'Hộ lý', 6);
+END;
+
 -- BL-V3 (UC-36): loại phòng + phụ thu theo ngày (cộng vào hóa đơn tháng theo số ngày ở phòng đó).
 IF NOT EXISTS (SELECT 1 FROM dbo.RoomTypes WHERE Id = 1)
 BEGIN

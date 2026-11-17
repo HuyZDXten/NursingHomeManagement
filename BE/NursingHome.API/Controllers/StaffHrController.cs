@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NursingHome.API.Extensions;
+using NursingHome.API.Filters;
 using NursingHome.API.Security;
 using NursingHome.DTOs.Reports;
 using NursingHome.DTOs.Staffing;
@@ -27,21 +28,25 @@ public class StaffHrController(IStaffHrService staffHr, IAttendanceService atten
 
     [HttpPut("api/staff-profiles/{accountId:int}")]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("StaffProfile.Save", "Account", "Sửa hồ sơ nhân viên", "accountId")]
     public async Task<ActionResult<StaffProfileDto>> SaveProfile(int accountId, [FromBody] SaveStaffProfileRequest request) =>
         Ok(await staffHr.SaveProfileAsync(accountId, request));
 
     [HttpPost("api/staff-profiles/{accountId:int}/certificates")]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("Certificate.Create", "Account", "Thêm chứng chỉ nhân viên", "accountId")]
     public async Task<ActionResult<StaffCertificateDto>> AddCertificate(int accountId, [FromBody] SaveCertificateRequest request) =>
         Ok(await staffHr.AddCertificateAsync(User.RequireCurrentUser(), accountId, request));
 
     [HttpPut("api/staff-certificates/{id:int}")]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("Certificate.Update", "StaffCertificate", "Sửa chứng chỉ nhân viên")]
     public async Task<ActionResult<StaffCertificateDto>> UpdateCertificate(int id, [FromBody] SaveCertificateRequest request) =>
         Ok(await staffHr.UpdateCertificateAsync(id, request));
 
     [HttpDelete("api/staff-certificates/{id:int}")]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("Certificate.Delete", "StaffCertificate", "Xóa chứng chỉ nhân viên")]
     public async Task<IActionResult> DeleteCertificate(int id)
     {
         await staffHr.DeleteCertificateAsync(id);
@@ -79,6 +84,7 @@ public class StaffHrController(IStaffHrService staffHr, IAttendanceService atten
     /// <summary>Admin sửa hoặc bổ sung công (quên chấm công); bắt buộc lý do, lưu người sửa.</summary>
     [HttpPut("api/attendance/{shiftAssignmentId:int}")]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("Attendance.Edit", "ShiftAssignment", "Sửa/bổ sung chấm công", "shiftAssignmentId")]
     public async Task<ActionResult<AttendanceRecordDto>> EditAttendance(int shiftAssignmentId, [FromBody] EditAttendanceRequest request) =>
         Ok(await attendance.EditAsync(User.RequireCurrentUser(), shiftAssignmentId, request));
 

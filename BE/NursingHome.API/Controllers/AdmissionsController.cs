@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.OData.Query;
 using Microsoft.AspNetCore.OData.Routing.Controllers;
 using Microsoft.AspNetCore.RateLimiting;
 using NursingHome.API.Extensions;
+using NursingHome.API.Filters;
 using NursingHome.API.Security;
 using NursingHome.BusinessObjects.Entities;
 using NursingHome.DTOs.Admissions;
@@ -57,6 +58,7 @@ public class AdmissionsController(IAdmissionService admissions) : ControllerBase
     /// <summary>Gắn cư dân vừa tạo bằng POST /api/residents; yêu cầu phải ở trạng thái Visited.</summary>
     [HttpPost("api/inquiries/{id:int}/admit")]
     [Authorize(Policy = AuthPolicies.FrontDesk)]
+    [Audit("Admission.Admit", "Inquiry", "Nhập viện từ yêu cầu tư vấn")]
     public async Task<ActionResult<InquiryDto>> Admit(int id, [FromBody] AdmitInquiryRequest request) =>
         Ok(await admissions.AdmitAsync(id, request));
 

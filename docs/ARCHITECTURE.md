@@ -350,6 +350,13 @@ Sprint 3+ (module):
 | | `GET /api/attendance?from&to&accountId`, `PUT /api/attendance/{shiftAssignmentId}` (sửa công, bắt buộc lý do), `GET /api/reports/staff-performance` · `/export` | AdminOnly |
 | | `GET /api/staff-home` (việc hôm nay, ca, bàn giao/tin nhắn chưa đọc, chứng chỉ của tôi) | Staff |
 | | `POST /api/ai/staff/assistant/chat {message}`, `GET .../history` (kênh `Assistant`; rate limit `Chat`) | Staff |
+| Nhật ký & cấu hình (BL-V5) | `GET /api/audit-logs?from&to&action&entityType&search&accountId&page&pageSize` (≤ 100 dòng/trang), `GET /api/audit-logs/actions`. Ghi bằng `[Audit(...)]` trên action, chỉ khi thành công, không ghi nội dung request | AdminOnly |
+| | `GET·PUT /api/settings {values:[{key,value}]}` (12 khóa cho phép, lưu cả nhóm trong một transaction, áp dụng ngay), `DELETE /api/settings?key=` (bỏ ghi đè) | AdminOnly |
+| | `GET /api/lookups?category=Relationship|Department|Position` (mọi người đăng nhập; chỉ Admin xem mục đã ẩn), `POST·PUT·DELETE /api/lookups` | Authenticated / AdminOnly |
+| Thông báo (BL-V5) | `GET·POST /api/announcements {title, body, audience: All|Family|Staff|Role, role?, sendEmail}` (luôn có chuông; email ≤ 100, tôn trọng kênh nhận) | AdminOnly |
+| | `GET·PUT /api/notification-preferences/me {emailInvoices, emailReminders, emailAnnouncements}` | Authenticated |
+| Tin tức & album (BL-V5) | `GET·POST /api/posts`, `GET·PUT·DELETE /api/posts/{id}`, `POST /{id}/publish·unpublish` (nháp → đăng; album cần `consentConfirmed` + ảnh) | FrontDesk |
+| | `GET /api/public/posts?kind&page&pageSize`, `GET /api/public/posts/{slug}` (chỉ bài đã đăng, không lộ người tạo) | ẩn danh |
 
 **OData chỉ dùng attribute routing** (`Program.cs` bỏ các convention theo tên controller): mỗi entity set cần một `ODataController` có `[Route("odata/TenEntitySet")]`. Controller REST trùng tên entity set (vd. `InvoicesController`) không còn bị OData bắt nhầm.
 

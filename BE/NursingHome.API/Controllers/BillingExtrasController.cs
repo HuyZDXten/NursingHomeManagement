@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NursingHome.API.Extensions;
+using NursingHome.API.Filters;
 using NursingHome.API.Security;
 using NursingHome.DTOs.Billing;
 using NursingHome.Services.Interfaces;
@@ -55,6 +56,7 @@ public class BillingExtrasController(IExtraServiceService extras, IInvoiceAutoma
     /// <summary>Chỉ khi chưa vào hóa đơn.</summary>
     [HttpDelete("api/service-usages/{id:int}")]
     [Authorize(Policy = AuthPolicies.ServiceRecorders)]
+    [Audit("ServiceUsage.Delete", "ServiceUsage", "Xóa dịch vụ phát sinh")]
     public async Task<IActionResult> DeleteUsage(int id)
     {
         await extras.DeleteUsageAsync(User.RequireCurrentUser(), id);
@@ -65,6 +67,7 @@ public class BillingExtrasController(IExtraServiceService extras, IInvoiceAutoma
 
     [HttpPost("api/invoices/batch")]
     [Authorize(Policy = AuthPolicies.BillingStaff)]
+    [Audit("Invoice.Batch", "Invoice", "Tạo hóa đơn hàng loạt")]
     public async Task<ActionResult<BatchInvoiceResultDto>> Batch([FromBody] CreateBatchInvoiceRequest request) =>
         Ok(await automation.CreateBatchAsync(request));
 

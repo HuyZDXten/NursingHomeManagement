@@ -1148,5 +1148,167 @@ check('Gia đình dùng trợ lý nhân viên -> 403', (await call('POST', '/api
 const assistantHistory = await call('GET', '/api/ai/staff/assistant/history', nurse.accessToken);
 check('Lịch sử trợ lý của điều dưỡng (5 câu hỏi, tách riêng kênh hỏi đáp báo cáo)', assistantHistory.status === 200 && assistantHistory.data.length === 10, `${assistantHistory.data?.length}`);
 
+// ---- Backlog · BL-V5: nhật ký thao tác (UC-13), cấu hình & danh mục (UC-129/130), thông báo & kênh nhận (UC-119/120), tin tức & album (UC-19/115) ----
+const auditPage = async (qs = '') => call('GET', `/api/audit-logs${qs}`, adminToken);
+const audAll = await auditPage('?pageSize=100');
+check('Admin xem nhật ký thao tác (đã ghi các thao tác ở các phần trên)', audAll.status === 200 && audAll.data.total >= 10 && audAll.data.items.length > 0 && audAll.data.pageSize === 100, `${audAll.data?.total}`);
+check('Điều dưỡng và lễ tân xem nhật ký -> 403', (await call('GET', '/api/audit-logs', nurse.accessToken)).status === 403 && (await call('GET', '/api/audit-logs', recep.accessToken)).status === 403);
+check('Chưa đăng nhập xem nhật ký -> 401', (await call('GET', '/api/audit-logs')).status === 401);
+const audProfile = await auditPage('?action=StaffProfile.Save');
+check('Lưu hồ sơ nhân viên thành công được ghi đúng 1 dòng (lần sai CCCD và lần bị 403 không được ghi)', audProfile.data?.total === 1
+  && audProfile.data.items[0].entityId === String(hrCaregiver.accountId) && audProfile.data.items[0].actorName === admin.fullName && audProfile.data.items[0].entityType === 'Account', JSON.stringify(audProfile.data?.items?.[0]));
+check('Nhật ký không chứa nội dung nhạy cảm (CCCD, mật khẩu)', !JSON.stringify(audAll.data.items).includes('048200012345') && !JSON.stringify(audAll.data.items).includes('Demo@123456'));
+check('Nhật ký có IP và đường dẫn của thao tác', !!audProfile.data.items[0].ip && audProfile.data.items[0].dataJson?.includes('/api/staff-profiles/'), JSON.stringify(audProfile.data.items[0]));
+check('Sửa công được ghi nhật ký kèm mã phân ca', (await auditPage('?action=Attendance.Edit')).data?.items?.some((l) => l.entityId === String(absentRow.shiftAssignmentId)));
+const audActions = await call('GET', '/api/audit-logs/actions', adminToken);
+check('Danh sách mã thao tác để lọc', audActions.status === 200 && audActions.data.includes('StaffProfile.Save') && audActions.data.includes('Attendance.Edit'));
+check('Tìm theo từ khóa trong mô tả', (await auditPage(`?search=${encodeURIComponent('hồ sơ nhân viên')}`)).data?.total >= 1);
+const audByAdmin = await auditPage(`?accountId=${admin.accountId}&pageSize=100`);
+check('Lọc theo người thực hiện chỉ trả thao tác của người đó', audByAdmin.data?.total > 0 && audByAdmin.data.items.every((l) => l.accountId === admin.accountId));
+check('Lọc theo ngày: hôm nay có dữ liệu, ngày xa trong tương lai không có', (await auditPage(`?from=${plusDays(0)}&to=${plusDays(0)}`)).data?.total >= 10 && (await auditPage(`?from=${plusDays(400)}&to=${plusDays(401)}`)).data?.total === 0);
+check('Khoảng ngày đảo ngược -> 400', (await auditPage(`?from=${plusDays(2)}&to=${plusDays(0)}`)).status === 400);
+check('Cỡ trang tối đa 100', (await auditPage('?pageSize=5000')).data?.pageSize === 100);
+check('Không có đường sửa/xóa nhật ký (PUT/DELETE không tồn tại)', [404, 405].includes((await call('DELETE', '/api/audit-logs/1', adminToken)).status) && [404, 405].includes((await call('PUT', '/api/audit-logs/1', adminToken, {})).status));
+
+// UC-129 cấu hình cơ sở
+const set0 = await call('GET', '/api/settings', adminToken);
+check('Admin xem 12 khóa cấu hình, chưa khóa nào bị ghi đè', set0.status === 200 && set0.data.length === 12 && set0.data.every((s) => !s.isOverridden) && set0.data.some((s) => s.key === 'Facility:Name'), `${set0.data?.length}`);
+check('Điều dưỡng xem/sửa cấu hình -> 403', (await call('GET', '/api/settings', nurse.accessToken)).status === 403 && (await call('PUT', '/api/settings', nurse.accessToken, { values: [{ key: 'Facility:Hotline', value: '1' }] })).status === 403);
+check('Khóa không có trong danh sách cho phép (khóa JWT, mật khẩu SMTP) -> 400', (await call('PUT', '/api/settings', adminToken, { values: [{ key: 'Jwt:Key', value: 'x' }] })).status === 400
+  && (await call('PUT', '/api/settings', adminToken, { values: [{ key: 'Email:SmtpPassword', value: 'x' }] })).status === 400);
+check('Giá trị ngoài khoảng (sức chứa 0) / không phải số -> 400', (await call('PUT', '/api/settings', adminToken, { values: [{ key: 'Facility:TourSlotCapacity', value: '0' }] })).status === 400
+  && (await call('PUT', '/api/settings', adminToken, { values: [{ key: 'Facility:TourSlotCapacity', value: 'abc' }] })).status === 400);
+check('Ngưỡng huyết áp thấp ≥ cao -> 400', (await call('PUT', '/api/settings', adminToken, { values: [{ key: 'Facility:VitalAlerts:SystolicLow', value: '120' }, { key: 'Facility:VitalAlerts:SystolicHigh', value: '120' }] })).status === 400);
+check('Tên cơ sở để trống -> 400', (await call('PUT', '/api/settings', adminToken, { values: [{ key: 'Facility:Name', value: '  ' }] })).status === 400);
+const atomic = await call('PUT', '/api/settings', adminToken, { values: [{ key: 'Facility:Hotline', value: '0236 999 8888' }, { key: 'Facility:TourSlotCapacity', value: '0' }] });
+check('Một khóa sai thì cả nhóm không được lưu', atomic.status === 400 && (await call('GET', '/api/settings', adminToken)).data.every((s) => !s.isOverridden));
+const slotsBefore = (await call('GET', `/api/public/tour-slots?from=${tourDate}&to=${tourDate}`)).data;
+const setSaved = await call('PUT', '/api/settings', adminToken, { values: [{ key: 'Facility:Hotline', value: ' 0236 999 8888 ' }, { key: 'Facility:TourSlotCapacity', value: '8' }, { key: 'Facility:VitalAlerts:TemperatureHigh', value: '38.5' }] });
+const sHot = setSaved.data?.find((s) => s.key === 'Facility:Hotline');
+const sTemp = setSaved.data?.find((s) => s.key === 'Facility:VitalAlerts:TemperatureHigh');
+check('Admin lưu cấu hình: giá trị được cắt khoảng trắng, đánh dấu đã ghi đè, giữ giá trị mặc định', setSaved.status === 200 && sHot.value === '0236 999 8888' && sHot.isOverridden && sHot.defaultValue !== sHot.value
+  && sTemp.value === '38.5' && setSaved.data.filter((s) => s.isOverridden).length === 3, JSON.stringify(setSaved.data?.filter((s) => s.isOverridden).map((s) => s.value)));
+const slotsAfter = (await call('GET', `/api/public/tour-slots?from=${tourDate}&to=${tourDate}`)).data;
+check('Cấu hình áp dụng ngay không cần khởi động lại (sức chứa buổi tham quan 5 -> 8)', slotsBefore.every((s) => s.capacity === 5) && slotsAfter.every((s) => s.capacity === 8), JSON.stringify(slotsAfter.map((s) => s.capacity)));
+const auditSettings = await auditPage('?action=Settings.Update');
+check('Sửa cấu hình ghi nhật ký kèm giá trị trước/sau', auditSettings.data?.total === 1 && auditSettings.data.items[0].dataJson.includes('0236 999 8888') && auditSettings.data.items[0].dataJson.includes('Truoc'), auditSettings.data?.items?.[0]?.dataJson);
+check('Bỏ ghi đè khóa chưa từng ghi đè -> 404', (await call('DELETE', `/api/settings?key=${encodeURIComponent('Facility:Name')}`, adminToken)).status === 404);
+const resetOne = await call('DELETE', `/api/settings?key=${encodeURIComponent('Facility:TourSlotCapacity')}`, adminToken);
+check('Bỏ ghi đè: quay về giá trị appsettings, có hiệu lực ngay', resetOne.status === 200 && resetOne.data.find((s) => s.key === 'Facility:TourSlotCapacity').value === '5'
+  && (await call('GET', `/api/public/tour-slots?from=${tourDate}&to=${tourDate}`)).data.every((s) => s.capacity === 5));
+await call('DELETE', `/api/settings?key=${encodeURIComponent('Facility:Hotline')}`, adminToken);
+await call('DELETE', `/api/settings?key=${encodeURIComponent('Facility:VitalAlerts:TemperatureHigh')}`, adminToken);
+check('Đã trả hết cấu hình về mặc định', (await call('GET', '/api/settings', adminToken)).data.every((s) => !s.isOverridden));
+
+// UC-130 danh mục
+const rel = await call('GET', '/api/lookups?category=Relationship', nurse.accessToken);
+check('Mọi người dùng đăng nhập đọc được danh mục (quan hệ gia đình: seed 9 mục theo thứ tự)', rel.status === 200 && rel.data.length === 9 && rel.data[0].name === 'Con trai', `${rel.data?.length}`);
+check('Danh mục: chưa đăng nhập -> 401, loại không hợp lệ -> 400', (await call('GET', '/api/lookups?category=Relationship')).status === 401 && (await call('GET', '/api/lookups?category=Foo', nurse.accessToken)).status === 400);
+check('Điều dưỡng thêm danh mục -> 403', (await call('POST', '/api/lookups', nurse.accessToken, { category: 'Position', code: 'X', name: 'X' })).status === 403);
+const lk = await call('POST', '/api/lookups', adminToken, { category: 'Position', code: 'TEST_POS', name: 'Chức danh thử', sortOrder: 99 });
+check('Admin thêm mục danh mục', lk.status === 200 && lk.data.category === 'Position' && lk.data.isActive, lk.data?.message);
+check('Trùng mã trong cùng loại -> 409; loại sai -> 400', (await call('POST', '/api/lookups', adminToken, { category: 'Position', code: 'TEST_POS', name: 'Khác' })).status === 409
+  && (await call('POST', '/api/lookups', adminToken, { category: 'Foo', code: 'A', name: 'A' })).status === 400);
+check('Mục mới hiện trong danh sách chức danh', (await call('GET', '/api/lookups?category=Position', recep.accessToken)).data.some((l) => l.code === 'TEST_POS'));
+check('Không đổi được loại danh mục của mục đã tạo -> 400', (await call('PUT', `/api/lookups/${lk.data.id}`, adminToken, { category: 'Department', code: 'TEST_POS', name: 'Chức danh thử' })).status === 400);
+const lkHidden = await call('PUT', `/api/lookups/${lk.data.id}`, adminToken, { code: 'TEST_POS', name: 'Chức danh thử (đã ẩn)', sortOrder: 99, isActive: false });
+check('Ẩn mục danh mục', lkHidden.status === 200 && !lkHidden.data.isActive && lkHidden.data.name.includes('đã ẩn'));
+check('Mục đã ẩn: người thường không thấy (kể cả xin includeInactive), Admin xin includeInactive thì thấy',
+  !(await call('GET', '/api/lookups?category=Position&includeInactive=true', recep.accessToken)).data.some((l) => l.code === 'TEST_POS')
+  && (await call('GET', '/api/lookups?category=Position&includeInactive=true', adminToken)).data.some((l) => l.code === 'TEST_POS')
+  && !(await call('GET', '/api/lookups?category=Position', adminToken)).data.some((l) => l.code === 'TEST_POS'));
+check('Xóa mục danh mục; xóa lại -> 404', (await call('DELETE', `/api/lookups/${lk.data.id}`, adminToken)).status === 204 && (await call('DELETE', `/api/lookups/${lk.data.id}`, adminToken)).status === 404);
+const audActions2 = (await call('GET', '/api/audit-logs/actions', adminToken)).data;
+check('Thêm/sửa/xóa danh mục được ghi nhật ký', ['Lookup.Create', 'Lookup.Update', 'Lookup.Delete'].every((a) => audActions2.includes(a)));
+
+// UC-120 kênh nhận email
+const pref0 = await call('GET', '/api/notification-preferences/me', family.accessToken);
+check('Kênh nhận email mặc định: bật hết', pref0.status === 200 && pref0.data.emailInvoices && pref0.data.emailReminders && pref0.data.emailAnnouncements);
+const pref1 = await call('PUT', '/api/notification-preferences/me', family.accessToken, { emailInvoices: false, emailReminders: true, emailAnnouncements: false });
+check('Gia đình tắt email hóa đơn và thông báo chung', pref1.status === 200 && !pref1.data.emailInvoices && pref1.data.emailReminders && !pref1.data.emailAnnouncements);
+check('Lựa chọn lưu bền và không ảnh hưởng người khác', (await call('GET', '/api/notification-preferences/me', family.accessToken)).data.emailInvoices === false
+  && (await call('GET', '/api/notification-preferences/me', family2.accessToken)).data.emailInvoices === true);
+check('Chưa đăng nhập đổi kênh nhận -> 401', (await call('PUT', '/api/notification-preferences/me', null, { emailInvoices: false })).status === 401);
+await call('PUT', '/api/notification-preferences/me', family.accessToken, { emailInvoices: true, emailReminders: true, emailAnnouncements: true });
+
+// UC-119 thông báo hàng loạt
+const countAccounts = async (filter) => (await call('GET', `/odata/Accounts?$filter=${encodeURIComponent(filter)}&$count=true&$top=1`, adminToken)).data['@odata.count'];
+const activeCount = await countAccounts('isActive eq true');
+const nurseCount = await countAccounts("isActive eq true and role eq 'Nurse'");
+const familyCount = await countAccounts("isActive eq true and role eq 'Family'");
+const hasNote = async (who, title) => (await call('GET', '/api/notifications', who.accessToken)).data.items.some((n) => n.title === title);
+const annNurse = await call('POST', '/api/announcements', adminToken, { title: 'Họp điều dưỡng sáng mai', body: 'Họp giao ban lúc 7h30 tại phòng sinh hoạt chung.', audience: 'Role', role: 'Nurse' });
+check('Admin gửi thông báo cho riêng điều dưỡng', annNurse.status === 200 && annNurse.data.recipientCount === nurseCount && annNurse.data.audience === 'Role' && annNurse.data.role === 'Nurse' && annNurse.data.emailSentCount === 0, annNurse.data?.message);
+check('Điều dưỡng nhận thông báo; hộ lý và gia đình không nhận', (await hasNote(nurse, 'Họp điều dưỡng sáng mai')) && !(await hasNote(caregiver, 'Họp điều dưỡng sáng mai')) && !(await hasNote(family, 'Họp điều dưỡng sáng mai')));
+const annFamily = await call('POST', '/api/announcements', adminToken, { title: 'Lịch thăm dịp lễ', body: 'Viện mở cửa đón thân nhân cả ngày lễ.', audience: 'Family', sendEmail: true });
+check('Thông báo cho gia đình (tick gửi email nhưng chưa cấu hình SMTP: không lỗi, 0 email)', annFamily.status === 200 && annFamily.data.recipientCount === familyCount && annFamily.data.emailSentCount === 0 && annFamily.data.sendEmail, annFamily.data?.message);
+check('Gia đình nhận, nhân viên không nhận', (await hasNote(family2, 'Lịch thăm dịp lễ')) && !(await hasNote(nurse, 'Lịch thăm dịp lễ')));
+const annAll = await call('POST', '/api/announcements', adminToken, { title: 'Bảo trì hệ thống tối nay', body: 'Hệ thống tạm ngưng 23h–23h30.', audience: 'All' });
+check('Thông báo cho tất cả: số người nhận = số tài khoản đang hoạt động', annAll.status === 200 && annAll.data.recipientCount === activeCount, `${annAll.data?.recipientCount}/${activeCount}`);
+const annStaff = await call('POST', '/api/announcements', adminToken, { title: 'Nhắc chấm công', body: 'Nhớ chấm công vào/ra ca.', audience: 'Staff' });
+check('Thông báo cho nhân viên không gồm gia đình', annStaff.status === 200 && annStaff.data.recipientCount === activeCount - familyCount, `${annStaff.data?.recipientCount}`);
+check('Thông báo sai: thiếu vai trò, vai trò lạ, vai trò thừa, đối tượng lạ, nội dung trống -> 400',
+  (await call('POST', '/api/announcements', adminToken, { title: 'A', body: 'B', audience: 'Role' })).status === 400
+  && (await call('POST', '/api/announcements', adminToken, { title: 'A', body: 'B', audience: 'Role', role: 'Hacker' })).status === 400
+  && (await call('POST', '/api/announcements', adminToken, { title: 'A', body: 'B', audience: 'Staff', role: 'Nurse' })).status === 400
+  && (await call('POST', '/api/announcements', adminToken, { title: 'A', body: 'B', audience: 'Everyone' })).status === 400
+  && (await call('POST', '/api/announcements', adminToken, { title: 'A', body: '  ', audience: 'All' })).status === 400);
+check('Lễ tân/điều dưỡng/gia đình gửi hoặc xem thông báo hàng loạt -> 403', (await call('POST', '/api/announcements', recep.accessToken, { title: 'A', body: 'B', audience: 'All' })).status === 403
+  && (await call('GET', '/api/announcements', nurse.accessToken)).status === 403 && (await call('POST', '/api/announcements', family.accessToken, { title: 'A', body: 'B', audience: 'All' })).status === 403);
+const annList = await call('GET', '/api/announcements', adminToken);
+check('Lịch sử thông báo (mới nhất trước, có người gửi)', annList.status === 200 && annList.data.length === 4 && annList.data[0].title === 'Nhắc chấm công' && annList.data[0].createdByName === admin.fullName, `${annList.data?.length}`);
+check('Gửi thông báo được ghi nhật ký', (await auditPage('?action=Announcement.Send')).data?.total === 4);
+
+// UC-19 / UC-115 tin tức & album
+const pubNews = await call('GET', '/api/public/posts');
+check('Trang tin tức công khai (không cần đăng nhập): 2 bài seed đã đăng, mới nhất trước', pubNews.status === 200 && pubNews.data.total === 2 && pubNews.data.items.every((p) => p.isPublished && p.kind === 'News')
+  && pubNews.data.items[0].slug === 'thong-bao-gio-tham-than', JSON.stringify(pubNews.data?.items?.map((p) => p.slug)));
+const pubOne = await call('GET', '/api/public/posts/chuong-trinh-kham-suc-khoe-dinh-ky');
+check('Xem một bài công khai theo đường dẫn; không lộ người tạo, trạng thái nháp, xác nhận đồng ý', pubOne.status === 200 && pubOne.data.content.includes('bác sĩ nội khoa')
+  && !('createdByName' in pubOne.data) && !('isPublished' in pubOne.data) && !('consentConfirmed' in pubOne.data), JSON.stringify(Object.keys(pubOne.data ?? {})));
+check('Bài không tồn tại -> 404; loại bài lạ -> 400', (await call('GET', '/api/public/posts/khong-co-bai-nay')).status === 404 && (await call('GET', '/api/public/posts?kind=Foo')).status === 400);
+check('Quản lý tin tức: chưa đăng nhập 401, điều dưỡng/gia đình 403', (await call('GET', '/api/posts')).status === 401 && (await call('GET', '/api/posts', nurse.accessToken)).status === 403
+  && (await call('POST', '/api/posts', family.accessToken, { kind: 'News', title: 'X', content: 'Y' })).status === 403);
+const draft = await call('POST', '/api/posts', recep.accessToken, { kind: 'News', title: 'Ngày hội sức khỏe mùa thu', summary: 'Tóm tắt thử', content: 'Nội dung <b>chữ thuần</b> không render HTML.' });
+check('Lễ tân tạo tin tức ở dạng nháp, đường dẫn tự sinh từ tiêu đề (bỏ dấu tiếng Việt)', draft.status === 200 && !draft.data.isPublished && draft.data.slug === 'ngay-hoi-suc-khoe-mua-thu' && draft.data.createdByName === recep.fullName, draft.data?.message);
+check('Bài nháp chưa hiện công khai', (await call('GET', `/api/public/posts/${draft.data.slug}`)).status === 404 && (await call('GET', '/api/public/posts')).data.total === 2);
+const draft2 = await call('POST', '/api/posts', adminToken, { kind: 'News', title: 'Ngày hội sức khỏe mùa thu', content: 'Bài trùng tiêu đề' });
+check('Trùng tiêu đề: đường dẫn thêm hậu tố -2', draft2.status === 200 && draft2.data.slug === 'ngay-hoi-suc-khoe-mua-thu-2');
+check('Tin tức thiếu tiêu đề/nội dung, loại bài sai -> 400', (await call('POST', '/api/posts', recep.accessToken, { kind: 'News', title: '', content: 'x' })).status === 400
+  && (await call('POST', '/api/posts', recep.accessToken, { kind: 'News', title: 'x', content: '' })).status === 400 && (await call('POST', '/api/posts', recep.accessToken, { kind: 'Video', title: 'x', content: 'y' })).status === 400);
+const pub1 = await call('POST', `/api/posts/${draft.data.id}/publish`, recep.accessToken);
+check('Đăng bài: hiện ở trang công khai', pub1.status === 200 && pub1.data.isPublished && !!pub1.data.publishedAt && (await call('GET', `/api/public/posts/${draft.data.slug}`)).status === 200 && (await call('GET', '/api/public/posts')).data.total === 3);
+const edit1 = await call('PUT', `/api/posts/${draft.data.id}`, recep.accessToken, { kind: 'News', title: 'Ngày hội sức khỏe mùa thu (đã sửa)', content: 'Nội dung mới' });
+check('Sửa bài đã đăng: tiêu đề đổi, đường dẫn giữ nguyên để link đã chia sẻ không chết', edit1.status === 200 && edit1.data.title.includes('đã sửa') && edit1.data.slug === 'ngay-hoi-suc-khoe-mua-thu' && edit1.data.isPublished);
+check('Đổi loại bài (tin tức -> album) -> 400', (await call('PUT', `/api/posts/${draft.data.id}`, recep.accessToken, { kind: 'Album', title: 'x', content: 'y' })).status === 400);
+check('Gỡ bài: không còn ở trang công khai', (await call('POST', `/api/posts/${draft.data.id}/unpublish`, recep.accessToken)).data?.isPublished === false && (await call('GET', `/api/public/posts/${draft.data.slug}`)).status === 404);
+
+const okImg = '/uploads/images/bl-v5-test.jpg';
+check('Ảnh từ trang ngoài / scheme lạ / đường dẫn thoát thư mục / ảnh bìa ngoài -> 400',
+  (await call('POST', '/api/posts', recep.accessToken, { kind: 'Album', title: 'Album xấu', content: 'x', images: [{ url: 'https://evil.example/a.png' }] })).status === 400
+  && (await call('POST', '/api/posts', recep.accessToken, { kind: 'Album', title: 'Album xấu', content: 'x', images: [{ url: 'javascript:alert(1)' }] })).status === 400
+  && (await call('POST', '/api/posts', recep.accessToken, { kind: 'Album', title: 'Album xấu', content: 'x', images: [{ url: '/uploads/../appsettings.json' }] })).status === 400
+  && (await call('POST', '/api/posts', recep.accessToken, { kind: 'News', title: 'Bìa xấu', content: 'x', coverUrl: 'http://evil.example/a.png' })).status === 400);
+const album = await call('POST', '/api/posts', recep.accessToken, { kind: 'Album', title: 'Album Tết Trung thu', summary: 'Ảnh sinh hoạt', content: 'Các hoạt động Trung thu của cư dân.', consentConfirmed: false, images: [{ url: okImg, caption: 'Rước đèn' }, { url: '/uploads/images/bl-v5-test2.jpg' }] });
+check('Tạo album kèm ảnh: ảnh bìa mặc định là ảnh đầu, thứ tự ảnh giữ nguyên', album.status === 200 && album.data.imageCount === 2 && album.data.coverUrl === okImg && album.data.images[0].caption === 'Rước đèn' && album.data.images[1].sortOrder === 1, album.data?.message);
+check('Đăng album khi chưa xác nhận đồng ý của cư dân/gia đình -> 400, album vẫn là nháp', (await call('POST', `/api/posts/${album.data.id}/publish`, recep.accessToken)).status === 400 && !(await call('GET', `/api/posts/${album.data.id}`, recep.accessToken)).data.isPublished);
+const noImgAlbum = await call('POST', '/api/posts', recep.accessToken, { kind: 'Album', title: 'Album rỗng', content: 'x', consentConfirmed: true });
+check('Đăng album không có ảnh -> 400', (await call('POST', `/api/posts/${noImgAlbum.data.id}/publish`, recep.accessToken)).status === 400);
+const albumOk = await call('PUT', `/api/posts/${album.data.id}`, recep.accessToken, { kind: 'Album', title: 'Album Tết Trung thu', summary: 'Ảnh sinh hoạt', content: 'Các hoạt động Trung thu của cư dân.', consentConfirmed: true, images: [{ url: okImg, caption: 'Rước đèn' }] });
+check('Sửa album: xác nhận đồng ý và thay danh sách ảnh', albumOk.status === 200 && albumOk.data.consentConfirmed && albumOk.data.imageCount === 1);
+check('Đăng album đã đủ điều kiện', (await call('POST', `/api/posts/${album.data.id}/publish`, recep.accessToken)).data?.isPublished === true);
+const pubAlbum = await call('GET', `/api/public/posts/${album.data.slug}`);
+check('Album công khai trả ảnh và chú thích', pubAlbum.status === 200 && pubAlbum.data.images.length === 1 && pubAlbum.data.images[0].url === okImg && pubAlbum.data.kind === 'Album');
+check('Lọc trang công khai theo loại: chỉ album / chỉ tin tức', (await call('GET', '/api/public/posts?kind=Album')).data.items.every((p) => p.kind === 'Album') && (await call('GET', '/api/public/posts?kind=Album')).data.total === 1
+  && (await call('GET', '/api/public/posts?kind=News')).data.items.every((p) => p.kind === 'News'));
+check('Album đang đăng: bỏ xác nhận đồng ý hoặc xóa hết ảnh -> 400', (await call('PUT', `/api/posts/${album.data.id}`, recep.accessToken, { kind: 'Album', title: 'Album Tết Trung thu', content: 'x', consentConfirmed: false, images: [{ url: okImg }] })).status === 400
+  && (await call('PUT', `/api/posts/${album.data.id}`, recep.accessToken, { kind: 'Album', title: 'Album Tết Trung thu', content: 'x', consentConfirmed: true, images: [] })).status === 400);
+const adminPosts = await call('GET', '/api/posts?pageSize=100', adminToken);
+check('Admin thấy cả bài nháp lẫn bài đã đăng; cỡ trang tối đa 50; phân trang theo cỡ trang', adminPosts.data.pageSize === 50 && adminPosts.data.total === 6 && (await call('GET', '/api/posts?pageSize=2', adminToken)).data.items.length === 2, `${adminPosts.data?.total}`);
+for (const id of [draft.data.id, draft2.data.id, noImgAlbum.data.id]) await call('DELETE', `/api/posts/${id}`, adminToken);
+check('Xóa album (kèm ảnh); xóa lại -> 404; link công khai chết', (await call('DELETE', `/api/posts/${album.data.id}`, adminToken)).status === 204 && (await call('DELETE', `/api/posts/${album.data.id}`, adminToken)).status === 404
+  && (await call('GET', `/api/public/posts/${album.data.slug}`)).status === 404 && (await call('GET', '/api/public/posts')).data.total === 2);
+check('Đăng/gỡ/xóa bài được ghi nhật ký', (await auditPage('?action=Post.Publish')).data?.total === 2 && (await auditPage('?action=Post.Unpublish')).data?.total === 1 && (await auditPage('?action=Post.Delete')).data?.total === 4);
+
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);

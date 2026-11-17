@@ -80,5 +80,19 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IStaffHomeService, StaffHomeService>();
         services.AddScoped<IStaffAssistantService, StaffAssistantService>();
+
+        // BL-V5 hệ thống & truyền thông: nhật ký thao tác, cấu hình cơ sở, danh mục, thông báo hàng loạt, kênh nhận, tin tức & album.
+        // FacilitySettingsStore thay IOptions<FacilityOptions> mặc định: mọi service đọc cấu hình cơ sở nhận ngay giá trị Admin vừa sửa.
+        services.AddSingleton<FacilitySettingsStore>();
+        services.AddSingleton<IOptions<FacilityOptions>>(provider => provider.GetRequiredService<FacilitySettingsStore>());
+        services.AddScoped<IAuditRepository, AuditRepository>();
+        services.AddScoped<ISystemRepository, SystemRepository>();
+        services.AddScoped<ICommsRepository, CommsRepository>();
+        services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<ISettingsService, SettingsService>();
+        services.AddScoped<ILookupService, LookupService>();
+        services.AddScoped<IAnnouncementService, AnnouncementService>();
+        services.AddScoped<INotificationPreferenceService, NotificationPreferenceService>();
+        services.AddScoped<IPostService, PostService>();
     }
 }

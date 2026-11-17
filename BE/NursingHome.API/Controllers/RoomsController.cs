@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NursingHome.API.Extensions;
+using NursingHome.API.Filters;
 using NursingHome.API.Security;
 using NursingHome.DTOs.Rooms;
 using NursingHome.Services.Interfaces;
@@ -22,14 +23,17 @@ public class RoomsController(IRoomService rooms) : ControllerBase
 
     [HttpPost]
     [Authorize(Policy = AuthPolicies.FrontDesk)]
+    [Audit("Room.Create", "Room", "Tạo phòng")]
     public async Task<ActionResult<RoomDto>> Create([FromBody] SaveRoomRequest request) => Ok(await rooms.SaveAsync(null, request));
 
     [HttpPut("{id:int}")]
     [Authorize(Policy = AuthPolicies.FrontDesk)]
+    [Audit("Room.Update", "Room", "Sửa phòng")]
     public async Task<ActionResult<RoomDto>> Update(int id, [FromBody] SaveRoomRequest request) => Ok(await rooms.SaveAsync(id, request));
 
     [HttpDelete("{id:int}")]
     [Authorize(Policy = AuthPolicies.FrontDesk)]
+    [Audit("Room.Delete", "Room", "Xóa phòng")]
     public async Task<IActionResult> Delete(int id)
     {
         await rooms.DeleteAsync(id);
@@ -38,6 +42,7 @@ public class RoomsController(IRoomService rooms) : ControllerBase
 
     [HttpPost("{id:int}/beds")]
     [Authorize(Policy = AuthPolicies.FrontDesk)]
+    [Audit("Bed.Create", "Bed", "Thêm giường vào phòng", "id")]
     public async Task<ActionResult<BedDto>> AddBed(int id, [FromBody] SaveBedRequest request) => Ok(await rooms.SaveBedAsync(id, null, request));
 
     [HttpPut("{id:int}/beds/{bedId:int}")]
@@ -47,6 +52,7 @@ public class RoomsController(IRoomService rooms) : ControllerBase
 
     [HttpDelete("{id:int}/beds/{bedId:int}")]
     [Authorize(Policy = AuthPolicies.FrontDesk)]
+    [Audit("Bed.Delete", "Bed", "Xóa giường", "bedId")]
     public async Task<IActionResult> DeleteBed(int id, int bedId)
     {
         await rooms.DeleteBedAsync(bedId);
@@ -56,6 +62,7 @@ public class RoomsController(IRoomService rooms) : ControllerBase
     /// <summary>Phân giường; nếu cư dân đang có giường thì chuyển (trả giường cũ trong cùng transaction).</summary>
     [HttpPost("~/api/bed-assignments")]
     [Authorize(Policy = AuthPolicies.FrontDesk)]
+    [Audit("Bed.Assign", "BedAssignment", "Xếp/chuyển giường cho cư dân")]
     public async Task<IActionResult> Assign([FromBody] AssignBedRequest request)
     {
         await rooms.AssignAsync(User.RequireCurrentUser(), request);

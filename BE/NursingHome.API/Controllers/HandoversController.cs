@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NursingHome.API.Extensions;
+using NursingHome.API.Filters;
 using NursingHome.API.Security;
 using NursingHome.DTOs.Staffing;
 using NursingHome.Services.Ai;
@@ -39,11 +40,13 @@ public class HandoversController(IHandoverService handovers, IHandoverAiService 
 
     [HttpPost("api/leave-requests/{id:int}/approve")]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("Leave.Approve", "LeaveRequest", "Duyệt đơn nghỉ phép/đổi ca")]
     public async Task<ActionResult<LeaveApprovalDto>> Approve(int id, [FromBody] ReviewLeaveRequest? request) =>
         Ok(await handovers.ApproveAsync(User.RequireCurrentUser(), id, request?.Note));
 
     [HttpPost("api/leave-requests/{id:int}/reject")]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("Leave.Reject", "LeaveRequest", "Từ chối đơn nghỉ phép/đổi ca")]
     public async Task<ActionResult<LeaveRequestDto>> Reject(int id, [FromBody] ReviewLeaveRequest? request) =>
         Ok(await handovers.RejectAsync(User.RequireCurrentUser(), id, request?.Note));
 

@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NursingHome.BusinessObjects.Entities;
+using NursingHome.DataAccessObjects;
 using NursingHome.DTOs.Billing;
 using NursingHome.Repositories.Interfaces;
 using NursingHome.Services.Helpers;
@@ -13,9 +14,11 @@ namespace NursingHome.Services.Implementations;
 /// <summary>
 /// S3-V5 (UC-118): email hóa đơn phát hành và nhắc nợ cho tài khoản gia đình có quyền Billing.
 /// Chỉ gửi khi đã cấu hình SMTP; lỗi gửi chỉ ghi log, không làm hỏng thao tác chính.
+/// BL-V5 (UC-120): người đã tắt kênh "hóa đơn" / "nhắc nợ" trong hồ sơ thì không nhận email (chuông thông báo trong ứng dụng vẫn có).
 /// </summary>
 public class InvoiceMailer(
     IResidentRepository residents,
+    ICommsRepository comms,
     IEmailService email,
     IOptions<EmailOptions> emailOptions,
     IOptions<FacilityOptions> facility,
@@ -23,15 +26,16 @@ public class InvoiceMailer(
 {
     public Task<int> SendIssuedAsync(InvoiceListItemDto invoice) =>
         SendAsync(invoice, $"Hóa đơn {invoice.Number} — {facility.Value.Name}",
-            $"Hóa đơn tháng {invoice.BillingPeriod:MM/yyyy} của <b>{Encode(invoice.ResidentName)}</b> đã phát hành.");
+            $"Hóa đơn tháng {invoice.BillingPeriod:MM/yyyy} của <b>{Encode(invoice.ResidentName)}</b> đã phát hành.", EmailChannel.Invoices);
 
     public Task<int> SendReminderAsync(InvoiceListItemDto invoice, ReminderStage stage) =>
         SendAsync(invoice, $"Nhắc thanh toán hóa đơn {invoice.Number} ({stage.ToVietnamese()})",
             stage == ReminderStage.Before3Days
                 ? $"Hóa đơn của <b>{Encode(invoice.ResidentName)}</b> sắp đến hạn thanh toán."
-                : $"Hóa đơn của <b>{Encode(invoice.ResidentName)}</b> {stage.ToVietnamese()}. Nếu gia đình đã thanh toán, vui lòng bỏ qua email này.");
+                : $"Hóa đơn của <b>{Encode(invoice.ResidentName)}</b> {stage.ToVietnamese()}. Nếu gia đình đã thanh toán, vui lòng bỏ qua email này.",
+            EmailChannel.Reminders);
 
-    private async Task<int> SendAsync(InvoiceListItemDto invoice, string subject, string lead)
+    private async Task<int> SendAsync(InvoiceListItemDto invoice, string subject, string lead, EmailChannel channel)
     {
         if (!email.IsConfigured)
         {
@@ -52,8 +56,10 @@ public class InvoiceMailer(
             <p>{Encode(facility.Value.Name)}{(string.IsNullOrWhiteSpace(facility.Value.Hotline) ? "" : $" · Hotline {Encode(facility.Value.Hotline)}")}</p>
             """;
 
+        var addresses = await residents.FamilyEmailsAsync(invoice.ResidentId, requireBilling: true);
+        var optedOut = await comms.ListOptedOutEmailsAsync(addresses, channel);
         var sent = 0;
-        foreach (var address in await residents.FamilyEmailsAsync(invoice.ResidentId, requireBilling: true))
+        foreach (var address in addresses.Where(item => !optedOut.Contains(item.ToLowerInvariant())))
         {
             try
             {
