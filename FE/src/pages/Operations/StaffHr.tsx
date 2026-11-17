@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Alert, App, Badge, Button, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Space, Table, Tabs, Tag, Typography,
+  Alert, App, AutoComplete, Badge, Button, DatePicker, Descriptions, Drawer, Form, Input, Modal, Popconfirm, Space, Table, Tabs, Tag, Typography,
 } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { Dayjs } from 'dayjs';
 import { extractErrorMessage } from '../../api/client';
 import { staffHrApi } from '../../api/staffHr';
 import { PageTitle, StatusTag } from '../../components/Common';
+import { useLookupNames } from '../../hooks/useLookups';
 import { ROLE_LABEL } from '../../utils/status';
 import { dateOnly, dayjs, timeOf, todayVn } from '../../utils/format';
 import type { AttendanceRecord, StaffCertificate, StaffProfile, StaffProfileSummary } from '../../types/operations';
@@ -31,6 +32,8 @@ function useRun() {
 // ======================= UC-43 hồ sơ & chứng chỉ =======================
 function ProfileDrawer({ accountId, onClose, onChanged }: { accountId: number | null; onClose: () => void; onChanged: () => void }) {
   const run = useRun();
+  const positions = useLookupNames('Position');
+  const departments = useLookupNames('Department');
   const [profile, setProfile] = useState<StaffProfile>();
   const [profileForm] = Form.useForm();
   const [certForm] = Form.useForm();
@@ -76,8 +79,8 @@ function ProfileDrawer({ accountId, onClose, onChanged }: { accountId: number | 
           </Descriptions>
           <Form form={profileForm} layout="vertical">
             <Space wrap style={{ width: '100%' }} align="start">
-              <Form.Item name="position" label="Chức danh" rules={[{ max: 100 }]}><Input style={{ width: 220 }} /></Form.Item>
-              <Form.Item name="department" label="Bộ phận" rules={[{ max: 100 }]}><Input style={{ width: 200 }} /></Form.Item>
+              <Form.Item name="position" label="Chức danh" rules={[{ max: 100 }]}><AutoComplete style={{ width: 220 }} options={positions.map((value) => ({ value }))} /></Form.Item>
+              <Form.Item name="department" label="Bộ phận" rules={[{ max: 100 }]}><AutoComplete style={{ width: 200 }} options={departments.map((value) => ({ value }))} /></Form.Item>
               <Form.Item name="hireDate" label="Ngày vào làm"><DatePicker format="DD/MM/YYYY" disabledDate={(d) => d.isAfter(dayjs(), 'day')} /></Form.Item>
             </Space>
             <Form.Item name="idNumber" label="CCCD / CMND (nhạy cảm, chỉ Admin và chính nhân viên xem)" rules={[{ pattern: /^(\d{9}|\d{12})$/, message: 'CCCD 12 chữ số (CMND cũ 9 chữ số)' }]}>

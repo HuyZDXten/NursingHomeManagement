@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { App, Button, Card, Col, Descriptions, Form, Input, Row } from 'antd';
+import { Alert, App, Button, Card, Col, Descriptions, Form, Input, Row, Switch } from 'antd';
 import type { Rule } from 'antd/es/form';
 import { authApi } from '../../api/auth';
 import { extractErrorMessage } from '../../api/client';
+import { systemApi } from '../../api/system';
+import type { NotificationPreference } from '../../types/system';
 import { useAuth } from '../../auth/AuthContext';
 import { PhotoPicker } from '../../components/PhotoPicker';
 import { ROLE_LABEL } from '../../utils/status';
@@ -14,6 +16,44 @@ export const PASSWORD_RULE: Rule = {
   pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,100}$/,
   message: 'Tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, chữ số và ký hiệu.',
 };
+
+/** BL-V5, UC-120: chọn kênh email muốn nhận. Thông báo trong ứng dụng (chuông) luôn gửi, không tắt được. */
+function NotificationPreferences({ isFamily }: { isFamily: boolean }) {
+  const { message } = App.useApp();
+  const [prefs, setPrefs] = useState<NotificationPreference>();
+
+  useEffect(() => {
+    systemApi.myPreferences().then(setPrefs).catch(() => undefined);
+  }, []);
+
+  const change = async (patch: Partial<NotificationPreference>) => {
+    if (!prefs) return;
+    const next = { ...prefs, ...patch };
+    setPrefs(next);
+    try {
+      setPrefs(await systemApi.savePreferences(next));
+    } catch (e) {
+      setPrefs(prefs);
+      message.error(extractErrorMessage(e));
+    }
+  };
+
+  const row = (label: string, hint: string, key: keyof NotificationPreference) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '8px 0' }}>
+      <div>{label}<br /><small style={{ color: '#888' }}>{hint}</small></div>
+      <Switch checked={prefs?.[key] ?? true} loading={!prefs} onChange={(checked) => void change({ [key]: checked })} />
+    </div>
+  );
+
+  return (
+    <Card title="Kênh nhận thông báo qua email">
+      <Alert type="info" showIcon style={{ marginBottom: 8 }} title="Thông báo trong ứng dụng (biểu tượng chuông) luôn được gửi." />
+      {isFamily && row('Hóa đơn mới', 'Email khi hóa đơn được phát hành', 'emailInvoices')}
+      {isFamily && row('Nhắc thanh toán', 'Email nhắc trước hạn và khi quá hạn', 'emailReminders')}
+      {row('Thông báo chung', 'Thông báo của cơ sở gửi cho nhiều người (lịch nghỉ lễ, bảo trì...)', 'emailAnnouncements')}
+    </Card>
+  );
+}
 
 /** UC-06, UC-07: hồ sơ cá nhân và đổi mật khẩu. */
 export default function Profile() {
@@ -91,6 +131,7 @@ export default function Profile() {
           </Form>
         </Card>
       </Col>
+      <Col xs={24} lg={12}><NotificationPreferences isFamily={user?.role === 'Family'} /></Col>
     </Row>
   );
 }

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using NursingHome.API.Extensions;
+using NursingHome.API.Filters;
 using NursingHome.API.Security;
 using NursingHome.DTOs.Accounts;
 using NursingHome.DTOs.Auth;
@@ -17,6 +18,7 @@ public class FamilyInvitationsController(IFamilyInvitationService invitations) :
 {
     /// <summary>Trả mã + link MỘT lần (DB chỉ lưu bản băm); EmailSent cho biết đã gửi email chưa.</summary>
     [HttpPost]
+    [Audit("Invitation.Create", "FamilyInvitation", "Tạo mã mời gia đình")]
     public async Task<ActionResult<FamilyInvitationCreatedDto>> Create([FromBody] CreateFamilyInvitationRequest request) =>
         Ok(await invitations.CreateAsync(User.RequireCurrentUser(), request));
 
@@ -24,6 +26,7 @@ public class FamilyInvitationsController(IFamilyInvitationService invitations) :
     public async Task<ActionResult<List<FamilyInvitationDto>>> List([FromQuery] int? residentId) => Ok(await invitations.ListAsync(residentId));
 
     [HttpPost("{id:int}/revoke")]
+    [Audit("Invitation.Revoke", "FamilyInvitation", "Thu hồi mã mời gia đình")]
     public async Task<ActionResult<FamilyInvitationDto>> Revoke(int id) => Ok(await invitations.RevokeAsync(id));
 
     /// <summary>Trang /kich-hoat: xem mã mời dành cho ai trước khi đặt mật khẩu.</summary>

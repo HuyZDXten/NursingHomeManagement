@@ -1,6 +1,9 @@
 import { lazy } from 'react';
 import { Route } from 'react-router-dom';
-import { AppstoreAddOutlined, BarChartOutlined, BookOutlined, MessageOutlined, ScheduleOutlined, ShoppingCartOutlined, SolutionOutlined, TeamOutlined, ToolOutlined, UserOutlined } from '@ant-design/icons';
+import {
+  AppstoreAddOutlined, AuditOutlined, BarChartOutlined, BookOutlined, MessageOutlined, NotificationOutlined, PictureOutlined, ScheduleOutlined,
+  SettingOutlined, ShoppingCartOutlined, SolutionOutlined, TeamOutlined, ToolOutlined, UserOutlined,
+} from '@ant-design/icons';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
 import { ADMIN_ONLY, CLINICAL_STAFF, FRONT_DESK, STAFF } from '../auth/roles';
 import type { MenuEntry } from '../layouts/menu';
@@ -47,11 +50,20 @@ const RoomOps = lazy(() => import('../pages/Operations/RoomOps'));
 // BL-V4 nhân sự: trang chủ cá nhân, hồ sơ & chứng chỉ & chấm công (Admin)
 const StaffHome = lazy(() => import('../pages/Operations/StaffHome'));
 const StaffHr = lazy(() => import('../pages/Operations/StaffHr'));
+// BL-V5 hệ thống & truyền thông: nhật ký, cấu hình & danh mục, thông báo hàng loạt, tin tức & album
+const AuditLogs = lazy(() => import('../pages/Operations/AuditLogs'));
+const SystemSettings = lazy(() => import('../pages/Operations/SystemSettings'));
+const Announcements = lazy(() => import('../pages/Operations/Announcements'));
+const PostsAdmin = lazy(() => import('../pages/Operations/PostsAdmin'));
+const News = lazy(() => import('../pages/Public/News'));
+const NewsDetail = lazy(() => import('../pages/Public/NewsDetail'));
 
 export const operationsPublicRoutes = (
   <>
     <Route path="/dat-lich-tham-quan" element={<TourBooking />} />
     <Route path="/kich-hoat" element={<ActivateAccount />} />
+    <Route path="/tin-tuc" element={<News />} />
+    <Route path="/tin-tuc/:slug" element={<NewsDetail />} />
   </>
 );
 
@@ -68,6 +80,10 @@ export const operationsAppRoutes = (
     <Route path="/staff/room-ops" element={<ProtectedRoute roles={STAFF}><RoomOps /></ProtectedRoute>} />
     <Route path="/staff/home" element={<ProtectedRoute roles={STAFF}><StaffHome /></ProtectedRoute>} />
     <Route path="/staff/hr" element={<ProtectedRoute roles={ADMIN_ONLY}><StaffHr /></ProtectedRoute>} />
+    <Route path="/staff/audit" element={<ProtectedRoute roles={ADMIN_ONLY}><AuditLogs /></ProtectedRoute>} />
+    <Route path="/staff/settings" element={<ProtectedRoute roles={ADMIN_ONLY}><SystemSettings /></ProtectedRoute>} />
+    <Route path="/staff/announcements" element={<ProtectedRoute roles={ADMIN_ONLY}><Announcements /></ProtectedRoute>} />
+    <Route path="/staff/posts" element={<ProtectedRoute roles={FRONT_DESK}><PostsAdmin /></ProtectedRoute>} />
   </>
 );
 
@@ -83,4 +99,8 @@ export const operationsMenu: MenuEntry[] = [
   { key: '/staff/room-ops', label: 'Vận hành phòng', icon: <ToolOutlined />, roles: STAFF },
   { key: '/staff/home', label: 'Trang chủ của tôi', icon: <UserOutlined />, roles: ['Nurse', 'Caregiver', 'Doctor'] },
   { key: '/staff/hr', label: 'Nhân sự & chấm công', icon: <TeamOutlined />, roles: ADMIN_ONLY },
+  { key: '/staff/posts', label: 'Tin tức & album', icon: <PictureOutlined />, roles: FRONT_DESK },
+  { key: '/staff/announcements', label: 'Thông báo hàng loạt', icon: <NotificationOutlined />, roles: ADMIN_ONLY },
+  { key: '/staff/settings', label: 'Cấu hình & danh mục', icon: <SettingOutlined />, roles: ADMIN_ONLY },
+  { key: '/staff/audit', label: 'Nhật ký thao tác', icon: <AuditOutlined />, roles: ADMIN_ONLY },
 ];

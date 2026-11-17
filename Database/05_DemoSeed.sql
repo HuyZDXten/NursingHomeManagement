@@ -483,6 +483,25 @@ WHERE sa.AccountId IN (5, 6) AND sa.WorkDate >= @PrevWeek AND sa.WorkDate < @Wee
   AND NOT (sa.AccountId = 6 AND DATEDIFF(DAY, @PrevWeek, sa.WorkDate) = 4)
   AND NOT EXISTS (SELECT 1 FROM dbo.Attendances AS a WHERE a.ShiftAssignmentId = sa.Id);
 
+/* ---- 10.11 Tin tức công khai (BL-V5) ----
+   Hai bài tin đã đăng để trang /tin-tuc có nội dung. Album không seed vì cần xác nhận đồng ý của cư dân/gia đình. */
+IF NOT EXISTS (SELECT 1 FROM dbo.Posts WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Posts ON;
+    INSERT INTO dbo.Posts (Id, Kind, Title, Slug, Summary, Content, ConsentConfirmed, IsPublished, PublishedAt, CreatedById, CreatedAt) VALUES
+    (1, N'News', N'Chương trình khám sức khỏe định kỳ cho cư dân', N'chuong-trinh-kham-suc-khoe-dinh-ky',
+     N'Đội ngũ bác sĩ của viện khám tổng quát cho toàn bộ cư dân vào đầu mỗi quý.',
+     N'Mỗi quý, bác sĩ nội khoa của viện thực hiện khám tổng quát cho từng cư dân: đo huyết áp, đường huyết, cân nặng và rà soát lại thuốc đang dùng.' + CHAR(10) + CHAR(10) +
+     N'Kết quả được ghi vào hồ sơ và người thân có thể xem trên cổng gia đình. Nếu cần tái khám chuyên khoa, viện sẽ liên hệ và hỗ trợ đưa đón.',
+     0, 1, DATEADD(DAY, -10, @NowUtc), 1, DATEADD(DAY, -10, @NowUtc)),
+    (2, N'News', N'Thông báo giờ thăm thân tháng này', N'thong-bao-gio-tham-than',
+     N'Giờ thăm thân được giữ nguyên, riêng cuối tuần có thêm khung giờ buổi chiều.',
+     N'Giờ thăm thân hằng ngày: 08:00–11:00 và 14:00–19:00. Cuối tuần mở thêm khung 19:00–20:00 để thuận tiện cho người thân đi làm.' + CHAR(10) + CHAR(10) +
+     N'Vui lòng đặt lịch thăm trước trên cổng gia đình để lễ tân chuẩn bị chỗ tiếp đón.',
+     0, 1, DATEADD(DAY, -3, @NowUtc), 1, DATEADD(DAY, -3, @NowUtc));
+    SET IDENTITY_INSERT dbo.Posts OFF;
+END;
+
 /* ---- 10. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 

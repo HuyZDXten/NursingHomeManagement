@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NursingHome.API.Extensions;
+using NursingHome.API.Filters;
 using NursingHome.API.Security;
 using NursingHome.DTOs.Rooms;
 using NursingHome.Services.Interfaces;
@@ -19,10 +20,12 @@ public class RoomOpsController(IRoomOpsService roomOps) : ControllerBase
 
     [HttpPost("api/room-types")]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("RoomType.Create", "RoomType", "Tạo loại phòng")]
     public async Task<ActionResult<RoomTypeDto>> CreateRoomType([FromBody] SaveRoomTypeRequest request) => Ok(await roomOps.SaveTypeAsync(null, request));
 
     [HttpPut("api/room-types/{id:int}")]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("RoomType.Update", "RoomType", "Sửa loại phòng")]
     public async Task<ActionResult<RoomTypeDto>> UpdateRoomType(int id, [FromBody] SaveRoomTypeRequest request) => Ok(await roomOps.SaveTypeAsync(id, request));
 
     // ---------------- Giữ giường: lễ tân, Admin ----------------
@@ -33,11 +36,13 @@ public class RoomOpsController(IRoomOpsService roomOps) : ControllerBase
 
     [HttpPost("api/bed-reservations")]
     [Authorize(Policy = AuthPolicies.FrontDesk)]
+    [Audit("BedReservation.Create", "BedReservation", "Giữ giường")]
     public async Task<ActionResult<BedReservationDto>> Reserve([FromBody] CreateBedReservationRequest request) =>
         Ok(await roomOps.CreateReservationAsync(User.RequireCurrentUser(), request));
 
     [HttpPost("api/bed-reservations/{id:int}/release")]
     [Authorize(Policy = AuthPolicies.FrontDesk)]
+    [Audit("BedReservation.Release", "BedReservation", "Hủy giữ giường")]
     public async Task<ActionResult<BedReservationDto>> Release(int id) => Ok(await roomOps.ReleaseReservationAsync(User.RequireCurrentUser(), id));
 
     // ---------------- Báo hỏng: mọi nhân viên báo, Admin xử lý ----------------

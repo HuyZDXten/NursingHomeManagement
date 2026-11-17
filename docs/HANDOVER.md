@@ -152,6 +152,9 @@ Quyền theo từng cư dân (`ResidentAccessService`, chống IDOR) — **mọi
 - **Chống ghi đè**: bảng hay bị sửa đồng thời có `ROWVERSION`; DTO trả `rowVersion` (base64), client gửi lại khi cập nhật (xem `CareTaskService.UpdateAsync`).
 - **Ràng buộc quan trọng đặt ở DB** (unique, filtered index, CHECK) để vẫn đúng khi hai người bấm cùng lúc.
 - **Thông báo**: `INotificationService.NotifyAsync(accountIds, type, title, body, link)` hoặc `NotifyRolesAsync(...)` — lưu DB rồi đẩy SignalR. `link` là đường dẫn FE.
+- **Nhật ký thao tác** (UC-13): đặt `[Audit("Mã.thao-tác", "Loại đối tượng", "Mô tả")]` lên action ghi dữ liệu quan trọng (`using NursingHome.API.Filters;`). Chỉ ghi khi thành công, không ghi nội dung request.
+- **Cấu hình cơ sở** (UC-129): đọc `IOptions<FacilityOptions>.Value` ở mỗi lần dùng (đừng cache trong singleton/job nền); Admin có thể ghi đè trong DB và giá trị mới có hiệu lực ngay.
+- **Email**: người dùng có thể tắt kênh (UC-120); trước khi gửi email không bắt buộc (hóa đơn, nhắc nợ, thông báo) lọc qua `ICommsRepository.ListOptedOutEmailsAsync`. OTP/mã mời là email bắt buộc nên không lọc.
 - **Y tế**: không chẩn đoán, không kê đơn/đề xuất liều; ngưỡng cảnh báo chỉ để nhân viên xem lại.
 - Tên file, class, biến tiếng Anh; chuỗi hiển thị và comment tiếng Việt; 4 dấu cách (`.editorconfig`).
 
@@ -265,7 +268,7 @@ Webhook cần URL công khai (ngrok hoặc VS Dev Tunnels → `https://<tunnel>/
 
 | Loại | Lệnh | Ghi chú |
 | --- | --- | --- |
-| Unit | `dotnet test BE/NursingHome.sln` | 11 test: tính phí theo ngày, chữ ký PayOS, BCrypt, OTP, giờ VN, ngưỡng sinh hiệu |
+| Unit | `dotnet test BE/NursingHome.sln` | Hơn 240 test: quy tắc nghiệp vụ, chữ ký PayOS, BCrypt, OTP, giờ VN, ngưỡng, AI tool, cấu hình, thông báo, tin tức... |
 | End-to-end | `.\scripts\run-smoke-isolated.ps1` | **Nên dùng**: tự dựng DB `NursingHomeDB_Test`, chạy API (5081) + PayOS giả (5198) riêng rồi chạy `smoke-test.mjs`; không đụng DB/API dev đang mở |
 | End-to-end (DB dev) | `node scripts/smoke-test.mjs` | Chạy trên DB/API dev (5080) — sẽ thay đổi dữ liệu; điều kiện ở đầu file |
 | FE | `npm run build`, `npm run lint` | TypeScript strict |

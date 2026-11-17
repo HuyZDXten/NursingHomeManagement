@@ -1082,6 +1082,127 @@ BEGIN
 END;
 GO
 
+/* ---- 9.11 Hệ thống & truyền thông (BL-V5: UC-13 nhật ký thao tác, UC-129 cấu hình cơ sở, UC-130 danh mục,
+        UC-119/120 thông báo hàng loạt & lựa chọn kênh nhận, UC-19/115 tin tức & album) ---- */
+
+-- Nhật ký thao tác: chỉ THÊM, không có endpoint sửa/xóa. ActorName giữ tên lúc ghi. Không ghi nội dung request (có thể chứa mật khẩu).
+IF OBJECT_ID(N'dbo.AuditLogs', N'U') IS NULL
+CREATE TABLE dbo.AuditLogs (
+    Id         BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AuditLogs PRIMARY KEY,
+    AccountId  INT           NULL CONSTRAINT FK_AuditLogs_Accounts REFERENCES dbo.Accounts (Id),
+    ActorName  NVARCHAR(150) NULL,
+    Action     NVARCHAR(60)  NOT NULL,
+    EntityType NVARCHAR(60)  NOT NULL,
+    EntityId   NVARCHAR(60)  NULL,
+    Summary    NVARCHAR(400) NOT NULL,
+    DataJson   NVARCHAR(MAX) NULL,
+    Ip         VARCHAR(45)   NULL,
+    At         DATETIME2     NOT NULL CONSTRAINT DF_AuditLogs_At DEFAULT (SYSUTCDATETIME())
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_AuditLogs_At' AND object_id = OBJECT_ID(N'dbo.AuditLogs'))
+CREATE INDEX IX_AuditLogs_At ON dbo.AuditLogs (At DESC);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_AuditLogs_Account' AND object_id = OBJECT_ID(N'dbo.AuditLogs'))
+CREATE INDEX IX_AuditLogs_Account ON dbo.AuditLogs (AccountId, At DESC);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_AuditLogs_Action' AND object_id = OBJECT_ID(N'dbo.AuditLogs'))
+CREATE INDEX IX_AuditLogs_Action ON dbo.AuditLogs (Action, At DESC);
+GO
+
+-- Cấu hình cơ sở ghi đè appsettings (chỉ các khóa cho phép sửa, xem SettingsService). Khóa không có dòng = dùng appsettings.
+IF OBJECT_ID(N'dbo.SystemSettings', N'U') IS NULL
+CREATE TABLE dbo.SystemSettings (
+    [Key]       NVARCHAR(100) NOT NULL CONSTRAINT PK_SystemSettings PRIMARY KEY,
+    Value       NVARCHAR(500) NOT NULL,
+    UpdatedAt   DATETIME2     NOT NULL CONSTRAINT DF_SystemSettings_UpdatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedById INT           NULL CONSTRAINT FK_SystemSettings_Account REFERENCES dbo.Accounts (Id)
+);
+GO
+
+-- Danh mục dùng chung (quan hệ gia đình, bộ phận, chức danh). Không đưa "loại sự cố"/"loại giấy tờ" vào đây vì đã cố định bằng CHECK.
+IF OBJECT_ID(N'dbo.Lookups', N'U') IS NULL
+CREATE TABLE dbo.Lookups (
+    Id        INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Lookups PRIMARY KEY,
+    Category  NVARCHAR(30)  NOT NULL,
+    Code      NVARCHAR(50)  NOT NULL,
+    Name      NVARCHAR(100) NOT NULL,
+    SortOrder INT           NOT NULL CONSTRAINT DF_Lookups_Sort DEFAULT (0),
+    IsActive  BIT           NOT NULL CONSTRAINT DF_Lookups_IsActive DEFAULT (1),
+    CONSTRAINT UQ_Lookups UNIQUE (Category, Code),
+    CONSTRAINT CK_Lookups_Category CHECK (Category IN (N'Relationship', N'Department', N'Position'))
+);
+GO
+
+-- Thông báo hàng loạt của Admin. Audience: All | Family | Staff | Role (Role bắt buộc khi Audience = Role).
+IF OBJECT_ID(N'dbo.Announcements', N'U') IS NULL
+CREATE TABLE dbo.Announcements (
+    Id             INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Announcements PRIMARY KEY,
+    Title          NVARCHAR(200)  NOT NULL,
+    Body           NVARCHAR(2000) NOT NULL,
+    Audience       NVARCHAR(10)   NOT NULL,
+    Role           NVARCHAR(20)   NULL,
+    SendEmail      BIT            NOT NULL CONSTRAINT DF_Announcements_Email DEFAULT (0),
+    RecipientCount INT            NOT NULL CONSTRAINT DF_Announcements_Recipients DEFAULT (0),
+    EmailSentCount INT            NOT NULL CONSTRAINT DF_Announcements_EmailSent DEFAULT (0),
+    CreatedById    INT            NOT NULL CONSTRAINT FK_Announcements_Creator REFERENCES dbo.Accounts (Id),
+    CreatedAt      DATETIME2      NOT NULL CONSTRAINT DF_Announcements_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT CK_Announcements_Audience CHECK (Audience IN (N'All', N'Family', N'Staff', N'Role')),
+    CONSTRAINT CK_Announcements_Role CHECK ((Audience = N'Role' AND Role IS NOT NULL) OR (Audience <> N'Role' AND Role IS NULL))
+);
+GO
+
+-- Lựa chọn kênh nhận của từng người. Không có dòng = bật hết (mặc định). Thông báo trong ứng dụng (chuông) luôn gửi.
+IF OBJECT_ID(N'dbo.NotificationPreferences', N'U') IS NULL
+CREATE TABLE dbo.NotificationPreferences (
+    AccountId          INT       NOT NULL CONSTRAINT PK_NotificationPreferences PRIMARY KEY
+                                 CONSTRAINT FK_NotificationPreferences_Accounts REFERENCES dbo.Accounts (Id),
+    EmailInvoices      BIT       NOT NULL CONSTRAINT DF_NotifPref_Invoices DEFAULT (1),
+    EmailReminders     BIT       NOT NULL CONSTRAINT DF_NotifPref_Reminders DEFAULT (1),
+    EmailAnnouncements BIT       NOT NULL CONSTRAINT DF_NotifPref_Announcements DEFAULT (1),
+    UpdatedAt          DATETIME2 NOT NULL CONSTRAINT DF_NotifPref_UpdatedAt DEFAULT (SYSUTCDATETIME())
+);
+GO
+
+-- Tin tức & album công khai. Nội dung là chữ thuần (FE không render HTML). Album chỉ đăng khi đã xác nhận có đồng ý của cư dân/gia đình.
+IF OBJECT_ID(N'dbo.Posts', N'U') IS NULL
+CREATE TABLE dbo.Posts (
+    Id               INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Posts PRIMARY KEY,
+    Kind             NVARCHAR(10)  NOT NULL,
+    Title            NVARCHAR(200) NOT NULL,
+    Slug             NVARCHAR(220) NOT NULL CONSTRAINT UQ_Posts_Slug UNIQUE,
+    Summary          NVARCHAR(400) NULL,
+    Content          NVARCHAR(MAX) NOT NULL,
+    CoverUrl         NVARCHAR(500) NULL,
+    ConsentConfirmed BIT           NOT NULL CONSTRAINT DF_Posts_Consent DEFAULT (0),
+    IsPublished      BIT           NOT NULL CONSTRAINT DF_Posts_IsPublished DEFAULT (0),
+    PublishedAt      DATETIME2     NULL,
+    CreatedById      INT           NOT NULL CONSTRAINT FK_Posts_Creator REFERENCES dbo.Accounts (Id),
+    CreatedAt        DATETIME2     NOT NULL CONSTRAINT DF_Posts_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    UpdatedAt        DATETIME2     NULL,
+    CONSTRAINT CK_Posts_Kind CHECK (Kind IN (N'News', N'Album')),
+    CONSTRAINT CK_Posts_Published CHECK (IsPublished = 0 OR PublishedAt IS NOT NULL),
+    CONSTRAINT CK_Posts_AlbumConsent CHECK (Kind <> N'Album' OR IsPublished = 0 OR ConsentConfirmed = 1)
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Posts_Published' AND object_id = OBJECT_ID(N'dbo.Posts'))
+CREATE INDEX IX_Posts_Published ON dbo.Posts (IsPublished, PublishedAt DESC);
+GO
+
+IF OBJECT_ID(N'dbo.PostImages', N'U') IS NULL
+CREATE TABLE dbo.PostImages (
+    Id        INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_PostImages PRIMARY KEY,
+    PostId    INT           NOT NULL CONSTRAINT FK_PostImages_Posts REFERENCES dbo.Posts (Id) ON DELETE CASCADE,
+    Url       NVARCHAR(500) NOT NULL,
+    Caption   NVARCHAR(200) NULL,
+    SortOrder INT           NOT NULL CONSTRAINT DF_PostImages_Sort DEFAULT (0)
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_PostImages_Post' AND object_id = OBJECT_ID(N'dbo.PostImages'))
+CREATE INDEX IX_PostImages_Post ON dbo.PostImages (PostId, SortOrder);
+GO
+
 /* ---- 9. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 
@@ -1680,6 +1801,19 @@ BEGIN
     SET IDENTITY_INSERT dbo.AiKnowledgeDocs OFF;
 END;
 
+-- BL-V5 (UC-130): danh mục dùng chung. Chỉ thêm khi bảng còn trống (Admin có thể sửa/ẩn sau đó, chạy lại không ghi đè).
+IF NOT EXISTS (SELECT 1 FROM dbo.Lookups)
+BEGIN
+    INSERT INTO dbo.Lookups (Category, Code, Name, SortOrder) VALUES
+    (N'Relationship', N'CON_TRAI', N'Con trai', 1), (N'Relationship', N'CON_GAI', N'Con gái', 2), (N'Relationship', N'VO', N'Vợ', 3),
+    (N'Relationship', N'CHONG', N'Chồng', 4), (N'Relationship', N'CHAU', N'Cháu', 5), (N'Relationship', N'ANH_CHI_EM', N'Anh/chị/em', 6),
+    (N'Relationship', N'CON_DAU', N'Con dâu', 7), (N'Relationship', N'CON_RE', N'Con rể', 8), (N'Relationship', N'GIAM_HO', N'Người giám hộ', 9),
+    (N'Department', N'HANH_CHINH', N'Hành chính', 1), (N'Department', N'TAI_CHINH', N'Tài chính', 2),
+    (N'Department', N'Y_TE', N'Y tế', 3), (N'Department', N'CHAM_SOC', N'Chăm sóc', 4),
+    (N'Position', N'LE_TAN', N'Lễ tân', 1), (N'Position', N'KE_TOAN', N'Kế toán', 2), (N'Position', N'BAC_SI', N'Bác sĩ', 3),
+    (N'Position', N'DIEU_DUONG_TRUONG', N'Điều dưỡng trưởng ca', 4), (N'Position', N'DIEU_DUONG', N'Điều dưỡng', 5), (N'Position', N'HO_LY', N'Hộ lý', 6);
+END;
+
 -- BL-V3 (UC-36): loại phòng + phụ thu theo ngày (cộng vào hóa đơn tháng theo số ngày ở phòng đó).
 IF NOT EXISTS (SELECT 1 FROM dbo.RoomTypes WHERE Id = 1)
 BEGIN
@@ -2185,6 +2319,25 @@ CROSS APPLY (SELECT CASE WHEN sa.AccountId = 6 AND DATEDIFF(DAY, @PrevWeek, sa.W
 WHERE sa.AccountId IN (5, 6) AND sa.WorkDate >= @PrevWeek AND sa.WorkDate < @WeekStart
   AND NOT (sa.AccountId = 6 AND DATEDIFF(DAY, @PrevWeek, sa.WorkDate) = 4)
   AND NOT EXISTS (SELECT 1 FROM dbo.Attendances AS a WHERE a.ShiftAssignmentId = sa.Id);
+
+/* ---- 10.11 Tin tức công khai (BL-V5) ----
+   Hai bài tin đã đăng để trang /tin-tuc có nội dung. Album không seed vì cần xác nhận đồng ý của cư dân/gia đình. */
+IF NOT EXISTS (SELECT 1 FROM dbo.Posts WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.Posts ON;
+    INSERT INTO dbo.Posts (Id, Kind, Title, Slug, Summary, Content, ConsentConfirmed, IsPublished, PublishedAt, CreatedById, CreatedAt) VALUES
+    (1, N'News', N'Chương trình khám sức khỏe định kỳ cho cư dân', N'chuong-trinh-kham-suc-khoe-dinh-ky',
+     N'Đội ngũ bác sĩ của viện khám tổng quát cho toàn bộ cư dân vào đầu mỗi quý.',
+     N'Mỗi quý, bác sĩ nội khoa của viện thực hiện khám tổng quát cho từng cư dân: đo huyết áp, đường huyết, cân nặng và rà soát lại thuốc đang dùng.' + CHAR(10) + CHAR(10) +
+     N'Kết quả được ghi vào hồ sơ và người thân có thể xem trên cổng gia đình. Nếu cần tái khám chuyên khoa, viện sẽ liên hệ và hỗ trợ đưa đón.',
+     0, 1, DATEADD(DAY, -10, @NowUtc), 1, DATEADD(DAY, -10, @NowUtc)),
+    (2, N'News', N'Thông báo giờ thăm thân tháng này', N'thong-bao-gio-tham-than',
+     N'Giờ thăm thân được giữ nguyên, riêng cuối tuần có thêm khung giờ buổi chiều.',
+     N'Giờ thăm thân hằng ngày: 08:00–11:00 và 14:00–19:00. Cuối tuần mở thêm khung 19:00–20:00 để thuận tiện cho người thân đi làm.' + CHAR(10) + CHAR(10) +
+     N'Vui lòng đặt lịch thăm trước trên cổng gia đình để lễ tân chuẩn bị chỗ tiếp đón.',
+     0, 1, DATEADD(DAY, -3, @NowUtc), 1, DATEADD(DAY, -3, @NowUtc));
+    SET IDENTITY_INSERT dbo.Posts OFF;
+END;
 
 /* ---- 10. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 

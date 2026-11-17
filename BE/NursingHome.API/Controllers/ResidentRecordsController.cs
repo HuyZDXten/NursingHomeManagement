@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NursingHome.API.Extensions;
+using NursingHome.API.Filters;
 using NursingHome.API.Security;
 using NursingHome.BusinessObjects.Exceptions;
 using NursingHome.DTOs.Residents;
@@ -41,6 +42,7 @@ public class ResidentRecordsController(IResidentRecordsService records) : Contro
 
     [HttpDelete("api/residents/{residentId:int}/documents/{documentId:int}")]
     [Authorize(Policy = AuthPolicies.FrontDesk)]
+    [Audit("ResidentDocument.Delete", "Resident", "Xóa giấy tờ của cư dân", "residentId")]
     public async Task<IActionResult> DeleteDocument(int residentId, int documentId)
     {
         await records.DeleteDocumentAsync(residentId, documentId);
@@ -72,6 +74,7 @@ public class ResidentRecordsController(IResidentRecordsService records) : Contro
 
     [HttpPost("api/residents/{residentId:int}/contracts/{contractId:int}/end")]
     [Authorize(Policy = AuthPolicies.FrontDesk)]
+    [Audit("Contract.End", "Resident", "Kết thúc hợp đồng của cư dân", "residentId")]
     public async Task<ActionResult<ResidentContractDto>> EndContract(int residentId, int contractId, [FromBody] EndContractRequest request) =>
         Ok(await records.EndContractAsync(residentId, contractId, request));
 
@@ -93,11 +96,13 @@ public class ResidentRecordsController(IResidentRecordsService records) : Contro
 
     [HttpPost("api/residents/{residentId:int}/leaves")]
     [Authorize(Policy = AuthPolicies.LeaveRecorders)]
+    [Audit("Leave.Start", "Resident", "Ghi nhận cư dân tạm vắng", "residentId")]
     public async Task<ActionResult<ResidentLeaveDto>> StartLeave(int residentId, [FromBody] StartLeaveRequest request) =>
         Ok(await records.StartLeaveAsync(User.RequireCurrentUser(), residentId, request));
 
     [HttpPost("api/residents/{residentId:int}/leaves/{leaveId:int}/return")]
     [Authorize(Policy = AuthPolicies.LeaveRecorders)]
+    [Audit("Leave.Return", "Resident", "Ghi nhận cư dân trở về", "residentId")]
     public async Task<ActionResult<ResidentLeaveDto>> ReturnFromLeave(int residentId, int leaveId, [FromBody] ReturnLeaveRequest request) =>
         Ok(await records.ReturnFromLeaveAsync(User.RequireCurrentUser(), residentId, leaveId, request));
 
@@ -109,6 +114,7 @@ public class ResidentRecordsController(IResidentRecordsService records) : Contro
 
     [HttpPost("api/residents/{residentId:int}/readmit")]
     [Authorize(Policy = AuthPolicies.FrontDesk)]
+    [Audit("Resident.Readmit", "Resident", "Tái nhập viện", "residentId")]
     public async Task<ActionResult<ResidentDetailDto>> Readmit(int residentId, [FromBody] ReadmitRequest request) =>
         Ok(await records.ReadmitAsync(User.RequireCurrentUser(), residentId, request));
 
@@ -120,11 +126,13 @@ public class ResidentRecordsController(IResidentRecordsService records) : Contro
 
     [HttpPost("api/residents/{residentId:int}/deposits")]
     [Authorize(Policy = AuthPolicies.FinanceStaff)]
+    [Audit("Deposit.Create", "Resident", "Thu tiền cọc", "residentId")]
     public async Task<ActionResult<DepositSummaryDto>> CreateDeposit(int residentId, [FromBody] CreateDepositRequest request) =>
         Ok(await records.CreateDepositAsync(User.RequireCurrentUser(), residentId, request));
 
     [HttpPost("api/deposits/{depositId:int}/refund")]
     [Authorize(Policy = AuthPolicies.FinanceStaff)]
+    [Audit("Deposit.Refund", "Deposit", "Hoàn/trừ tiền cọc", "depositId")]
     public async Task<ActionResult<DepositSummaryDto>> RefundDeposit(int depositId, [FromBody] RefundDepositRequest request) =>
         Ok(await records.RefundDepositAsync(User.RequireCurrentUser(), depositId, request));
 

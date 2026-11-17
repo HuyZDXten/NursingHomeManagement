@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NursingHome.API.Extensions;
+using NursingHome.API.Filters;
 using NursingHome.API.Security;
 using NursingHome.DTOs.Accounts;
 using NursingHome.DTOs.Common;
@@ -20,6 +21,7 @@ public class AccountsController(IAccountService accounts) : ControllerBase
 
     [HttpPost]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("Account.Create", "Account", "Tạo tài khoản")]
     public async Task<ActionResult<AccountDto>> Create([FromBody] CreateAccountRequest request)
     {
         var created = await accounts.CreateAsync(request);
@@ -28,11 +30,13 @@ public class AccountsController(IAccountService accounts) : ControllerBase
 
     [HttpPut("{id:int}")]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("Account.Update", "Account", "Sửa tài khoản (vai trò/khóa/mở)")]
     public async Task<ActionResult<AccountDto>> Update(int id, [FromBody] UpdateAccountRequest request) =>
         Ok(await accounts.UpdateAsync(User.RequireCurrentUser(), id, request));
 
     [HttpPost("{id:int}/reset-password")]
     [Authorize(Policy = AuthPolicies.AdminOnly)]
+    [Audit("Account.ResetPassword", "Account", "Đặt lại mật khẩu tài khoản")]
     public async Task<IActionResult> ResetPassword(int id, [FromBody] AdminResetPasswordRequest request)
     {
         await accounts.ResetPasswordAsync(id, request);

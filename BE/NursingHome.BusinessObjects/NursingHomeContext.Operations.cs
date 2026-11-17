@@ -75,8 +75,24 @@ public partial class NursingHomeContext
 
     public DbSet<MaintenanceRequest> MaintenanceRequests => Set<MaintenanceRequest>();
 
+    // BL-V5 hệ thống & truyền thông
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+
+    public DbSet<Lookup> Lookups => Set<Lookup>();
+
+    public DbSet<Announcement> Announcements => Set<Announcement>();
+
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
+
+    public DbSet<Post> Posts => Set<Post>();
+
+    public DbSet<PostImage> PostImages => Set<PostImage>();
+
     partial void ConfigureOperations(ModelBuilder modelBuilder)
     {
+        ConfigureSystem(modelBuilder);
         ConfigureStaffing(modelBuilder);
         ConfigureBillingExtras(modelBuilder);
         ConfigureResidentRecords(modelBuilder);
@@ -123,6 +139,39 @@ public partial class NursingHomeContext
             entity.Property(e => e.Status).HasConversion<string>();
             entity.HasOne(e => e.ConfirmedBy).WithMany().HasForeignKey(e => e.ConfirmedById);
         });
+    }
+
+    private static void ConfigureSystem(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.ToTable("AuditLogs");
+            entity.Property(e => e.Ip).IsUnicode(false);
+        });
+        modelBuilder.Entity<SystemSetting>(entity =>
+        {
+            entity.ToTable("SystemSettings");
+            entity.HasKey(e => e.Key);
+        });
+        modelBuilder.Entity<Lookup>().ToTable("Lookups");
+        modelBuilder.Entity<Announcement>(entity =>
+        {
+            entity.ToTable("Announcements");
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById);
+        });
+        modelBuilder.Entity<NotificationPreference>(entity =>
+        {
+            entity.ToTable("NotificationPreferences");
+            entity.HasKey(e => e.AccountId);
+        });
+        modelBuilder.Entity<Post>(entity =>
+        {
+            entity.ToTable("Posts");
+            entity.Property(e => e.Kind).HasConversion<string>();
+            entity.HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById);
+            entity.HasMany(e => e.Images).WithOne().HasForeignKey(e => e.PostId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<PostImage>().ToTable("PostImages");
     }
 
     private static void ConfigureStaffHr(ModelBuilder modelBuilder)

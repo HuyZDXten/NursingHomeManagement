@@ -104,6 +104,7 @@ export function PublicLayout() {
       <Layout.Header className="app-header public">
         <Link to="/" className="brand"><HomeOutlined /> <span>Viện Dưỡng Lão</span></Link>
         <div style={{ display: 'flex', gap: 8 }}>
+          <Button type="text" onClick={() => navigate('/tin-tuc')}>Tin tức</Button>
           <Button onClick={() => navigate('/dat-lich-tham-quan')}>Đặt lịch tham quan</Button>
           {user
             ? <Button type="primary" onClick={() => navigate('/app')}>Vào hệ thống</Button>

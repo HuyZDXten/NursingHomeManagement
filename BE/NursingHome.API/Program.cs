@@ -200,6 +200,19 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// BL-V5 (UC-129): nạp các giá trị cấu hình cơ sở Admin đã ghi đè từ DB. Lỗi (ví dụ DB chưa chạy script mới nhất) thì dùng appsettings.
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        await scope.ServiceProvider.GetRequiredService<ISettingsService>().ReloadAsync();
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Không nạp được cấu hình cơ sở từ DB (dùng appsettings). Chạy lại Database/setup-local-db.ps1 nếu thiếu bảng SystemSettings.");
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
