@@ -108,3 +108,14 @@ public class BillingJobOptions
     public bool ReminderJobEnabled { get; set; } = true;
     public int ReminderIntervalMinutes { get; set; } = 60;
 }
+
+/// <summary>BL-V4: job nền cảnh báo chứng chỉ sắp hết hạn (CertificateExpiryJob).</summary>
+public class StaffJobOptions
+{
+    public const string SectionName = "Staff";
+
+    public bool CertificateJobEnabled { get; set; } = true;
+
+    /// <summary>Chu kỳ kiểm tra (phút), tối thiểu 5. Mỗi mốc chứng chỉ chỉ báo một lần nên chạy dày cũng không gửi trùng.</summary>
+    public int CertificateIntervalMinutes { get; set; } = 360;
+}

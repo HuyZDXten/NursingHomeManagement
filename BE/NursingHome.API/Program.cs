@@ -61,6 +61,7 @@ builder.Services.AddImageStorage(); // BL-V1: Cloudinary khi đủ khóa, không
 builder.Services.AddSingleton<IUserIdProvider, SubjectUserIdProvider>();
 builder.Services.AddHostedService<PayOsSyncService>();
 builder.Services.AddHostedService<InvoiceReminderJob>(); // S3-V5 nhắc nợ mỗi giờ
+builder.Services.AddHostedService<CertificateExpiryJob>(); // BL-V4 chứng chỉ nhân viên sắp hết hạn
 builder.Services.AddHostedService<CarePlanJob>();        // S3-H4 sinh việc chăm sóc mỗi giờ
 builder.Services.AddHostedService<TaskReminderJob>();    // S3-H4 nhắc việc mỗi 5 phút
 builder.Services.AddHostedService<AiInsightJob>();       // S4-H2 xu hướng sinh hiệu 06:00 & nhật ký AI 19:00

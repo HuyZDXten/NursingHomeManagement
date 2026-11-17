@@ -759,7 +759,7 @@ CREATE TABLE dbo.AiConversations (
     Title         NVARCHAR(200) NULL,
     CreatedAt     DATETIME2     NOT NULL CONSTRAINT DF_AiConversations_CreatedAt DEFAULT (SYSUTCDATETIME()),
     LastMessageAt DATETIME2     NULL,
-    CONSTRAINT CK_AiConversations_Channel CHECK (Channel IN (N'Public', N'Family', N'Staff')),
+    CONSTRAINT CK_AiConversations_Channel CHECK (Channel IN (N'Public', N'Family', N'Staff', N'Assistant')),
     CONSTRAINT CK_AiConversations_Owner CHECK (AccountId IS NOT NULL OR AnonymousKey IS NOT NULL)
 );
 GO
@@ -1010,6 +1010,76 @@ GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_MaintenanceRequests_Status' AND object_id = OBJECT_ID(N'dbo.MaintenanceRequests'))
 CREATE INDEX IX_MaintenanceRequests_Status ON dbo.MaintenanceRequests (Status, ReportedAt DESC);
+GO
+
+/* ---- 9.10 Nhân sự (BL-V4: UC-43 hồ sơ & chứng chỉ, UC-48 chấm công, UC-126 hiệu suất, UC-127 trang cá nhân, AI-05 trợ lý) ---- */
+IF OBJECT_ID(N'dbo.StaffProfiles', N'U') IS NULL
+CREATE TABLE dbo.StaffProfiles (
+    AccountId             INT           NOT NULL CONSTRAINT PK_StaffProfiles PRIMARY KEY
+                                        CONSTRAINT FK_StaffProfiles_Accounts REFERENCES dbo.Accounts (Id),
+    Position              NVARCHAR(100) NULL,
+    Department            NVARCHAR(100) NULL,
+    HireDate              DATE          NULL,
+    IdNumber              NVARCHAR(20)  NULL,
+    Address               NVARCHAR(300) NULL,
+    EmergencyContactName  NVARCHAR(150) NULL,
+    EmergencyContactPhone NVARCHAR(30)  NULL,
+    Notes                 NVARCHAR(500) NULL,
+    UpdatedAt             DATETIME2     NOT NULL CONSTRAINT DF_StaffProfiles_UpdatedAt DEFAULT (SYSUTCDATETIME())
+);
+GO
+
+-- Chứng chỉ hành nghề/đào tạo. Alert30At/AlertExpiredAt: đã báo "còn ≤ 30 ngày" / "đã hết hạn" (mỗi mốc một lần).
+IF OBJECT_ID(N'dbo.StaffCertificates', N'U') IS NULL
+CREATE TABLE dbo.StaffCertificates (
+    Id             INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_StaffCertificates PRIMARY KEY,
+    AccountId      INT           NOT NULL CONSTRAINT FK_StaffCertificates_Accounts REFERENCES dbo.Accounts (Id),
+    Name           NVARCHAR(200) NOT NULL,
+    Number         NVARCHAR(50)  NULL,
+    IssuedBy       NVARCHAR(200) NULL,
+    IssuedOn       DATE          NULL,
+    ExpiresOn      DATE          NULL,
+    CreatedById    INT           NOT NULL CONSTRAINT FK_StaffCertificates_Creator REFERENCES dbo.Accounts (Id),
+    CreatedAt      DATETIME2     NOT NULL CONSTRAINT DF_StaffCertificates_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    Alert30At      DATETIME2     NULL,
+    AlertExpiredAt DATETIME2     NULL,
+    CONSTRAINT CK_StaffCertificates_Dates CHECK (ExpiresOn IS NULL OR IssuedOn IS NULL OR ExpiresOn >= IssuedOn)
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_StaffCertificates_Expiry' AND object_id = OBJECT_ID(N'dbo.StaffCertificates'))
+CREATE INDEX IX_StaffCertificates_Expiry ON dbo.StaffCertificates (ExpiresOn) WHERE ExpiresOn IS NOT NULL;
+GO
+
+-- Chấm công: mỗi phân ca một dòng. LateMinutes > 0 khi vào ca trễ hơn 15 phút so với giờ bắt đầu ca.
+IF OBJECT_ID(N'dbo.Attendances', N'U') IS NULL
+CREATE TABLE dbo.Attendances (
+    Id                INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Attendances PRIMARY KEY,
+    ShiftAssignmentId INT           NOT NULL CONSTRAINT FK_Attendances_ShiftAssignments REFERENCES dbo.ShiftAssignments (Id)
+                                    CONSTRAINT UQ_Attendances_Assignment UNIQUE,
+    AccountId         INT           NOT NULL CONSTRAINT FK_Attendances_Accounts REFERENCES dbo.Accounts (Id),
+    CheckInAt         DATETIME2     NOT NULL,
+    CheckOutAt        DATETIME2     NULL,
+    LateMinutes       INT           NOT NULL CONSTRAINT DF_Attendances_Late DEFAULT (0),
+    Note              NVARCHAR(300) NULL,
+    EditedById        INT           NULL CONSTRAINT FK_Attendances_Editor REFERENCES dbo.Accounts (Id),
+    EditedAt          DATETIME2     NULL,
+    EditReason        NVARCHAR(300) NULL,
+    CONSTRAINT CK_Attendances_Times CHECK (CheckOutAt IS NULL OR CheckOutAt >= CheckInAt),
+    CONSTRAINT CK_Attendances_Late CHECK (LateMinutes >= 0)
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Attendances_Account' AND object_id = OBJECT_ID(N'dbo.Attendances'))
+CREATE INDEX IX_Attendances_Account ON dbo.Attendances (AccountId, CheckInAt DESC);
+GO
+
+-- AI-05: kênh "Assistant" riêng cho trợ lý nhân viên (kênh "Staff" là hỏi đáp báo cáo). DB tạo trước 17/11 cần sửa CHECK.
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_AiConversations_Channel' AND definition NOT LIKE N'%Assistant%')
+BEGIN
+    ALTER TABLE dbo.AiConversations DROP CONSTRAINT CK_AiConversations_Channel;
+    ALTER TABLE dbo.AiConversations ADD CONSTRAINT CK_AiConversations_Channel CHECK (Channel IN (N'Public', N'Family', N'Staff', N'Assistant'));
+END;
 GO
 
 /* ---- 9. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
@@ -1596,6 +1666,20 @@ BEGIN
     SET IDENTITY_INSERT dbo.AiKnowledgeDocs OFF;
 END;
 
+-- BL-V4 (AI-05): tài liệu nội bộ cho trợ lý nhân viên (IsPublic = 0: chatbot công khai không dùng). Thêm riêng để DB đã có 6 tài liệu cũng nhận.
+IF NOT EXISTS (SELECT 1 FROM dbo.AiKnowledgeDocs WHERE Id = 7)
+BEGIN
+    SET IDENTITY_INSERT dbo.AiKnowledgeDocs ON;
+    INSERT INTO dbo.AiKnowledgeDocs (Id, Title, Content, Tags, IsPublic, IsActive) VALUES
+    (7, N'Quy trình chấm công, đổi ca và bàn giao ca',
+        N'Chấm công: bấm "Vào ca" ở Trang chủ, được vào từ 30 phút trước giờ bắt đầu ca tới hết ca; vào trễ quá 15 phút tính đi muộn; hết ca bấm "Ra ca". '
+        + N'Quên chấm công: nhờ quản trị viên bổ sung, bắt buộc ghi lý do. Đổi ca hoặc nghỉ phép: tạo đơn ở trang Ca trực, tab Nghỉ phép và đổi ca, quản trị viên duyệt. '
+        + N'Bàn giao ca: viết ở tab Bàn giao ca trước khi hết ca (có thể dùng gợi ý và nút Viết tóm tắt bằng AI, đọc lại trước khi lưu); người nhận ca sau bấm Đã đọc. '
+        + N'Tài liệu nội bộ, chatbot công khai không dùng.',
+        N'chấm công, đổi ca, nghỉ phép, bàn giao, nội bộ', 0, 1);
+    SET IDENTITY_INSERT dbo.AiKnowledgeDocs OFF;
+END;
+
 -- BL-V3 (UC-36): loại phòng + phụ thu theo ngày (cộng vào hóa đơn tháng theo số ngày ở phòng đó).
 IF NOT EXISTS (SELECT 1 FROM dbo.RoomTypes WHERE Id = 1)
 BEGIN
@@ -2056,6 +2140,51 @@ BEGIN
     FROM dbo.Rooms AS r WHERE r.Number = N'101';
     SET IDENTITY_INSERT dbo.MaintenanceRequests OFF;
 END;
+
+/* ---- 10.10 Nhân sự (BL-V4) ----
+   Hồ sơ nhân viên 2–7. Chứng chỉ: bác sĩ còn hạn 2 năm, điều dưỡng còn 20 ngày (sắp hết), hộ lý đã hết hạn 5 ngày.
+   Chấm công TUẦN TRƯỚC (không đụng tuần này để kịch bản sao chép tuần giữ nguyên): điều dưỡng đủ 5 ca đúng giờ,
+   hộ lý trễ 25 phút thứ Ba + thứ Năm và vắng thứ Sáu. */
+IF NOT EXISTS (SELECT 1 FROM dbo.StaffProfiles WHERE AccountId = 5)
+    INSERT INTO dbo.StaffProfiles (AccountId, Position, Department, HireDate, Address, EmergencyContactName, EmergencyContactPhone) VALUES
+    (2, N'Lễ tân', N'Hành chính', '2024-03-01', N'Hải Châu, Đà Nẵng', N'Nguyễn Văn Hòa', N'0905111222'),
+    (3, N'Kế toán', N'Tài chính', '2023-08-15', N'Thanh Khê, Đà Nẵng', N'Trần Thị Mai', N'0905222333'),
+    (4, N'Bác sĩ nội khoa', N'Y tế', '2022-01-10', N'Sơn Trà, Đà Nẵng', N'Lê Văn Phúc', N'0905333444'),
+    (5, N'Điều dưỡng trưởng ca', N'Y tế', '2023-05-20', N'Hải Châu, Đà Nẵng', N'Phạm Thị Lan', N'0905444555'),
+    (6, N'Hộ lý', N'Chăm sóc', '2024-09-01', N'Liên Chiểu, Đà Nẵng', N'Hoàng Văn Tâm', N'0905555666'),
+    (7, N'Hộ lý', N'Chăm sóc', '2025-02-01', N'Cẩm Lệ, Đà Nẵng', N'Đỗ Thị Hạnh', N'0905666777');
+
+IF NOT EXISTS (SELECT 1 FROM dbo.StaffCertificates WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.StaffCertificates ON;
+    INSERT INTO dbo.StaffCertificates (Id, AccountId, Name, Number, IssuedBy, IssuedOn, ExpiresOn, CreatedById, CreatedAt) VALUES
+    (1, 4, N'Chứng chỉ hành nghề khám bệnh, chữa bệnh', N'CCHN-0456', N'Sở Y tế Đà Nẵng', DATEADD(YEAR, -3, @Today), DATEADD(YEAR, 2, @Today), 1, @NowUtc),
+    (2, 5, N'Chứng chỉ hành nghề điều dưỡng', N'CCHN-1123', N'Sở Y tế Đà Nẵng', DATEADD(YEAR, -5, @Today), DATEADD(DAY, 20, @Today), 1, @NowUtc),
+    (3, 6, N'Chứng chỉ chăm sóc người cao tuổi', N'CS-2024-88', N'Trung tâm đào tạo nghề Đà Nẵng', DATEADD(YEAR, -2, @Today), DATEADD(DAY, -5, @Today), 1, @NowUtc),
+    (4, 5, N'Sơ cấp cứu cơ bản', NULL, N'Hội Chữ thập đỏ', DATEADD(YEAR, -1, @Today), NULL, 1, @NowUtc);
+    SET IDENTITY_INSERT dbo.StaffCertificates OFF;
+END;
+
+DECLARE @PrevWeek DATE = DATEADD(DAY, -7, @WeekStart);
+INSERT INTO dbo.ShiftAssignments (AccountId, ShiftId, WorkDate, CreatedById, CreatedAt)
+SELECT staff.AccountId, 1, DATEADD(DAY, d.n, @PrevWeek), 1, DATEADD(DAY, -10, @NowUtc)
+FROM (VALUES (5), (6)) AS staff (AccountId)
+CROSS JOIN (VALUES (0), (1), (2), (3), (4)) AS d (n)
+WHERE NOT EXISTS (SELECT 1 FROM dbo.ShiftAssignments AS sa
+                  WHERE sa.AccountId = staff.AccountId AND sa.WorkDate = DATEADD(DAY, d.n, @PrevWeek) AND sa.ShiftId = 1);
+
+INSERT INTO dbo.Attendances (ShiftAssignmentId, AccountId, CheckInAt, CheckOutAt, LateMinutes)
+SELECT sa.Id, sa.AccountId,
+       DATEADD(MINUTE, CASE WHEN late.IsLate = 1 THEN 25 ELSE -10 END, x.StartUtc),
+       DATEADD(MINUTE, 8 * 60 + 5, x.StartUtc),
+       CASE WHEN late.IsLate = 1 THEN 25 ELSE 0 END
+FROM dbo.ShiftAssignments AS sa
+JOIN dbo.Shifts AS s ON s.Id = sa.ShiftId
+CROSS APPLY (SELECT DATEADD(HOUR, -7, DATEADD(MINUTE, DATEDIFF(MINUTE, CAST('00:00' AS TIME), s.StartTime), CAST(sa.WorkDate AS DATETIME2))) AS StartUtc) AS x
+CROSS APPLY (SELECT CASE WHEN sa.AccountId = 6 AND DATEDIFF(DAY, @PrevWeek, sa.WorkDate) IN (1, 3) THEN 1 ELSE 0 END AS IsLate) AS late
+WHERE sa.AccountId IN (5, 6) AND sa.WorkDate >= @PrevWeek AND sa.WorkDate < @WeekStart
+  AND NOT (sa.AccountId = 6 AND DATEDIFF(DAY, @PrevWeek, sa.WorkDate) = 4)
+  AND NOT EXISTS (SELECT 1 FROM dbo.Attendances AS a WHERE a.ShiftAssignmentId = sa.Id);
 
 /* ---- 10. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 

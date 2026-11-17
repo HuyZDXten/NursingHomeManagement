@@ -102,6 +102,20 @@ BEGIN
     SET IDENTITY_INSERT dbo.AiKnowledgeDocs OFF;
 END;
 
+-- BL-V4 (AI-05): tài liệu nội bộ cho trợ lý nhân viên (IsPublic = 0: chatbot công khai không dùng). Thêm riêng để DB đã có 6 tài liệu cũng nhận.
+IF NOT EXISTS (SELECT 1 FROM dbo.AiKnowledgeDocs WHERE Id = 7)
+BEGIN
+    SET IDENTITY_INSERT dbo.AiKnowledgeDocs ON;
+    INSERT INTO dbo.AiKnowledgeDocs (Id, Title, Content, Tags, IsPublic, IsActive) VALUES
+    (7, N'Quy trình chấm công, đổi ca và bàn giao ca',
+        N'Chấm công: bấm "Vào ca" ở Trang chủ, được vào từ 30 phút trước giờ bắt đầu ca tới hết ca; vào trễ quá 15 phút tính đi muộn; hết ca bấm "Ra ca". '
+        + N'Quên chấm công: nhờ quản trị viên bổ sung, bắt buộc ghi lý do. Đổi ca hoặc nghỉ phép: tạo đơn ở trang Ca trực, tab Nghỉ phép và đổi ca, quản trị viên duyệt. '
+        + N'Bàn giao ca: viết ở tab Bàn giao ca trước khi hết ca (có thể dùng gợi ý và nút Viết tóm tắt bằng AI, đọc lại trước khi lưu); người nhận ca sau bấm Đã đọc. '
+        + N'Tài liệu nội bộ, chatbot công khai không dùng.',
+        N'chấm công, đổi ca, nghỉ phép, bàn giao, nội bộ', 0, 1);
+    SET IDENTITY_INSERT dbo.AiKnowledgeDocs OFF;
+END;
+
 -- BL-V3 (UC-36): loại phòng + phụ thu theo ngày (cộng vào hóa đơn tháng theo số ngày ở phòng đó).
 IF NOT EXISTS (SELECT 1 FROM dbo.RoomTypes WHERE Id = 1)
 BEGIN

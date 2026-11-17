@@ -15,7 +15,7 @@ namespace NursingHome.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/ai")]
-public class AiController(IPublicChatbotService chatbot, IReportAssistantService reportAssistant) : ControllerBase
+public class AiController(IPublicChatbotService chatbot, IReportAssistantService reportAssistant, IStaffAssistantService staffAssistant) : ControllerBase
 {
     /// <summary>AI-12: mỗi tool tự kiểm quyền theo policy của báo cáo tương ứng (Kế toán không xem được tuân thủ thuốc).</summary>
     [HttpPost("staff/report-chat")]
@@ -28,6 +28,18 @@ public class AiController(IPublicChatbotService chatbot, IReportAssistantService
     [Authorize(Policy = AuthPolicies.FinanceStaff)]
     public async Task<ActionResult<List<AiHistoryItemDto>>> ReportChatHistory() =>
         Ok(await reportAssistant.HistoryAsync(User.RequireCurrentUser()));
+
+    /// <summary>BL-V4, AI-05: trợ lý nhân viên (việc hôm nay, ca kế tiếp, bàn giao, quy trình nội bộ). Mọi nhân viên dùng được.</summary>
+    [HttpPost("staff/assistant/chat")]
+    [Authorize(Policy = AuthPolicies.Staff)]
+    [EnableRateLimiting(RateLimitPolicies.Chat)]
+    public async Task<ActionResult<AiChatReplyDto>> AssistantChat([FromBody] AiStaffChatRequest request, CancellationToken cancellationToken) =>
+        Ok(await staffAssistant.ChatAsync(User.RequireCurrentUser(), request.Message, cancellationToken));
+
+    [HttpGet("staff/assistant/history")]
+    [Authorize(Policy = AuthPolicies.Staff)]
+    public async Task<ActionResult<List<AiHistoryItemDto>>> AssistantHistory() =>
+        Ok(await staffAssistant.HistoryAsync(User.RequireCurrentUser()));
 
     [HttpGet("public/config")]
     [AllowAnonymous]

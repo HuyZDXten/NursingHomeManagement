@@ -61,6 +61,13 @@ public partial class NursingHomeContext
 
     public DbSet<Deposit> Deposits => Set<Deposit>();
 
+    // BL-V4 nhân sự
+    public DbSet<StaffProfile> StaffProfiles => Set<StaffProfile>();
+
+    public DbSet<StaffCertificate> StaffCertificates => Set<StaffCertificate>();
+
+    public DbSet<Attendance> Attendances => Set<Attendance>();
+
     // BL-V3 phòng & giường mở rộng
     public DbSet<RoomType> RoomTypes => Set<RoomType>();
 
@@ -74,6 +81,7 @@ public partial class NursingHomeContext
         ConfigureBillingExtras(modelBuilder);
         ConfigureResidentRecords(modelBuilder);
         ConfigureRoomOps(modelBuilder);
+        ConfigureStaffHr(modelBuilder);
         modelBuilder.Entity<FamilyInvitation>(entity =>
         {
             entity.ToTable("FamilyInvitations");
@@ -114,6 +122,27 @@ public partial class NursingHomeContext
             entity.Property(e => e.TimeSlot).HasConversion<string>();
             entity.Property(e => e.Status).HasConversion<string>();
             entity.HasOne(e => e.ConfirmedBy).WithMany().HasForeignKey(e => e.ConfirmedById);
+        });
+    }
+
+    private static void ConfigureStaffHr(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<StaffProfile>(entity =>
+        {
+            entity.ToTable("StaffProfiles");
+            entity.HasKey(e => e.AccountId);
+            entity.HasOne(e => e.Account).WithOne().HasForeignKey<StaffProfile>(e => e.AccountId);
+        });
+        modelBuilder.Entity<StaffCertificate>(entity =>
+        {
+            entity.ToTable("StaffCertificates");
+            entity.HasOne(e => e.Account).WithMany().HasForeignKey(e => e.AccountId);
+        });
+        modelBuilder.Entity<Attendance>(entity =>
+        {
+            entity.ToTable("Attendances");
+            entity.HasOne(e => e.ShiftAssignment).WithMany().HasForeignKey(e => e.ShiftAssignmentId);
+            entity.HasOne(e => e.Account).WithMany().HasForeignKey(e => e.AccountId);
         });
     }
 

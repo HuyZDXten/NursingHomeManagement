@@ -74,6 +74,7 @@ try {
         RateLimit__CredentialsPerMinute = "500"
         Ai__Enabled = "true"
         Ai__Provider = "Fake"
+        Staff__CertificateJobEnabled = "false"
         API_BASE = $api
         PAYOS_FAKE_BASE = $fake
     }

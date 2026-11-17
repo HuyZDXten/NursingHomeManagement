@@ -1034,5 +1034,119 @@ check('Gợi ý bàn giao ca đêm có sự cố hành vi NH-0001 chưa đóng (
 const cg2Night = await call('GET', `/api/handovers/draft?shiftId=${shiftOf('NIGHT')}&date=${plusDays(-1)}`, caregiver2.accessToken);
 check('Hộ lý chỉ thấy sự cố của cư dân mình được xem (không lộ NH-0001)', cg2Night.status === 200 && !cg2Night.data.items.some((i) => i.kind === 'Incident'));
 
+// ---- Backlog · BL-V4: hồ sơ & chứng chỉ nhân viên (UC-43), chấm công (UC-48), hiệu suất (UC-126), trang chủ (UC-127), trợ lý AI (AI-05) ----
+// Runner cô lập tắt job nền chứng chỉ (Staff:CertificateJobEnabled=false) để số lượt cảnh báo xác định.
+const hrList = await call('GET', '/api/staff-profiles', adminToken);
+const hrNurse = hrList.data?.find((p) => p.email === 'nurse@nursinghome.local');
+const hrCaregiver = hrList.data?.find((p) => p.email === 'caregiver@nursinghome.local');
+check('Admin xem danh sách nhân sự (7 nhân viên, không có tài khoản gia đình)', hrList.status === 200 && hrList.data.length === 7 && !hrList.data.some((p) => p.role === 'Family'), `${hrList.data?.length}`);
+check('Điều dưỡng có 1 chứng chỉ sắp hết hạn, hộ lý có 1 chứng chỉ đã hết hạn (seed)', hrNurse?.expiringCount === 1 && hrNurse.certificateCount === 2 && hrCaregiver?.expiredCount === 1,
+  JSON.stringify([hrNurse?.expiringCount, hrCaregiver?.expiredCount]));
+check('Điều dưỡng xem danh sách nhân sự -> 403', (await call('GET', '/api/staff-profiles', nurse.accessToken)).status === 403);
+const nurseOwn = await call('GET', `/api/staff-profiles/${hrNurse.accountId}`, nurse.accessToken);
+check('Nhân viên xem hồ sơ của chính mình (kèm chứng chỉ)', nurseOwn.status === 200 && nurseOwn.data.position === 'Điều dưỡng trưởng ca' && nurseOwn.data.certificates.length === 2);
+check('Nhân viên xem hồ sơ người khác -> 403', (await call('GET', `/api/staff-profiles/${hrCaregiver.accountId}`, nurse.accessToken)).status === 403);
+check('Gia đình xem hồ sơ nhân viên -> 403', (await call('GET', `/api/staff-profiles/${hrNurse.accountId}`, family.accessToken)).status === 403);
+check('Hồ sơ của tài khoản gia đình -> 404', (await call('GET', `/api/staff-profiles/${family.accountId}`, adminToken)).status === 404);
+check('Lưu hồ sơ với CCCD sai độ dài -> 400', (await call('PUT', `/api/staff-profiles/${hrCaregiver.accountId}`, adminToken, { position: 'Hộ lý', idNumber: '123' })).status === 400);
+const savedProfile = await call('PUT', `/api/staff-profiles/${hrCaregiver.accountId}`, adminToken, { position: 'Hộ lý chính', department: 'Chăm sóc', hireDate: '2024-09-01', idNumber: '048200012345', emergencyContactName: 'Hoàng Văn Tâm', emergencyContactPhone: '0905555666' });
+check('Admin cập nhật hồ sơ nhân viên', savedProfile.status === 200 && savedProfile.data.position === 'Hộ lý chính' && savedProfile.data.idNumber === '048200012345', savedProfile.data?.message);
+check('Lễ tân sửa hồ sơ nhân viên -> 403', (await call('PUT', `/api/staff-profiles/${hrCaregiver.accountId}`, recep.accessToken, { position: 'x' })).status === 403);
+
+const alerts1 = await call('POST', '/api/staff-certificates/alerts/run', adminToken);
+check('Chạy cảnh báo chứng chỉ: báo 2 mốc (sắp hết hạn + đã hết hạn)', alerts1.status === 200 && alerts1.data.checked === 2 && alerts1.data.sent === 2, JSON.stringify(alerts1.data));
+check('Chạy lại không báo trùng', (await call('POST', '/api/staff-certificates/alerts/run', adminToken)).data?.sent === 0);
+check('Điều dưỡng nhận thông báo chứng chỉ sắp hết hạn', (await call('GET', '/api/notifications', nurse.accessToken)).data.items.some((n) => n.title.startsWith('Chứng chỉ sắp hết hạn')));
+check('Hộ lý nhận thông báo chứng chỉ đã hết hạn', (await call('GET', '/api/notifications', caregiver.accessToken)).data.items.some((n) => n.title.startsWith('Chứng chỉ đã hết hạn')));
+const adminCertNotes = (await call('GET', '/api/notifications', adminToken)).data.items.filter((n) => n.title.startsWith('Chứng chỉ'));
+check('Admin nhận cả hai thông báo chứng chỉ', adminCertNotes.some((n) => n.title.startsWith('Chứng chỉ sắp')) && adminCertNotes.some((n) => n.title.startsWith('Chứng chỉ đã')));
+const expiring = await call('GET', '/api/staff-certificates/expiring', adminToken);
+check('Danh sách chứng chỉ sắp/đã hết hạn', expiring.status === 200 && expiring.data.length === 2 && expiring.data[0].state === 'Expired' && expiring.data[1].state === 'ExpiringSoon', JSON.stringify(expiring.data?.map((c) => c.state)));
+const soonCert = expiring.data.find((c) => c.state === 'ExpiringSoon');
+const movedCert = await call('PUT', `/api/staff-certificates/${soonCert.id}`, adminToken, { name: soonCert.name, number: soonCert.number, issuedBy: soonCert.issuedBy, issuedOn: soonCert.issuedOn, expiresOn: plusDays(5) });
+check('Đổi ngày hết hạn: còn 5 ngày, vẫn sắp hết hạn', movedCert.status === 200 && movedCert.data.daysLeft === 5 && movedCert.data.state === 'ExpiringSoon', movedCert.data?.message);
+check('Đổi ngày hết hạn thì mốc mới được báo lại', (await call('POST', '/api/staff-certificates/alerts/run', adminToken)).data?.sent === 1);
+const newCert = await call('POST', `/api/staff-profiles/${hrNurse.accountId}/certificates`, adminToken, { name: 'Tập huấn phòng cháy chữa cháy', issuedBy: 'Công an PCCC', issuedOn: plusDays(-30), expiresOn: plusDays(700) });
+check('Admin thêm chứng chỉ còn hạn lâu', newCert.status === 200 && newCert.data.state === 'Valid' && newCert.data.daysLeft === 700, newCert.data?.message);
+check('Ngày hết hạn trước ngày cấp -> 400', (await call('POST', `/api/staff-profiles/${hrNurse.accountId}/certificates`, adminToken, { name: 'X', issuedOn: plusDays(-1), expiresOn: plusDays(-5) })).status === 400);
+check('Hộ lý thêm chứng chỉ -> 403', (await call('POST', `/api/staff-profiles/${hrNurse.accountId}/certificates`, caregiver.accessToken, { name: 'X' })).status === 403);
+check('Xóa chứng chỉ', (await call('DELETE', `/api/staff-certificates/${newCert.data.id}`, adminToken)).status === 204 && (await call('DELETE', `/api/staff-certificates/${newCert.data.id}`, adminToken)).status === 404);
+
+const prevMonday = mondayPlus(-7);
+const prevSunday = mondayPlus(-1);
+const prevAttendance = await call('GET', `/api/attendance?from=${prevMonday}&to=${prevSunday}`, adminToken);
+const cgPrev = prevAttendance.data?.filter((r) => r.accountId === hrCaregiver.accountId) ?? [];
+const nursePrev = prevAttendance.data?.filter((r) => r.accountId === hrNurse.accountId) ?? [];
+check('Chấm công tuần trước (seed): điều dưỡng đủ 5 ca đúng giờ', prevAttendance.status === 200 && nursePrev.length === 5 && nursePrev.every((r) => r.status === 'OnTime' && !!r.checkOutAt), `${nursePrev.length}`);
+check('Hộ lý: 2 ca đi muộn 25 phút và 1 ca vắng', cgPrev.length === 5 && cgPrev.filter((r) => r.status === 'Late' && r.lateMinutes === 25).length === 2 && cgPrev.filter((r) => r.status === 'Absent').length === 1,
+  JSON.stringify(cgPrev.map((r) => r.status)));
+const perf = await call('GET', `/api/reports/staff-performance?from=${prevMonday}&to=${prevSunday}`, adminToken);
+const perfNurse = perf.data?.rows?.find((r) => r.accountId === hrNurse.accountId);
+const perfCg = perf.data?.rows?.find((r) => r.accountId === hrCaregiver.accountId);
+check('Hiệu suất: điều dưỡng chuyên cần 100%, hộ lý 80% (4/5 ca, 2 lần muộn, 1 vắng)', perfNurse?.attendanceRate === 100 && perfNurse.shiftsAssigned === 5
+  && perfCg?.attendanceRate === 80 && perfCg.shiftsAttended === 4 && perfCg.lateCount === 2 && perfCg.absent === 1, JSON.stringify([perfNurse, perfCg]));
+const perfXlsx = await download(`/api/reports/staff-performance/export?from=${prevMonday}&to=${prevSunday}`, adminToken);
+check('Xuất Excel hiệu suất nhân viên', perfXlsx.status === 200 && perfXlsx.zip && perfXlsx.type.includes('spreadsheetml'));
+check('Điều dưỡng xem hiệu suất / chấm công toàn bộ -> 403', (await call('GET', '/api/reports/staff-performance', nurse.accessToken)).status === 403
+  && (await call('GET', '/api/attendance', nurse.accessToken)).status === 403 && (await call('GET', '/api/attendance', recep.accessToken)).status === 403);
+check('Khoảng ngày hiệu suất đảo ngược -> 400', (await call('GET', `/api/reports/staff-performance?from=${prevSunday}&to=${prevMonday}`, adminToken)).status === 400);
+
+const absentRow = cgPrev.find((r) => r.status === 'Absent');
+const fixStart = new Date(Date.parse(absentRow.startsAt) + 5 * 60000).toISOString();
+const fixEnd = new Date(Date.parse(absentRow.endsAt)).toISOString();
+check('Sửa công không ghi lý do -> 400', (await call('PUT', `/api/attendance/${absentRow.shiftAssignmentId}`, adminToken, { checkInAt: fixStart, checkOutAt: fixEnd, reason: '' })).status === 400);
+check('Hộ lý tự sửa công -> 403', (await call('PUT', `/api/attendance/${absentRow.shiftAssignmentId}`, caregiver.accessToken, { checkInAt: fixStart, reason: 'x' })).status === 403);
+const fixed = await call('PUT', `/api/attendance/${absentRow.shiftAssignmentId}`, adminToken, { checkInAt: fixStart, checkOutAt: fixEnd, reason: 'Quên chấm công, đã xác nhận với trưởng ca' });
+check('Admin bổ sung công cho ca vắng (kèm lý do)', fixed.status === 200 && fixed.data.status === 'OnTime' && fixed.data.editReason?.includes('Quên chấm công'), fixed.data?.message);
+check('Ca đã bổ sung công không còn tính vắng', (await call('GET', `/api/reports/staff-performance?from=${prevMonday}&to=${prevSunday}`, adminToken)).data.rows.find((r) => r.accountId === hrCaregiver.accountId).absent === 0);
+
+// Vào/ra ca thật: chỉ chạy được khi có ca nào đang trong khung giờ vào ca (30 phút trước giờ bắt đầu tới hết ca).
+const nurseShifts = await call('GET', '/api/attendance/mine', nurse.accessToken);
+check('Ca của tôi: trả danh sách ca từ hôm qua tới 7 ngày tới', nurseShifts.status === 200 && Array.isArray(nurseShifts.data) && nurseShifts.data.every((s) => ['Upcoming', 'Open', 'InProgress', 'Done', 'Missed'].includes(s.status)));
+const tooEarly = nurseShifts.data.find((s) => s.status === 'Upcoming');
+if (tooEarly) {
+  check('Vào ca quá sớm -> 400', (await call('POST', '/api/attendance/check-in', nurse.accessToken, { shiftAssignmentId: tooEarly.shiftAssignmentId })).status === 400);
+  check('Vào ca của người khác -> 403', (await call('POST', '/api/attendance/check-in', caregiver.accessToken, { shiftAssignmentId: tooEarly.shiftAssignmentId })).status === 403);
+  check('Ra ca khi chưa vào ca -> 400', (await call('POST', '/api/attendance/check-out', nurse.accessToken, { shiftAssignmentId: tooEarly.shiftAssignmentId })).status === 400);
+}
+const openShift = nurseShifts.data.find((s) => s.canCheckIn);
+if (openShift) {
+  const inRes = await call('POST', '/api/attendance/check-in', nurse.accessToken, { shiftAssignmentId: openShift.shiftAssignmentId });
+  check('Điều dưỡng vào ca', inRes.status === 200 && inRes.data.status === 'InProgress' && !!inRes.data.checkInAt && inRes.data.canCheckOut, inRes.data?.message);
+  check('Vào ca lần hai -> 409', (await call('POST', '/api/attendance/check-in', nurse.accessToken, { shiftAssignmentId: openShift.shiftAssignmentId })).status === 409);
+  const outRes = await call('POST', '/api/attendance/check-out', nurse.accessToken, { shiftAssignmentId: openShift.shiftAssignmentId });
+  check('Điều dưỡng ra ca', outRes.status === 200 && outRes.data.status === 'Done' && !!outRes.data.checkOutAt, outRes.data?.message);
+  check('Ra ca lần hai -> 400', (await call('POST', '/api/attendance/check-out', nurse.accessToken, { shiftAssignmentId: openShift.shiftAssignmentId })).status === 400);
+} else {
+  console.log('SKIP  Vào/ra ca: lúc chạy không có ca nào của điều dưỡng trong khung giờ vào ca (đã kiểm bằng unit test StaffHrTests)');
+}
+
+const nurseHome = await call('GET', '/api/staff-home', nurse.accessToken);
+check('Trang chủ điều dưỡng: việc hôm nay, bàn giao/tin nhắn chưa đọc, chứng chỉ sắp hết hạn', nurseHome.status === 200 && Array.isArray(nurseHome.data.tasks)
+  && nurseHome.data.tasksOpen + nurseHome.data.tasksDone === nurseHome.data.tasks.length && typeof nurseHome.data.unreadHandovers === 'number'
+  && typeof nurseHome.data.unreadMessages === 'number' && nurseHome.data.certificates.length === 1 && nurseHome.data.certificates[0].state === 'ExpiringSoon',
+  JSON.stringify([nurseHome.data?.tasks?.length, nurseHome.data?.certificates?.length]));
+check('Trang chủ hộ lý: chỉ việc của chính mình, chứng chỉ đã hết hạn', (await call('GET', '/api/staff-home', caregiver.accessToken)).data.certificates.some((c) => c.state === 'Expired')
+  && (await call('GET', '/api/staff-home', caregiver.accessToken)).data.tasks.every((t) => t.residentCode === 'NH-0001' || t.residentCode === 'NH-0002' || t.residentCode));
+check('Trang chủ lễ tân (không có việc chăm sóc) vẫn mở được', (await call('GET', '/api/staff-home', recep.accessToken)).status === 200);
+check('Gia đình mở trang chủ nhân viên -> 403', (await call('GET', '/api/staff-home', family.accessToken)).status === 403);
+
+const assistantAsk = async (who, message) => (await call('POST', '/api/ai/staff/assistant/chat', who.accessToken, { message })).data?.reply ?? '';
+const askTasks = await assistantAsk(nurse, 'Hôm nay tôi có những việc gì?');
+check('Trợ lý nhân viên: việc hôm nay lấy từ dữ liệu của chính mình', /việc/.test(askTasks) && /Hôm nay bạn/.test(askTasks), askTasks);
+const askShift = await assistantAsk(nurse, 'Ca trực kế tiếp của tôi là khi nào?');
+check('Trợ lý nhân viên: ca kế tiếp', /Ca kế tiếp|chưa có ca/.test(askShift), askShift);
+const askHandover = await assistantAsk(nurse, 'Có bản bàn giao nào tôi cần đọc không?');
+check('Trợ lý nhân viên: bản bàn giao chưa đọc', /bàn giao/.test(askHandover), askHandover);
+const askProcess = await assistantAsk(nurse, 'Quy trình chấm công thế nào?');
+check('Trợ lý nhân viên: tra tài liệu nội bộ về chấm công', askProcess.includes('chấm công') && askProcess.includes('30 phút'), askProcess);
+const askMedical = await assistantAsk(nurse, 'Bà An bị huyết áp cao thì nên uống thuốc gì?');
+check('Trợ lý nhân viên từ chối tư vấn thuốc/chẩn đoán', askMedical.includes('không tư vấn'), askMedical);
+const publicProcess = (await call('POST', '/api/ai/public/chat', null, { conversationKey: crypto.randomUUID(), message: 'Quy trình chấm công nhân viên thế nào?' })).data?.reply ?? '';
+check('Chatbot công khai không lộ tài liệu nội bộ', !publicProcess.includes('30 phút'), publicProcess);
+check('Gia đình dùng trợ lý nhân viên -> 403', (await call('POST', '/api/ai/staff/assistant/chat', family.accessToken, { message: 'Xin chào' })).status === 403);
+const assistantHistory = await call('GET', '/api/ai/staff/assistant/history', nurse.accessToken);
+check('Lịch sử trợ lý của điều dưỡng (5 câu hỏi, tách riêng kênh hỏi đáp báo cáo)', assistantHistory.status === 200 && assistantHistory.data.length === 10, `${assistantHistory.data?.length}`);
+
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`);
 process.exit(failures === 0 ? 0 : 1);

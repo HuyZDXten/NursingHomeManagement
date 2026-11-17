@@ -301,3 +301,56 @@ public interface IChatPublisher
 {
     Task PublishMessageAsync(IReadOnlyCollection<int> accountIds, ChatMessageDto message);
 }
+
+// ======================= BL-V4: nhân sự =======================
+
+/// <summary>UC-43: hồ sơ nhân viên, chứng chỉ, cảnh báo chứng chỉ sắp hết hạn.</summary>
+public interface IStaffHrService
+{
+    Task<List<StaffProfileSummaryDto>> ListProfilesAsync();
+
+    /// <summary>Admin xem mọi người; nhân viên chỉ xem hồ sơ của chính mình (Forbidden nếu xem người khác).</summary>
+    Task<StaffProfileDto> GetProfileAsync(CurrentUser user, int accountId);
+
+    Task<StaffProfileDto> SaveProfileAsync(int accountId, SaveStaffProfileRequest request);
+
+    Task<StaffCertificateDto> AddCertificateAsync(CurrentUser user, int accountId, SaveCertificateRequest request);
+
+    Task<StaffCertificateDto> UpdateCertificateAsync(int id, SaveCertificateRequest request);
+
+    Task DeleteCertificateAsync(int id);
+
+    /// <summary>Chứng chỉ còn ≤ 30 ngày hoặc đã hết hạn của nhân viên đang hoạt động.</summary>
+    Task<List<StaffCertificateDto>> ListExpiringAsync();
+
+    /// <summary>Gửi thông báo các mốc chưa báo (còn ≤ 30 ngày, đã hết hạn); mỗi mốc một lần. Job nền và Admin đều gọi được.</summary>
+    Task<CertificateAlertResultDto> SendExpiryAlertsAsync(CancellationToken cancellationToken = default);
+}
+
+/// <summary>UC-48 chấm công vào/ra ca, UC-126 hiệu suất nhân viên.</summary>
+public interface IAttendanceService
+{
+    /// <summary>Ca của tôi từ hôm qua tới 7 ngày tới (ca đêm hôm qua có thể còn đang làm).</summary>
+    Task<List<MyShiftDto>> MyShiftsAsync(CurrentUser user);
+
+    Task<MyShiftDto> CheckInAsync(CurrentUser user, int shiftAssignmentId);
+
+    Task<MyShiftDto> CheckOutAsync(CurrentUser user, int shiftAssignmentId);
+
+    Task<List<AttendanceRecordDto>> ListAsync(DateOnly? from, DateOnly? to, int? accountId);
+
+    Task<AttendanceRecordDto> EditAsync(CurrentUser admin, int shiftAssignmentId, EditAttendanceRequest request);
+
+    Task<StaffPerformanceReportDto> GetPerformanceAsync(DateOnly? from, DateOnly? to);
+
+    Task<ExportFile> ExportPerformanceAsync(DateOnly? from, DateOnly? to);
+}
+
+/// <summary>UC-127: trang chủ cá nhân (việc hôm nay, ca kế tiếp, bàn giao và tin nhắn chưa đọc, chứng chỉ sắp hết hạn).</summary>
+public interface IStaffHomeService
+{
+    Task<StaffHomeDto> GetAsync(CurrentUser user);
+
+    /// <summary>Việc của tôi hôm nay (dùng cho tool AI my_tasks_today).</summary>
+    Task<List<HomeTaskDto>> TasksTodayAsync(CurrentUser user);
+}
