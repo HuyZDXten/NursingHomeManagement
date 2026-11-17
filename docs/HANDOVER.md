@@ -266,6 +266,8 @@ Webhook cần URL công khai (ngrok hoặc VS Dev Tunnels → `https://<tunnel>/
 
 ## 7. Kiểm thử
 
+Demo trước hội đồng: xem [DEMO.md](DEMO.md) (`.scriptsdemo.ps1` khởi động API + FE + PayOS giả/thật).
+
 | Loại | Lệnh | Ghi chú |
 | --- | --- | --- |
 | Unit | `dotnet test BE/NursingHome.sln` | Hơn 240 test: quy tắc nghiệp vụ, chữ ký PayOS, BCrypt, OTP, giờ VN, ngưỡng, AI tool, cấu hình, thông báo, tin tức... |

@@ -38,6 +38,8 @@
 
 ## Kịch bản demo 10 phút
 
+> Hướng dẫn chi tiết (bấm gì, thấy gì), cách khởi động bằng `.scriptsdemo.ps1`, luồng PayOS giả và PayOS thật: [docs/DEMO.md](../DEMO.md).
+
 | Phút | Người trình bày | Tài khoản | Thao tác |
 | --- | --- | --- | --- |
 | 0–1 | Viên | Khách | Trang chủ → hỏi chatbot "giá gói tiêu chuẩn?", "còn giường không?" → đặt tham quan |
