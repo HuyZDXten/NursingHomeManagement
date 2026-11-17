@@ -52,13 +52,22 @@ Dùng `demo.ps1 -PayOs Fake` khi cần PayOS giả: user-secrets chứa khóa th
 | Phút | Vai (trình duyệt) | Làm gì | Điểm cần nói |
 | --- | --- | --- | --- |
 | 0–1 | Khách (Edge) | Trang chủ → hỏi chatbot "giá gói tiêu chuẩn?", "còn giường không?" → **Tin tức** → **Đặt lịch tham quan** (ngày mai, buổi sáng, 2 khách) | Chatbot lấy giá và số giường trực tiếp từ dữ liệu. Giới hạn số khách mỗi buổi. |
-| 1–2 | `receptionist` (Chrome) | Chuông báo "Lịch tham quan mới" → **Tiếp nhận & tham quan** → tab *Lịch tham quan*: **Xác nhận** → tab *Yêu cầu tư vấn*: **Nhập viện** (chọn giường, gói) → vào hồ sơ cư dân, tab **Tài khoản gia đình**: tạo mã mời | Thông báo realtime. Giường đã có người thì bị từ chối. Mã mời chỉ hiện một lần, DB chỉ lưu bản băm. |
+| 1–2 | `receptionist` (Chrome) | Chuông báo "Lịch tham quan mới" → **Tiếp nhận & tham quan** → tab *Lịch tham quan*: **Xác nhận**. Rồi lấy yêu cầu có sẵn **Huỳnh Quốc Bảo** (đã tham quan, quan tâm Gói Cao cấp) ở tab *Yêu cầu tư vấn* → **Nhập viện** (tạo hồ sơ cư dân) → trong hồ sơ cư dân: tab **Giường** → **Phân giường**; tab **Gói & hóa đơn** → **Đăng ký gói** (xem mục 3a); tab **Tài khoản gia đình** → tạo mã mời | Thông báo realtime. Giường đã có người thì bị từ chối. Mã mời chỉ hiện một lần, DB chỉ lưu bản băm. Lịch tham quan mới đặt chỉ "Hoàn thành" được từ ngày tham quan, nên dùng yêu cầu có sẵn để đi tiếp tới nhập viện. |
 | 2–3 | `admin` | **Ca trực**: tab *Lịch ca tuần* xếp ca, tab *Phân công phụ trách*. Mở **Nhân sự & chấm công**: hồ sơ, chứng chỉ sắp hết hạn | Cảnh báo chứng chỉ tự động, mỗi mốc báo một lần. |
 | 3–5 | `nurse`, `caregiver` | Cư dân → tab **Kế hoạch chăm sóc** → **Sinh việc ngay** → đăng nhập `caregiver` cập nhật việc, ghi bữa ăn, tab **Sự cố** → **Báo sự cố** mức Cao → `nurse` nhận thông báo, đóng sự cố có báo gia đình | Phân quyền theo cư dân: caregiver chỉ thấy cư dân mình phụ trách. |
 | 5–6 | `doctor`, `caregiver` | Tab **Thuốc**: nhập thuốc trùng dị ứng đã ghi → cảnh báo → `caregiver` **Phát thuốc** | Cảnh báo dị ứng; hệ thống không kê đơn hay chẩn đoán thay người. |
 | 6–8 | `accountant`, `family2` (Edge) | **Luồng thanh toán PayOS, mục 4** | Hai lớp xác nhận, không ghi tiền hai lần. |
 | 8–9 | `family` (Edge) | Nhật ký AI đã duyệt, hỏi trợ lý "Hôm nay bố tôi thế nào?", đặt lịch thăm, nhắn tin cho điều dưỡng | AI chỉ đọc dữ liệu được chia sẻ cho gia đình, từ chối tư vấn thuốc. |
 | 9–10 | `admin` | **Báo cáo** (doanh thu, công nợ, sự cố, hiệu suất) → **Xuất Excel**. **Nhật ký thao tác** thấy những gì vừa làm. Tóm tắt kiến trúc (6 lớp, database-first, phân quyền 2 lớp) | Nhật ký không ghi mật khẩu/CCCD và không sửa/xóa được. |
+
+### 3a. Gói dịch vụ: đăng ký thế nào, vì sao cư dân mẫu đã có sẵn gói
+
+- Gói gắn với **cư dân**, không gắn với tài khoản gia đình. Tài khoản `family` chỉ là người thân liên kết với cư dân và xem hóa đơn của cư dân; gia đình không chọn gói, chỉ thấy tên gói trong dòng phí của hóa đơn.
+- Các cư dân mẫu **có sẵn gói do dữ liệu demo**: NH-0001 Tiêu chuẩn 12 triệu, NH-0002 Cơ bản 8 triệu, NH-0003 Cao cấp 18 triệu, NH-0004 Tiêu chuẩn, NH-0005 Cơ bản (đã ngừng). Cư dân tạo mới **chưa có gói nào**: nhập viện chỉ tạo hồ sơ, giường và gói là hai bước làm tiếp.
+- **Đăng ký:** Admin, Lễ tân hoặc Kế toán → **Cư dân** → mở hồ sơ → tab **Gói & hóa đơn** → **Đăng ký gói** → chọn gói (hiện kèm giá), ngày bắt đầu, ngày kết thúc (bỏ trống nếu chưa biết) → Lưu.
+- **Quy tắc:** chỉ cư dân đang lưu trú và gói đang hoạt động. Mỗi thời điểm chỉ một gói: đổi gói thì bấm **Kết thúc** gói cũ rồi đăng ký gói mới. Giá được **chốt lúc đăng ký**, Admin đổi giá gói sau đó không ảnh hưởng cư dân đã đăng ký.
+- **Hóa đơn tháng** tính theo số ngày gói có hiệu lực trong kỳ (cộng phụ thu loại phòng và dịch vụ phát sinh). Cư dân chưa có gói thì không tạo được hóa đơn ("Không có đăng ký gói và ngày lưu trú phù hợp trong kỳ này") và hóa đơn hàng loạt bỏ qua họ.
+- Danh mục gói (tên, giá, mô tả, ẩn/hiện) do Admin sửa ở menu **Gói dịch vụ**.
 
 **Luồng bổ sung** (nếu còn thời gian hoặc hội đồng hỏi): `nurse` → **Trang chủ của tôi** (Vào ca, việc hôm nay, trợ lý công việc) · `admin` → **Thông báo hàng loạt** (gửi cho vai trò Điều dưỡng, chuông của nurse nháy) · **Cấu hình & danh mục** (đổi sức chứa tham quan có hiệu lực ngay) · **Tin tức & album** (viết bài, đăng, xem ở `/tin-tuc`) · Hồ sơ cá nhân → kênh nhận email · **Ca trực → Bàn giao ca → Viết tóm tắt bằng AI** · đăng nhập Google.
 
