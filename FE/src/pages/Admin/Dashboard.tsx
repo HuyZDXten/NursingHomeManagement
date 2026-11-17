@@ -32,8 +32,8 @@ export default function Dashboard() {
           <Col xs={12} md={6} key={t.title}><Card><Statistic title={t.title} value={t.value} suffix={t.suffix} /></Card></Col>
         ))}
         <Col xs={24} md={8}><Card><Statistic title="Đã phát hành" value={money(data?.billed)} /></Card></Col>
-        <Col xs={24} md={8}><Card><Statistic title="Thực thu" value={money(data?.collected)} valueStyle={{ color: '#2f7d6d' }} /></Card></Col>
-        <Col xs={24} md={8}><Card><Statistic title="Công nợ" value={money(data?.debt)} valueStyle={{ color: '#d46b08' }} /></Card></Col>
+        <Col xs={24} md={8}><Card><Statistic title="Thực thu" value={money(data?.collected)} styles={{ content: { color: '#2f7d6d' } }} /></Card></Col>
+        <Col xs={24} md={8}><Card><Statistic title="Công nợ" value={money(data?.debt)} styles={{ content: { color: '#d46b08' } }} /></Card></Col>
         <Col span={24}>
           <Card>
             <Typography.Text strong>Tiền thực thu 6 tháng gần nhất (VND)</Typography.Text>

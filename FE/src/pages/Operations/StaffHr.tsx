@@ -70,7 +70,7 @@ function ProfileDrawer({ accountId, onClose, onChanged }: { accountId: number | 
   };
 
   return (
-    <Drawer open={accountId !== null} onClose={onClose} width={720} title={profile ? `${profile.fullName} — ${ROLE_LABEL[profile.role as keyof typeof ROLE_LABEL] ?? profile.role}` : 'Hồ sơ nhân viên'} destroyOnHidden loading={!profile}>
+    <Drawer open={accountId !== null} onClose={onClose} size={720} title={profile ? `${profile.fullName} — ${ROLE_LABEL[profile.role as keyof typeof ROLE_LABEL] ?? profile.role}` : 'Hồ sơ nhân viên'} destroyOnHidden loading={!profile}>
       {profile && (
         <>
           <Descriptions size="small" column={2} style={{ marginBottom: 16 }}>

@@ -105,8 +105,8 @@ function RevenueTab() {
         <ExportButton onExport={() => reportsApi.exportRevenue(year)} />
       </Space>
       <Row gutter={[16, 16]}>
-        <Col xs={24} md={8}><Card><Statistic title={`Thực thu năm ${year}`} value={money(data?.totalCollected)} valueStyle={{ color: '#2f7d6d' }} /></Card></Col>
-        <Col xs={24} md={8}><Card><Statistic title="Công nợ hiện tại" value={money(data?.totalDebt)} valueStyle={{ color: '#d46b08' }} /></Card></Col>
+        <Col xs={24} md={8}><Card><Statistic title={`Thực thu năm ${year}`} value={money(data?.totalCollected)} styles={{ content: { color: '#2f7d6d' } }} /></Card></Col>
+        <Col xs={24} md={8}><Card><Statistic title="Công nợ hiện tại" value={money(data?.totalDebt)} styles={{ content: { color: '#d46b08' } }} /></Card></Col>
         <Col xs={24} md={8}><Card><Statistic title="Hóa đơn còn nợ" value={data?.debts.length ?? 0} /></Card></Col>
         <Col span={24}>
           <Card title="Thực thu theo tháng (VND)" extra={<ViewToggle value={view} onChange={setView} />}>
@@ -238,7 +238,7 @@ function AdherenceTab() {
           disabledDate={(d) => d.isAfter(dayjs(todayVn()), 'day')} />
         <ExportButton onExport={() => reportsApi.exportAdherence(from, to)} />
       </Space>
-      <Alert type="info" showIcon style={{ marginBottom: 16 }} message="Dữ liệu thuốc trong bản demo là mô phỏng. Báo cáo chỉ để theo dõi việc ghi nhận liều, không dùng để chẩn đoán." />
+      <Alert type="info" showIcon style={{ marginBottom: 16 }} title="Dữ liệu thuốc trong bản demo là mô phỏng. Báo cáo chỉ để theo dõi việc ghi nhận liều, không dùng để chẩn đoán." />
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
           <Card><Statistic title="Tỉ lệ đã dùng (mọi cư dân)" value={data?.overallTakenRate ?? '—'} suffix={data?.overallTakenRate != null ? '%' : undefined} /></Card>
@@ -321,7 +321,7 @@ function IncidentsTab() {
       </Space>
       <Row gutter={[16, 16]}>
         <Col xs={12} md={6}><Card><Statistic title="Tổng sự cố" value={data?.total ?? '—'} /></Card></Col>
-        <Col xs={12} md={6}><Card><Statistic title="Mức nặng" value={data?.totalBySeverity?.High ?? '—'} valueStyle={{ color: data?.totalBySeverity?.High ? STATUS_CRITICAL : undefined }} /></Card></Col>
+        <Col xs={12} md={6}><Card><Statistic title="Mức nặng" value={data?.totalBySeverity?.High ?? '—'} styles={{ content: { color: data?.totalBySeverity?.High ? STATUS_CRITICAL : undefined } }} /></Card></Col>
         <Col xs={12} md={6}><Card><Statistic title="Đã đóng" value={data?.closed ?? '—'} /></Card></Col>
         <Col xs={12} md={6}><Card><Statistic title="Tỉ lệ đã đóng" value={data?.closedRate ?? '—'} suffix={data?.closedRate != null ? '%' : undefined} /></Card></Col>
         <Col span={24}>

@@ -190,7 +190,7 @@ export function IncidentDetailDrawer({
         open={incident !== null}
         title={incident ? `Sự cố #${incident.id} · ${incident.residentName}` : 'Chi tiết sự cố'}
         onClose={onClose}
-        width={520}
+        size={520}
         extra={
           canHandle && (
             <Button type="primary" onClick={openUpdate}>

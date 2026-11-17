@@ -49,7 +49,7 @@ export default function News() {
                   description={
                     <>
                       <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ marginBottom: 8 }}>{post.summary}</Typography.Paragraph>
-                      <Tag color={post.kind === 'Album' ? 'purple' : 'blue'}>{post.kind === 'Album' ? `Album · ${post.imageCount} ảnh` : 'Tin tức'}</Tag>
+                      <Tag color={post.kind === 'Album' ? 'purple' : 'blue'} style={{ marginInlineEnd: 8 }}>{post.kind === 'Album' ? `Album · ${post.imageCount} ảnh` : 'Tin tức'}</Tag>
                       <small>{dateTime(post.publishedAt).slice(0, 10)}</small>
                     </>
                   } />

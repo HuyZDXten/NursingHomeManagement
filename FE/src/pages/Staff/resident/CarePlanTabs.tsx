@@ -172,7 +172,7 @@ export function CarePlansTab({ residentId, active }: { residentId: number; activ
       {plans.length === 0 ? (
         <Typography.Text type="secondary">Chưa có kế hoạch chăm sóc nào.</Typography.Text>
       ) : (
-        <Space direction="vertical" style={{ width: '100%' }} size={12}>
+        <Space orientation="vertical" style={{ width: '100%' }} size={12}>
           {plans.map((p) => (
             <Card
               key={p.id}

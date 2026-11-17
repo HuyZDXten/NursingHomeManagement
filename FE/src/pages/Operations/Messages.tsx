@@ -85,7 +85,7 @@ export default function Messages() {
   const selected = conversations.find((c) => c.id === selectedId);
   const withoutConversation = relatives.filter((r) => !conversations.some((c) => c.residentId === r.residentId));
 
-  if (error) return <><PageTitle title="Tin nhắn" /><Alert type="error" showIcon message={error} /></>;
+  if (error) return <><PageTitle title="Tin nhắn" /><Alert type="error" showIcon title={error} /></>;
 
   return (
     <>

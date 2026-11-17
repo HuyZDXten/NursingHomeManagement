@@ -82,6 +82,7 @@ export default function Feedbacks() {
       </Space>
 
       <Table
+        scroll={{ x: 'max-content' }}
         rowKey="id"
         loading={loading}
         dataSource={rows}
@@ -111,7 +112,7 @@ export default function Feedbacks() {
         open={selected !== null}
         title={selected ? `Phản hồi #${selected.id}: ${selected.subject}` : 'Chi tiết phản hồi'}
         onClose={() => setSelected(null)}
-        width={520}
+        size={520}
       >
         {selected && (
           <>

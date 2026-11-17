@@ -58,7 +58,7 @@ export default function StaffHome() {
         <Col xs={24} lg={12}>
           <Card title={<><ClockCircleOutlined /> Chấm công</>} style={{ height: '100%' }}>
             {current ? (
-              <Space direction="vertical" style={{ width: '100%' }}>
+              <Space orientation="vertical" style={{ width: '100%' }}>
                 <Typography.Text strong>{shiftText(current)}</Typography.Text>
                 <Space wrap>
                   <StatusTag kind="myShift" value={current.status} />
@@ -79,7 +79,7 @@ export default function StaffHome() {
             </div>
           </Card>
         </Col>
-        <Col xs={12} sm={6} lg={3}><Card><Statistic title="Việc còn lại" value={home.tasksOpen} valueStyle={{ color: home.tasksOverdue ? '#d03b3b' : undefined }} suffix={home.tasksOverdue ? `(${home.tasksOverdue} quá hạn)` : undefined} /></Card></Col>
+        <Col xs={12} sm={6} lg={3}><Card><Statistic title="Việc còn lại" value={home.tasksOpen} styles={{ content: { color: home.tasksOverdue ? '#d03b3b' : undefined } }} />{home.tasksOverdue > 0 && <Typography.Text type="danger">{home.tasksOverdue} quá hạn</Typography.Text>}</Card></Col>
         <Col xs={12} sm={6} lg={3}><Card><Statistic title="Đã xong" value={home.tasksDone} /></Card></Col>
         <Col xs={12} sm={6} lg={3}>
           <Card><Statistic title={<Link to="/staff/shifts?tab=handover">Bàn giao chưa đọc</Link>} value={home.unreadHandovers} /></Card>

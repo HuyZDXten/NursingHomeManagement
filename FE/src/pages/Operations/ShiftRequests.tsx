@@ -325,7 +325,7 @@ export function HandoverTab({ shifts, onInboxChange }: { shifts: Shift[]; onInbo
   };
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
       {inbox.length > 0 && (
         <Card size="small" title={<Badge status="warning" text={`Bàn giao chờ bạn xác nhận (${inbox.length})`} />}>
           <List dataSource={inbox} renderItem={(h) => <HandoverCard handover={h} onAcknowledge={acknowledge} />} />
@@ -478,7 +478,7 @@ function HandoverWriter({ shifts, onSaved }: { shifts: Shift[]; onSaved: (saved:
         <Button icon={<BulbOutlined />} loading={loading} onClick={suggest}>Lấy gợi ý</Button>
         <Button icon={<RobotOutlined />} loading={aiLoading} disabled={!shiftId} onClick={writeWithAi}>Viết tóm tắt bằng AI</Button>
       </Space>
-      {aiNote && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={aiNote} />}
+      {aiNote && <Alert type="warning" showIcon style={{ marginBottom: 12 }} title={aiNote} />}
       {draft && draft.items.length > 0 && (
         <>
           <Typography.Text type="secondary">

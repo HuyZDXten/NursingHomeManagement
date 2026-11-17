@@ -89,12 +89,13 @@ export default function FamilyFeedback() {
               size="small"
               dataSource={rows}
               pagination={{ pageSize: 8 }}
+              scroll={{ x: 520 }}
               columns={[
                 { title: 'Ngày gửi', dataIndex: 'createdAt', render: dateTime, width: 145 },
                 {
                   title: 'Chủ đề',
                   render: (_, f) => (
-                    <Space direction="vertical" size={2}>
+                    <Space orientation="vertical" size={2}>
                       <b>{f.subject}</b>
                       <Space size={4}>
                         <StatusTag kind="feedbackCategory" value={f.category} />

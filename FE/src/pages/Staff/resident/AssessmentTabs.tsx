@@ -87,7 +87,7 @@ export function AssessmentsTab({ residentId, active }: { residentId: number; act
         type="info"
         showIcon
         style={{ marginBottom: 12 }}
-        message="Công cụ sàng lọc, không thay thế chẩn đoán."
+        title="Công cụ sàng lọc, không thay thế chẩn đoán."
       />
       {canAssess && (
         <Button type="primary" icon={<PlusOutlined />} style={{ marginBottom: 12 }} onClick={openModal}>
@@ -121,7 +121,7 @@ export function AssessmentsTab({ residentId, active }: { residentId: number; act
         okText="Lưu kết quả"
         destroyOnHidden
       >
-        <Alert type="warning" showIcon style={{ marginBottom: 12 }} message="Công cụ sàng lọc, không thay thế chẩn đoán." />
+        <Alert type="warning" showIcon style={{ marginBottom: 12 }} title="Công cụ sàng lọc, không thay thế chẩn đoán." />
         <Form form={form} layout="vertical">
           <Form.Item label="Chọn thang đánh giá">
             <Select
@@ -142,7 +142,7 @@ export function AssessmentsTab({ residentId, active }: { residentId: number; act
               rules={[{ required: true, message: 'Chọn một mức phù hợp' }]}
             >
               <Radio.Group>
-                <Space direction="vertical">
+                <Space orientation="vertical">
                   {q.options.map((o) => (
                     <Radio key={o.key} value={o.key}>
                       {o.label} ({o.points}đ)
