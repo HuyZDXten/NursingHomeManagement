@@ -38,6 +38,7 @@ export function useNotifications(enabled: boolean) {
       setUnread((count) => count + 1);
       notification.info({ message: item.title, description: item.body, placement: 'bottomRight' });
     });
+    connection.onreconnected(() => void reload()); // thông báo đến lúc mất kết nối vẫn có trong DB
     connection.start().catch(() => undefined);
     return () => {
       void connection.stop();

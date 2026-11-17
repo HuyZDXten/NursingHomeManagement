@@ -11,14 +11,21 @@ import { useChat } from '../../hooks/useChat';
 import { dateTime, timeOf } from '../../utils/format';
 import { ROLE_LABEL } from '../../utils/status';
 import type { FamilyResident, Role } from '../../types';
-import type { ChatMessage, Conversation } from '../../types/operations';
+import type { ChatMessage, ChatRead, ChatTyping, Conversation } from '../../types/operations';
 
 const PAGE = 30;
 const MAX_LENGTH = 2000;
+/** Chỉ báo "đang nhập" tự tắt sau chừng này nếu không có tín hiệu mới (người kia ngừng gõ hoặc mất mạng). */
+const TYPING_VISIBLE_MS = 4000;
+
+/** Gộp theo mã tin (bản mới thắng, để cập nhật "Đã xem"), cũ → mới. */
+const mergeMessages = (current: ChatMessage[], fetched: ChatMessage[]) =>
+  [...new Map([...current, ...fetched].map((m) => [m.id, m])).values()].sort((a, b) => a.id - b.id);
 
 /**
  * UC-106: tin nhắn gia đình – nhân viên, dùng chung cho /staff/messages và /family/messages.
  * Cột trái: cuộc trò chuyện (mới nhất trước, số chưa đọc). Cột phải: tin nhắn, Enter để gửi, Shift+Enter xuống dòng.
+ * Realtime qua SignalR: tin mới, "Đã xem", "đang nhập…"; mất kết nối rồi nối lại thì tự tải lại phần đã lỡ.
  */
 export default function Messages() {
   const { message } = App.useApp();
@@ -61,10 +68,30 @@ export default function Messages() {
     }
   };
 
-  // Tin realtime: cập nhật danh sách bên trái; khung đang mở tự xử lý trong ConversationPane.
+  // Sự kiện realtime: cập nhật danh sách bên trái; khung đang mở tự xử lý trong ConversationPane.
   const [incoming, setIncoming] = useState<ChatMessage>();
-  useChat(useCallback((item: ChatMessage) => {
+  const [readEvent, setReadEvent] = useState<ChatRead>();
+  const [resync, setResync] = useState(0);
+  const [typingBy, setTypingBy] = useState<Record<number, string>>({});
+  const typingTimers = useRef<Record<number, number>>({});
+
+  const clearTyping = useCallback((conversationId: number) => {
+    window.clearTimeout(typingTimers.current[conversationId]);
+    delete typingTimers.current[conversationId];
+    setTypingBy((current) => {
+      if (!(conversationId in current)) return current;
+      const { [conversationId]: _removed, ...rest } = current;
+      return rest;
+    });
+  }, []);
+  useEffect(() => {
+    const timers = typingTimers.current;
+    return () => Object.values(timers).forEach((timer) => window.clearTimeout(timer));
+  }, []);
+
+  const onMessage = useCallback((item: ChatMessage) => {
     setIncoming(item);
+    if (item.senderId !== user?.accountId) clearTyping(item.conversationId); // tin đã tới thì thôi "đang nhập"
     setConversations((current) => {
       const found = current.find((c) => c.id === item.conversationId);
       if (!found) {
@@ -80,7 +107,28 @@ export default function Messages() {
       };
       return [updated, ...current.filter((c) => c.id !== item.conversationId)];
     });
-  }, [user?.accountId, selectedId, loadConversations]));
+  }, [user?.accountId, selectedId, loadConversations, clearTyping]);
+
+  const { notifyTyping } = useChat({
+    onMessage,
+    onRead: (event) => {
+      setReadEvent(event);
+      // Chính mình vừa đọc (ở tab khác): xóa số chưa đọc ở tab này.
+      if (event.readerId === user?.accountId) {
+        setConversations((current) => current.map((c) => (c.id === event.conversationId ? { ...c, unread: 0 } : c)));
+      }
+    },
+    onTyping: (event: ChatTyping) => {
+      if (event.senderId === user?.accountId) return;
+      setTypingBy((current) => ({ ...current, [event.conversationId]: event.senderName }));
+      window.clearTimeout(typingTimers.current[event.conversationId]);
+      typingTimers.current[event.conversationId] = window.setTimeout(() => clearTyping(event.conversationId), TYPING_VISIBLE_MS);
+    },
+    onReconnected: () => {
+      void loadConversations();
+      setResync((n) => n + 1);
+    },
+  });
 
   const selected = conversations.find((c) => c.id === selectedId);
   const withoutConversation = relatives.filter((r) => !conversations.some((c) => c.residentId === r.residentId));
@@ -115,7 +163,9 @@ export default function Messages() {
                       <>
                         {!isFamily && <div><Typography.Text type="secondary">Gia đình: {c.familyName}</Typography.Text></div>}
                         <Typography.Text type="secondary" ellipsis style={{ maxWidth: '100%' }}>
-                          {c.lastMessage ?? 'Chưa có tin nhắn'}{c.lastMessageAt ? ` · ${timeOf(c.lastMessageAt)}` : ''}
+                          {typingBy[c.id]
+                            ? <i>{typingBy[c.id]} đang nhập…</i>
+                            : <>{c.lastMessage ?? 'Chưa có tin nhắn'}{c.lastMessageAt ? ` · ${timeOf(c.lastMessageAt)}` : ''}</>}
                         </Typography.Text>
                       </>
                     )}
@@ -127,7 +177,8 @@ export default function Messages() {
         </Col>
         <Col xs={24} md={15} lg={16}>
           {selected
-            ? <ConversationPane key={selected.id} conversation={selected} incoming={incoming}
+            ? <ConversationPane key={selected.id} conversation={selected} incoming={incoming} readEvent={readEvent} resync={resync}
+                typing={typingBy[selected.id]} onTyping={() => notifyTyping(selected.id)}
                 onRead={() => setConversations((current) => current.map((c) => (c.id === selected.id ? { ...c, unread: 0 } : c)))} />
             : <Card><Empty description={isFamily ? 'Chọn người thân để nhắn tin với cơ sở' : 'Chọn một cuộc trò chuyện'} /></Card>}
         </Col>
@@ -136,7 +187,19 @@ export default function Messages() {
   );
 }
 
-function ConversationPane({ conversation, incoming, onRead }: { conversation: Conversation; incoming?: ChatMessage; onRead: () => void }) {
+interface PaneProps {
+  conversation: Conversation;
+  incoming?: ChatMessage;
+  readEvent?: ChatRead;
+  /** Tăng mỗi lần SignalR nối lại: tải lại các tin có thể đã lỡ. */
+  resync: number;
+  /** Tên người đang nhập (bên kia), nếu có. */
+  typing?: string;
+  onTyping: () => void;
+  onRead: () => void;
+}
+
+function ConversationPane({ conversation, incoming, readEvent, resync, typing, onTyping, onRead }: PaneProps) {
   const { message } = App.useApp();
   const { user } = useAuth();
   const [items, setItems] = useState<ChatMessage[]>([]);
@@ -168,9 +231,24 @@ function ConversationPane({ conversation, incoming, onRead }: { conversation: Co
     if (incoming.senderId !== user?.accountId) markRead();
   }, [incoming, conversation.id, user?.accountId, markRead]);
 
+  // Bên kia vừa đọc: các tin của MÌNH (cùng phía với người gửi) chuyển sang "Đã xem" ngay, không cần tải lại.
+  useEffect(() => {
+    if (!readEvent || readEvent.conversationId !== conversation.id || readEvent.readerId === user?.accountId) return;
+    setItems((current) => current.map((m) => (m.fromFamily !== readEvent.readerIsFamily && !m.readAt ? { ...m, readAt: readEvent.readAt } : m)));
+  }, [readEvent, conversation.id, user?.accountId]);
+
+  // Vừa nối lại SignalR: lấy lại các tin mới nhất (có thể đã lỡ trong lúc mất kết nối) và gộp vào.
+  useEffect(() => {
+    if (resync === 0) return;
+    chatApi.messages(conversation.id).then((page) => {
+      setItems((current) => mergeMessages(current, page));
+      markRead();
+    }).catch(() => undefined);
+  }, [resync, conversation.id, markRead]);
+
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: 'end' });
-  }, [items.length]);
+  }, [items.length, typing]);
 
   const loadOlder = async () => {
     try {
@@ -224,12 +302,16 @@ function ConversationPane({ conversation, incoming, onRead }: { conversation: Co
             </div>
           );
         })}
+        {typing && <div style={{ fontSize: 12, fontStyle: 'italic', opacity: 0.7, margin: '0 4px 4px' }}>{typing} đang nhập…</div>}
         <div ref={bottom} />
       </div>
       <Space.Compact style={{ width: '100%', marginTop: 8 }}>
         <Input.TextArea value={draft} maxLength={MAX_LENGTH} autoSize={{ minRows: 1, maxRows: 5 }}
           placeholder="Nhập tin nhắn (Enter để gửi, Shift+Enter xuống dòng)"
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            if (e.target.value.trim()) onTyping();
+          }}
           onPressEnter={(e) => { if (!e.shiftKey) { e.preventDefault(); void send(); } }} />
         <Button type="primary" icon={<SendOutlined />} loading={sending} onClick={send} disabled={!draft.trim()}>Gửi</Button>
       </Space.Compact>

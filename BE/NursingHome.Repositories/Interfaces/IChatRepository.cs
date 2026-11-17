@@ -18,5 +18,5 @@ public interface IChatRepository
 
     Task<ChatMessage> AddMessageAsync(ChatMessage message);
 
-    Task<int> MarkReadAsync(int conversationId, bool readerIsFamily, DateTime now);
+    Task<ReadResult> MarkReadAsync(int conversationId, bool readerIsFamily, DateTime now);
 }

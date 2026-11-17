@@ -11,7 +11,15 @@ namespace NursingHome.API.Hubs;
 public sealed class SignalRChatPublisher(IHubContext<NotificationHub> hub) : IChatPublisher
 {
     public const string EventName = "chat";
+    public const string ReadEventName = "chat-read";
+    public const string TypingEventName = "chat-typing";
 
     public Task PublishMessageAsync(IReadOnlyCollection<int> accountIds, ChatMessageDto message) =>
         hub.Clients.Users(accountIds.Select(id => id.ToString())).SendAsync(EventName, message);
+
+    public Task PublishReadAsync(IReadOnlyCollection<int> accountIds, ChatReadDto read) =>
+        hub.Clients.Users(accountIds.Select(id => id.ToString())).SendAsync(ReadEventName, read);
+
+    public Task PublishTypingAsync(IReadOnlyCollection<int> accountIds, ChatTypingDto typing) =>
+        hub.Clients.Users(accountIds.Select(id => id.ToString())).SendAsync(TypingEventName, typing);
 }

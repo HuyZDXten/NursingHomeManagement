@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Memory;
 using NursingHome.BusinessObjects.Entities;
 using NursingHome.BusinessObjects.Enums;
 using NursingHome.BusinessObjects.Exceptions;
@@ -21,9 +22,13 @@ public class ChatService(
     IAccountRepository accounts,
     INotificationService notifications,
     IChatPublisher publisher,
+    IMemoryCache cache,
     FacilityClock clock) : IChatService
 {
     public const int MaxPageSize = 100;
+
+    /// <summary>Khoảng tối thiểu giữa hai sự kiện "đang nhập" của cùng một người trong cùng một cuộc trò chuyện (chống làm ngập kết nối).</summary>
+    public static readonly TimeSpan TypingThrottle = TimeSpan.FromMilliseconds(1500);
     private const string NotFoundMessage = "Không tìm thấy cuộc trò chuyện.";
 
     public async Task<List<ConversationDto>> ListAsync(CurrentUser user)
@@ -92,11 +97,54 @@ public class ChatService(
 
     public async Task<int> MarkReadAsync(CurrentUser user, int conversationId)
     {
-        await RequireAsync(user, conversationId);
-        return await chat.MarkReadAsync(conversationId, user.IsInRole(Roles.Family), clock.UtcNow);
+        var conversation = await RequireAsync(user, conversationId);
+        bool readerIsFamily = user.IsInRole(Roles.Family);
+        var now = clock.UtcNow;
+        var result = await chat.MarkReadAsync(conversationId, readerIsFamily, now);
+        if (result.Count > 0)
+        {
+            // Báo "Đã xem" cho những người đã gửi các tin vừa đọc, và cho chính người đọc (các tab khác của họ cập nhật số chưa đọc).
+            var audience = result.SenderIds.Append(user.AccountId).Distinct().ToList();
+            await publisher.PublishReadAsync(audience, new ChatReadDto
+            {
+                ConversationId = conversation.Id,
+                ReaderId = user.AccountId,
+                ReaderIsFamily = readerIsFamily,
+                ReadAt = now
+            });
+        }
+
+        return result.Count;
+    }
+
+    public async Task TypingAsync(CurrentUser user, int conversationId)
+    {
+        // Cùng quy tắc quyền như gửi tin; người ngoài cuộc trò chuyện nhận 404 như các thao tác khác.
+        var conversation = await RequireAsync(user, conversationId);
+        if (cache.TryGetValue(TypingKey(user.AccountId, conversationId), out _))
+        {
+            return;
+        }
+
+        cache.Set(TypingKey(user.AccountId, conversationId), true, TypingThrottle);
+        bool fromFamily = user.IsInRole(Roles.Family);
+        var recipients = fromFamily ? await StaffRecipientsAsync(conversation.ResidentId) : [conversation.FamilyAccountId];
+        recipients = recipients.Where(id => id != user.AccountId).ToList();
+        if (recipients.Count > 0)
+        {
+            await publisher.PublishTypingAsync(recipients, new ChatTypingDto
+            {
+                ConversationId = conversationId,
+                SenderId = user.AccountId,
+                SenderName = user.Name,
+                FromFamily = fromFamily
+            });
+        }
     }
 
     // ---------------- Quy tắc ----------------
+
+    private static string TypingKey(int accountId, int conversationId) => $"chat-typing:{accountId}:{conversationId}";
 
     /// <summary>Đoạn xem trước trong chuông thông báo (tối đa 100 ký tự).</summary>
     public static string Preview(string body) => body.Length <= 100 ? body : $"{body[..97]}...";

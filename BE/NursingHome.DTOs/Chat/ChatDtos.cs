@@ -49,3 +49,28 @@ public class SendMessageRequest
     [StringLength(2000, MinimumLength = 1, ErrorMessage = "Tin nhắn 1–2000 ký tự.")]
     public string Body { get; set; } = "";
 }
+
+/// <summary>Sự kiện realtime "chat-read": ai đó vừa đọc các tin của bên kia trong một cuộc trò chuyện.</summary>
+public class ChatReadDto
+{
+    public int ConversationId { get; set; }
+
+    public int ReaderId { get; set; }
+
+    /// <summary>true = gia đình vừa đọc (tức các tin của NHÂN VIÊN được đánh dấu đã xem); false = nhân viên vừa đọc.</summary>
+    public bool ReaderIsFamily { get; set; }
+
+    public DateTime ReadAt { get; set; }
+}
+
+/// <summary>Sự kiện realtime "chat-typing": người gửi đang soạn tin. Chỉ báo tạm thời, không lưu DB.</summary>
+public class ChatTypingDto
+{
+    public int ConversationId { get; set; }
+
+    public int SenderId { get; set; }
+
+    public string SenderName { get; set; } = "";
+
+    public bool FromFamily { get; set; }
+}

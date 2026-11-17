@@ -293,13 +293,21 @@ public interface IChatService
 
     Task<ChatMessageDto> SendAsync(CurrentUser user, int conversationId, SendMessageRequest request);
 
+    /// <summary>Đánh dấu đã đọc và báo realtime cho bên kia ("Đã xem"). Trả số tin vừa được đánh dấu.</summary>
     Task<int> MarkReadAsync(CurrentUser user, int conversationId);
+
+    /// <summary>Báo cho bên kia "đang nhập…". Không lưu DB; hạn chế tối đa 1 lần / 1,5 giây / người / cuộc trò chuyện.</summary>
+    Task TypingAsync(CurrentUser user, int conversationId);
 }
 
-/// <summary>Đẩy tin nhắn realtime (sự kiện "chat" trên hub /hubs/notifications). API cài bằng SignalR.</summary>
+/// <summary>Đẩy sự kiện chat realtime trên hub /hubs/notifications ("chat", "chat-read", "chat-typing"). API cài bằng SignalR.</summary>
 public interface IChatPublisher
 {
     Task PublishMessageAsync(IReadOnlyCollection<int> accountIds, ChatMessageDto message);
+
+    Task PublishReadAsync(IReadOnlyCollection<int> accountIds, ChatReadDto read);
+
+    Task PublishTypingAsync(IReadOnlyCollection<int> accountIds, ChatTypingDto typing);
 }
 
 // ======================= BL-V4: nhân sự =======================

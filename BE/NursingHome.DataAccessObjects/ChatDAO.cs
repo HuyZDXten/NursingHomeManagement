@@ -16,6 +16,9 @@ public sealed record ConversationSummary(
     DateTime? LastMessageAt,
     int Unread);
 
+/// <summary>Kết quả đánh dấu đã đọc: số tin vừa được đánh dấu và những người đã gửi các tin đó (để báo "Đã xem" đúng người).</summary>
+public sealed record ReadResult(int Count, IReadOnlyList<int> SenderIds);
+
 /// <summary>MODULE VẬN HÀNH (Viên) — S3-V6: chat gia đình – nhân viên (UC-106).</summary>
 public sealed class ChatDAO : GenericDAO<Conversation>
 {
@@ -117,12 +120,22 @@ public sealed class ChatDAO : GenericDAO<Conversation>
     }
 
     /// <summary>Đánh dấu đã đọc mọi tin của bên kia; trả số tin vừa đánh dấu.</summary>
-    public async Task<int> MarkReadAsync(int conversationId, bool readerIsFamily, DateTime now)
+    /// <summary>Người gửi lấy theo đúng các dòng vừa được đặt ReadAt = now (không lẫn tin đến sau lúc đánh dấu).</summary>
+    public async Task<ReadResult> MarkReadAsync(int conversationId, bool readerIsFamily, DateTime now)
     {
         await using var context = CreateContext();
-        return await context.ChatMessages
+        int count = await context.ChatMessages
             .Where(item => item.ConversationId == conversationId && item.FromFamily != readerIsFamily && item.ReadAt == null)
             .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.ReadAt, now));
+        if (count == 0)
+        {
+            return new ReadResult(0, []);
+        }
+
+        var senders = await context.ChatMessages.AsNoTracking()
+            .Where(item => item.ConversationId == conversationId && item.ReadAt == now)
+            .Select(item => item.SenderId).Distinct().ToListAsync();
+        return new ReadResult(count, senders);
     }
 
     private static async Task<Conversation?> FindAsync(int residentId, int familyAccountId)

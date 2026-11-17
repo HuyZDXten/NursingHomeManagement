@@ -22,5 +22,5 @@ public class ChatRepository : IChatRepository
 
     public Task<ChatMessage> AddMessageAsync(ChatMessage message) => Dao.AddMessageAsync(message);
 
-    public Task<int> MarkReadAsync(int conversationId, bool readerIsFamily, DateTime now) => Dao.MarkReadAsync(conversationId, readerIsFamily, now);
+    public Task<ReadResult> MarkReadAsync(int conversationId, bool readerIsFamily, DateTime now) => Dao.MarkReadAsync(conversationId, readerIsFamily, now);
 }

@@ -401,6 +401,23 @@ export interface ChatMessage {
   readAt?: string | null;
 }
 
+/** Sự kiện realtime "chat-read": ai đó vừa đọc các tin của bên kia. */
+export interface ChatRead {
+  conversationId: number;
+  readerId: number;
+  /** true = gia đình vừa đọc (tin của nhân viên thành "Đã xem"); false = nhân viên vừa đọc. */
+  readerIsFamily: boolean;
+  readAt: string;
+}
+
+/** Sự kiện realtime "chat-typing": bên kia đang soạn tin (chỉ báo tạm thời). */
+export interface ChatTyping {
+  conversationId: number;
+  senderId: number;
+  senderName: string;
+  fromFamily: boolean;
+}
+
 // ---------------- S4-V1 AI: chatbot công khai + tri thức ----------------
 
 export interface AiPublicConfig {
