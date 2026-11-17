@@ -20,7 +20,7 @@ export function homePath(role: Role): string {
       return '/family';
     case 'Caregiver':
     case 'Nurse':
-      return '/staff/care-tasks';
+      return '/staff/home'; // BL-V4: trang chủ cá nhân (chấm công, việc hôm nay, trợ lý)
     case 'Doctor':
       return '/staff/residents';
     default:
