@@ -1,0 +1,9 @@
+{
+  "name": "nursinghome-browser-qa",
+  "private": true,
+  "type": "module",
+  "description": "QA giao diện bằng trình duyệt thật (không thuộc build chính)",
+  "dependencies": {
+    "playwright-core": "1.49.1"
+  }
+}

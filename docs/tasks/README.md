@@ -47,7 +47,7 @@ Task S3-V1 → S4-V2 của Viên đã merge thẳng vào `develop` ngày 16/11, 
 | [S4-V2](S4-V2-ai-ban-giao-ca-bao-cao.md) | AI tóm tắt bàn giao ca (+ hỏi đáp báo cáo) | AI-04, AI-12 | Viên | Should | 5 | 4 | S3-V4, S3-V3, S4-V1 | Đã merge 16/11, chưa review (tool sự cố xong 17/11) |
 | [S4-H1](S4-H1-ai-tro-ly-gia-dinh.md) | Trợ lý AI cho gia đình | AI-02 | Huy | Must | 5 | 4 | S4-V1 (phần 1) | Chờ review |
 | [S4-H2](S4-H2-ai-nhat-ky-sinh-hieu.md) | Nhật ký hằng ngày bằng AI + diễn giải sinh hiệu | AI-03, AI-06 | Huy | Should | 5 | 4 | S3-H4, S3-H5, S3-H6, S4-V1 | Chờ review |
-| [S5-V1](S5-V1-hoan-thien.md) | Hoàn thiện module Vận hành & Tài chính, slide, kịch bản demo | — | Viên | Must | 5 | 5 | tất cả | Chưa làm |
+| [S5-V1](S5-V1-hoan-thien.md) | Hoàn thiện module Vận hành & Tài chính, slide, kịch bản demo | — | Viên | Must | 5 | 5 | tất cả | Đang làm: phần kiểm tự động xong 17/11, còn QA bằng mắt, slide, tag v1.0 |
 | [S5-H1](S5-H1-hoan-thien.md) | Hoàn thiện module Chăm sóc & Gia đình, test, video dự phòng | — | Huy | Must | 5 | 5 | tất cả | Chờ review (đã xong seed/test/tài liệu, chờ QA trình duyệt & video) |
 | [BL-V1](BL-V1-tai-khoan-anh-google.md) | Backlog: ảnh đại diện & ảnh cư dân, đăng nhập Google, mã mời gia đình | UC-07, 24, 02, 08 | Viên | Could | 9 | 16/11 | — | Chờ review |
 | [BL-V2](BL-V2-ho-so-luu-tru.md) | Backlog: giấy tờ & hợp đồng, tạm vắng, tái nhập viện, tiền cọc | UC-29, 30, 31, 33, 99 | Viên | Could | 10 | 16/11 | BL-V1 | Chờ review |

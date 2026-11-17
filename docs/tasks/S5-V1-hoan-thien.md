@@ -51,8 +51,13 @@
 
 Dự phòng: nếu mạng/AI lỗi khi demo, đổi `Ai:Provider` sang `Fake` và chiếu video ghi sẵn của Huy (S5-H1).
 
+> **Đã chạy sớm 17/11 (kiểm tự động, trên `develop` sau khi gộp BL-V5):** `dotnet build` 0 cảnh báo; unit test 244/244; smoke test cô lập 492/492; `npm run build`/`lint`/`tsc` sạch; dựng DB từ script cũ rồi chạy script mới không `-Recreate` (64 → 71 bảng) và chạy lần hai đều không lỗi; AllInOne khớp 00–05; quét secret trong file đã commit không còn khóa thật. QA trình duyệt tự động ([scripts/browser-qa](../../scripts/browser-qa/README.md)): 48 route × 8 vai trò không lỗi, 13 luồng tương tác BL-V5 đều qua (gồm tải ảnh lên Cloudinary thật). **Chưa làm (cần người):** QA bằng mắt từng màn theo bảng trên, slide, tổng duyệt demo, tag `v1.0`, email SMTP thật, đăng nhập Google thật, thanh toán PayOS thật.
+
 ## Bảng lỗi QA
 
 | # | Màn | Role | Mô tả | Mức | Người sửa | Trạng thái |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | | | | | | |
+| 1 | Mọi màn | Mọi | Cảnh báo antd 6 deprecated (`Space direction`, `Drawer width`, `Alert message`, `Statistic valueStyle`) | Thấp | Viên | Đã sửa 17/11 (còn `List`, đợi antd bản sau) |
+| 2 | Tài khoản, Hóa đơn, Tri thức AI, Đánh giá định kỳ, Phản hồi (768 px); Lịch thăm, Phản hồi của gia đình (390 px) | Admin, Gia đình | Bảng tràn ngang làm cả trang cuộn ngang | Trung bình | Viên | Đã sửa 17/11 (`scroll` ngang cho bảng) |
+| 3 | Trang công khai | Khách | Header tràn ngang 138 px ở 390 px (thêm nút Tin tức) | Trung bình | Viên | Đã sửa 17/11 (header xuống dòng) |
+| 4 | Trang quản trị | Nhân viên | Chưa dùng được trên điện thoại (menu cạnh + bảng rộng): chấp nhận, ưu tiên desktop/tablet | Thấp | — | Không sửa |

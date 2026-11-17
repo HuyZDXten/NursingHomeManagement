@@ -1,5 +1,9 @@
 # Hướng dẫn cho Huy — bắt đầu Sprint 3
 
+> **Cập nhật 17/11/2026:** nhánh `develop` hiện đã gồm **toàn bộ** task của Viên (S3-V1 → S4-V2, UC-125, backlog BL-V1 → BL-V5) **và** toàn bộ task của Huy (S3-H1 → S5-H1, đã kiểm và merge vào `develop`). Smoke test 492/492, unit test 244/244, FE build/lint sạch, đã duyệt giao diện bằng trình duyệt thật cho 8 vai trò ([scripts/browser-qa](../../scripts/browser-qa/README.md)).
+> Phần còn lại của dự án là S5-V1/S5-H1: QA bằng mắt từng màn, slide, tổng duyệt demo, `git tag v1.0`. Phần hướng dẫn bên dưới là bản gốc ngày 16/11, giữ để tham khảo cách làm việc (đặt tên nhánh, quy trình review, mã của Viên Huy được dùng).
+> Việc nên làm ngay: `git fetch --prune; git checkout develop; git pull`, chạy `.Databasesetup-local-db.ps1` (không `-Recreate`) để có các bảng mới của BL-V5, rồi đọc [BL-V5](BL-V5-he-thong-truyen-thong.md) mục "Cho Huy".
+
 Cập nhật 16/11/2026 · Viên viết cho Huy
 
 Viên đã code xong 10 task chính (S3-V1 → S4-V2) và **đã merge cả vào `develop` ngày 16/11** (smoke test 213/213, unit test 87/87). Huy có 9 task, 48 điểm. Việc đầu tiên là **S3-H1 Sự cố**, vì báo cáo UC-125 và trợ lý AI của Viên đang chờ bảng `Incidents`.
