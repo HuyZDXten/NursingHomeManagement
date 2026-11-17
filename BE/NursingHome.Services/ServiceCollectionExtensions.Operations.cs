@@ -72,5 +72,13 @@ public static partial class ServiceCollectionExtensions
         // BL-V3 loại phòng & phụ thu (BillingService, RoomService dùng IRoomOpsRepository), giữ giường, báo hỏng.
         services.AddScoped<IRoomOpsRepository, RoomOpsRepository>();
         services.AddScoped<IRoomOpsService, RoomOpsService>();
+
+        // BL-V4 nhân sự: hồ sơ & chứng chỉ, chấm công & hiệu suất, trang chủ cá nhân, trợ lý nhân viên (AI-05).
+        services.Configure<StaffJobOptions>(configuration.GetSection(StaffJobOptions.SectionName));
+        services.AddScoped<IStaffHrRepository, StaffHrRepository>();
+        services.AddScoped<IStaffHrService, StaffHrService>();
+        services.AddScoped<IAttendanceService, AttendanceService>();
+        services.AddScoped<IStaffHomeService, StaffHomeService>();
+        services.AddScoped<IStaffAssistantService, StaffAssistantService>();
     }
 }

@@ -102,4 +102,24 @@ export const OPERATIONS_STATUS: Record<string, Record<string, StatusMeta>> = {
     Normal: { label: 'Bình thường', color: 'blue' },
     High: { label: 'Khẩn', color: 'red' },
   },
+  // BL-V4 nhân sự
+  certState: {
+    Valid: { label: 'Còn hạn', color: 'success' },
+    ExpiringSoon: { label: 'Sắp hết hạn', color: 'warning' },
+    Expired: { label: 'Đã hết hạn', color: 'error' },
+  },
+  attendance: {
+    OnTime: { label: 'Đúng giờ', color: 'success' },
+    Late: { label: 'Đi muộn', color: 'warning' },
+    InProgress: { label: 'Đang làm', color: 'processing' },
+    Absent: { label: 'Vắng', color: 'error' },
+    Upcoming: { label: 'Chưa tới', color: 'default' },
+  },
+  myShift: {
+    Upcoming: { label: 'Chưa tới giờ', color: 'default' },
+    Open: { label: 'Đang trong giờ vào ca', color: 'processing' },
+    InProgress: { label: 'Đang làm', color: 'processing' },
+    Done: { label: 'Đã xong ca', color: 'success' },
+    Missed: { label: 'Không chấm công', color: 'error' },
+  },
 };

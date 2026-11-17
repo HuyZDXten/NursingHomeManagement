@@ -8,6 +8,9 @@ public static class AiChannels
     public const string Public = "Public";
     public const string Family = "Family";
     public const string Staff = "Staff";
+
+    /// <summary>BL-V4 (AI-05): trợ lý nhân viên (việc hôm nay, ca kế tiếp, bàn giao, quy trình nội bộ). "Staff" là hỏi đáp báo cáo.</summary>
+    public const string Assistant = "Assistant";
 }
 
 public static class AiRoles

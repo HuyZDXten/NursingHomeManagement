@@ -1,6 +1,6 @@
 import { lazy } from 'react';
 import { Route } from 'react-router-dom';
-import { AppstoreAddOutlined, BarChartOutlined, BookOutlined, MessageOutlined, ScheduleOutlined, ShoppingCartOutlined, SolutionOutlined, ToolOutlined } from '@ant-design/icons';
+import { AppstoreAddOutlined, BarChartOutlined, BookOutlined, MessageOutlined, ScheduleOutlined, ShoppingCartOutlined, SolutionOutlined, TeamOutlined, ToolOutlined, UserOutlined } from '@ant-design/icons';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
 import { ADMIN_ONLY, CLINICAL_STAFF, FRONT_DESK, STAFF } from '../auth/roles';
 import type { MenuEntry } from '../layouts/menu';
@@ -44,6 +44,9 @@ const AiKnowledge = lazy(() => import('../pages/Operations/AiKnowledge'));
 const ActivateAccount = lazy(() => import('../pages/Operations/ActivateAccount'));
 // BL-V3 báo hỏng & sửa chữa, giữ giường, loại phòng & phụ thu
 const RoomOps = lazy(() => import('../pages/Operations/RoomOps'));
+// BL-V4 nhân sự: trang chủ cá nhân, hồ sơ & chứng chỉ & chấm công (Admin)
+const StaffHome = lazy(() => import('../pages/Operations/StaffHome'));
+const StaffHr = lazy(() => import('../pages/Operations/StaffHr'));
 
 export const operationsPublicRoutes = (
   <>
@@ -63,6 +66,8 @@ export const operationsAppRoutes = (
     <Route path="/family/messages" element={<ProtectedRoute roles={['Family']}><Messages /></ProtectedRoute>} />
     <Route path="/staff/ai-knowledge" element={<ProtectedRoute roles={ADMIN_ONLY}><AiKnowledge /></ProtectedRoute>} />
     <Route path="/staff/room-ops" element={<ProtectedRoute roles={STAFF}><RoomOps /></ProtectedRoute>} />
+    <Route path="/staff/home" element={<ProtectedRoute roles={STAFF}><StaffHome /></ProtectedRoute>} />
+    <Route path="/staff/hr" element={<ProtectedRoute roles={ADMIN_ONLY}><StaffHr /></ProtectedRoute>} />
   </>
 );
 
@@ -76,4 +81,6 @@ export const operationsMenu: MenuEntry[] = [
   { key: '/family/messages', label: 'Tin nhắn với cơ sở', icon: <MessageOutlined />, roles: ['Family'] },
   { key: '/staff/ai-knowledge', label: 'Tri thức trợ lý AI', icon: <BookOutlined />, roles: ADMIN_ONLY },
   { key: '/staff/room-ops', label: 'Vận hành phòng', icon: <ToolOutlined />, roles: STAFF },
+  { key: '/staff/home', label: 'Trang chủ của tôi', icon: <UserOutlined />, roles: ['Nurse', 'Caregiver', 'Doctor'] },
+  { key: '/staff/hr', label: 'Nhân sự & chấm công', icon: <TeamOutlined />, roles: ADMIN_ONLY },
 ];

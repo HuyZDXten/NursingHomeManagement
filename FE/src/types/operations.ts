@@ -671,3 +671,148 @@ export interface IncidentReport {
   closed: number;
   closedRate?: number | null;
 }
+
+// ---------------- BL-V4 nhân sự ----------------
+
+export type CertificateState = 'Valid' | 'ExpiringSoon' | 'Expired';
+
+export interface StaffCertificate {
+  id: number;
+  accountId: number;
+  accountName: string;
+  name: string;
+  number?: string | null;
+  issuedBy?: string | null;
+  issuedOn?: string | null;
+  expiresOn?: string | null;
+  state: CertificateState;
+  daysLeft?: number | null;
+}
+
+export interface CertificateForm {
+  name: string;
+  number?: string | null;
+  issuedBy?: string | null;
+  issuedOn?: string | null;
+  expiresOn?: string | null;
+}
+
+export interface StaffProfileSummary {
+  accountId: number;
+  fullName: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  position?: string | null;
+  department?: string | null;
+  hireDate?: string | null;
+  certificateCount: number;
+  expiringCount: number;
+  expiredCount: number;
+}
+
+export interface StaffProfile {
+  accountId: number;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  role: string;
+  isActive: boolean;
+  position?: string | null;
+  department?: string | null;
+  hireDate?: string | null;
+  idNumber?: string | null;
+  address?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  notes?: string | null;
+  updatedAt?: string | null;
+  certificates: StaffCertificate[];
+}
+
+export type StaffProfileForm = Pick<StaffProfile, 'position' | 'department' | 'hireDate' | 'idNumber' | 'address' | 'emergencyContactName' | 'emergencyContactPhone' | 'notes'>;
+
+export interface CertificateAlertResult {
+  checked: number;
+  sent: number;
+}
+
+export type ShiftStatus = 'Upcoming' | 'Open' | 'InProgress' | 'Done' | 'Missed';
+
+export interface MyShift {
+  shiftAssignmentId: number;
+  workDate: string;
+  shiftCode: string;
+  shiftName: string;
+  startsAt: string;
+  endsAt: string;
+  checkInAt?: string | null;
+  checkOutAt?: string | null;
+  lateMinutes: number;
+  status: ShiftStatus;
+  canCheckIn: boolean;
+  canCheckOut: boolean;
+}
+
+export type AttendanceStatus = 'OnTime' | 'Late' | 'InProgress' | 'Absent' | 'Upcoming';
+
+export interface AttendanceRecord {
+  shiftAssignmentId: number;
+  accountId: number;
+  accountName: string;
+  workDate: string;
+  shiftName: string;
+  startsAt: string;
+  endsAt: string;
+  checkInAt?: string | null;
+  checkOutAt?: string | null;
+  lateMinutes: number;
+  status: AttendanceStatus;
+  editReason?: string | null;
+}
+
+export interface StaffPerformanceRow {
+  accountId: number;
+  fullName: string;
+  role: string;
+  tasksDue: number;
+  tasksOnTime: number;
+  tasksLate: number;
+  tasksOverdueOpen: number;
+  onTimeRate?: number | null;
+  medicationRecords: number;
+  shiftsAssigned: number;
+  shiftsAttended: number;
+  lateCount: number;
+  absent: number;
+  attendanceRate?: number | null;
+}
+
+export interface StaffPerformanceReport {
+  from: string;
+  to: string;
+  rows: StaffPerformanceRow[];
+}
+
+export interface HomeTask {
+  id: number;
+  residentId: number;
+  residentCode: string;
+  residentName: string;
+  title: string;
+  dueAt: string;
+  status: 'Pending' | 'InProgress' | 'Completed';
+  overdue: boolean;
+}
+
+export interface StaffHome {
+  tasks: HomeTask[];
+  tasksDone: number;
+  tasksOpen: number;
+  tasksOverdue: number;
+  currentShift?: MyShift | null;
+  nextShift?: MyShift | null;
+  unreadHandovers: number;
+  unreadMessages: number;
+  certificates: StaffCertificate[];
+}

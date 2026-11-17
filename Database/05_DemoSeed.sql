@@ -438,6 +438,51 @@ BEGIN
     SET IDENTITY_INSERT dbo.MaintenanceRequests OFF;
 END;
 
+/* ---- 10.10 Nhân sự (BL-V4) ----
+   Hồ sơ nhân viên 2–7. Chứng chỉ: bác sĩ còn hạn 2 năm, điều dưỡng còn 20 ngày (sắp hết), hộ lý đã hết hạn 5 ngày.
+   Chấm công TUẦN TRƯỚC (không đụng tuần này để kịch bản sao chép tuần giữ nguyên): điều dưỡng đủ 5 ca đúng giờ,
+   hộ lý trễ 25 phút thứ Ba + thứ Năm và vắng thứ Sáu. */
+IF NOT EXISTS (SELECT 1 FROM dbo.StaffProfiles WHERE AccountId = 5)
+    INSERT INTO dbo.StaffProfiles (AccountId, Position, Department, HireDate, Address, EmergencyContactName, EmergencyContactPhone) VALUES
+    (2, N'Lễ tân', N'Hành chính', '2024-03-01', N'Hải Châu, Đà Nẵng', N'Nguyễn Văn Hòa', N'0905111222'),
+    (3, N'Kế toán', N'Tài chính', '2023-08-15', N'Thanh Khê, Đà Nẵng', N'Trần Thị Mai', N'0905222333'),
+    (4, N'Bác sĩ nội khoa', N'Y tế', '2022-01-10', N'Sơn Trà, Đà Nẵng', N'Lê Văn Phúc', N'0905333444'),
+    (5, N'Điều dưỡng trưởng ca', N'Y tế', '2023-05-20', N'Hải Châu, Đà Nẵng', N'Phạm Thị Lan', N'0905444555'),
+    (6, N'Hộ lý', N'Chăm sóc', '2024-09-01', N'Liên Chiểu, Đà Nẵng', N'Hoàng Văn Tâm', N'0905555666'),
+    (7, N'Hộ lý', N'Chăm sóc', '2025-02-01', N'Cẩm Lệ, Đà Nẵng', N'Đỗ Thị Hạnh', N'0905666777');
+
+IF NOT EXISTS (SELECT 1 FROM dbo.StaffCertificates WHERE Id = 1)
+BEGIN
+    SET IDENTITY_INSERT dbo.StaffCertificates ON;
+    INSERT INTO dbo.StaffCertificates (Id, AccountId, Name, Number, IssuedBy, IssuedOn, ExpiresOn, CreatedById, CreatedAt) VALUES
+    (1, 4, N'Chứng chỉ hành nghề khám bệnh, chữa bệnh', N'CCHN-0456', N'Sở Y tế Đà Nẵng', DATEADD(YEAR, -3, @Today), DATEADD(YEAR, 2, @Today), 1, @NowUtc),
+    (2, 5, N'Chứng chỉ hành nghề điều dưỡng', N'CCHN-1123', N'Sở Y tế Đà Nẵng', DATEADD(YEAR, -5, @Today), DATEADD(DAY, 20, @Today), 1, @NowUtc),
+    (3, 6, N'Chứng chỉ chăm sóc người cao tuổi', N'CS-2024-88', N'Trung tâm đào tạo nghề Đà Nẵng', DATEADD(YEAR, -2, @Today), DATEADD(DAY, -5, @Today), 1, @NowUtc),
+    (4, 5, N'Sơ cấp cứu cơ bản', NULL, N'Hội Chữ thập đỏ', DATEADD(YEAR, -1, @Today), NULL, 1, @NowUtc);
+    SET IDENTITY_INSERT dbo.StaffCertificates OFF;
+END;
+
+DECLARE @PrevWeek DATE = DATEADD(DAY, -7, @WeekStart);
+INSERT INTO dbo.ShiftAssignments (AccountId, ShiftId, WorkDate, CreatedById, CreatedAt)
+SELECT staff.AccountId, 1, DATEADD(DAY, d.n, @PrevWeek), 1, DATEADD(DAY, -10, @NowUtc)
+FROM (VALUES (5), (6)) AS staff (AccountId)
+CROSS JOIN (VALUES (0), (1), (2), (3), (4)) AS d (n)
+WHERE NOT EXISTS (SELECT 1 FROM dbo.ShiftAssignments AS sa
+                  WHERE sa.AccountId = staff.AccountId AND sa.WorkDate = DATEADD(DAY, d.n, @PrevWeek) AND sa.ShiftId = 1);
+
+INSERT INTO dbo.Attendances (ShiftAssignmentId, AccountId, CheckInAt, CheckOutAt, LateMinutes)
+SELECT sa.Id, sa.AccountId,
+       DATEADD(MINUTE, CASE WHEN late.IsLate = 1 THEN 25 ELSE -10 END, x.StartUtc),
+       DATEADD(MINUTE, 8 * 60 + 5, x.StartUtc),
+       CASE WHEN late.IsLate = 1 THEN 25 ELSE 0 END
+FROM dbo.ShiftAssignments AS sa
+JOIN dbo.Shifts AS s ON s.Id = sa.ShiftId
+CROSS APPLY (SELECT DATEADD(HOUR, -7, DATEADD(MINUTE, DATEDIFF(MINUTE, CAST('00:00' AS TIME), s.StartTime), CAST(sa.WorkDate AS DATETIME2))) AS StartUtc) AS x
+CROSS APPLY (SELECT CASE WHEN sa.AccountId = 6 AND DATEDIFF(DAY, @PrevWeek, sa.WorkDate) IN (1, 3) THEN 1 ELSE 0 END AS IsLate) AS late
+WHERE sa.AccountId IN (5, 6) AND sa.WorkDate >= @PrevWeek AND sa.WorkDate < @WeekStart
+  AND NOT (sa.AccountId = 6 AND DATEDIFF(DAY, @PrevWeek, sa.WorkDate) = 4)
+  AND NOT EXISTS (SELECT 1 FROM dbo.Attendances AS a WHERE a.ShiftAssignmentId = sa.Id);
+
 /* ---- 10. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */
 
 

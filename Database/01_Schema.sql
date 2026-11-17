@@ -689,7 +689,7 @@ CREATE TABLE dbo.AiConversations (
     Title         NVARCHAR(200) NULL,
     CreatedAt     DATETIME2     NOT NULL CONSTRAINT DF_AiConversations_CreatedAt DEFAULT (SYSUTCDATETIME()),
     LastMessageAt DATETIME2     NULL,
-    CONSTRAINT CK_AiConversations_Channel CHECK (Channel IN (N'Public', N'Family', N'Staff')),
+    CONSTRAINT CK_AiConversations_Channel CHECK (Channel IN (N'Public', N'Family', N'Staff', N'Assistant')),
     CONSTRAINT CK_AiConversations_Owner CHECK (AccountId IS NOT NULL OR AnonymousKey IS NOT NULL)
 );
 GO
@@ -940,6 +940,76 @@ GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_MaintenanceRequests_Status' AND object_id = OBJECT_ID(N'dbo.MaintenanceRequests'))
 CREATE INDEX IX_MaintenanceRequests_Status ON dbo.MaintenanceRequests (Status, ReportedAt DESC);
+GO
+
+/* ---- 9.10 Nhân sự (BL-V4: UC-43 hồ sơ & chứng chỉ, UC-48 chấm công, UC-126 hiệu suất, UC-127 trang cá nhân, AI-05 trợ lý) ---- */
+IF OBJECT_ID(N'dbo.StaffProfiles', N'U') IS NULL
+CREATE TABLE dbo.StaffProfiles (
+    AccountId             INT           NOT NULL CONSTRAINT PK_StaffProfiles PRIMARY KEY
+                                        CONSTRAINT FK_StaffProfiles_Accounts REFERENCES dbo.Accounts (Id),
+    Position              NVARCHAR(100) NULL,
+    Department            NVARCHAR(100) NULL,
+    HireDate              DATE          NULL,
+    IdNumber              NVARCHAR(20)  NULL,
+    Address               NVARCHAR(300) NULL,
+    EmergencyContactName  NVARCHAR(150) NULL,
+    EmergencyContactPhone NVARCHAR(30)  NULL,
+    Notes                 NVARCHAR(500) NULL,
+    UpdatedAt             DATETIME2     NOT NULL CONSTRAINT DF_StaffProfiles_UpdatedAt DEFAULT (SYSUTCDATETIME())
+);
+GO
+
+-- Chứng chỉ hành nghề/đào tạo. Alert30At/AlertExpiredAt: đã báo "còn ≤ 30 ngày" / "đã hết hạn" (mỗi mốc một lần).
+IF OBJECT_ID(N'dbo.StaffCertificates', N'U') IS NULL
+CREATE TABLE dbo.StaffCertificates (
+    Id             INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_StaffCertificates PRIMARY KEY,
+    AccountId      INT           NOT NULL CONSTRAINT FK_StaffCertificates_Accounts REFERENCES dbo.Accounts (Id),
+    Name           NVARCHAR(200) NOT NULL,
+    Number         NVARCHAR(50)  NULL,
+    IssuedBy       NVARCHAR(200) NULL,
+    IssuedOn       DATE          NULL,
+    ExpiresOn      DATE          NULL,
+    CreatedById    INT           NOT NULL CONSTRAINT FK_StaffCertificates_Creator REFERENCES dbo.Accounts (Id),
+    CreatedAt      DATETIME2     NOT NULL CONSTRAINT DF_StaffCertificates_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    Alert30At      DATETIME2     NULL,
+    AlertExpiredAt DATETIME2     NULL,
+    CONSTRAINT CK_StaffCertificates_Dates CHECK (ExpiresOn IS NULL OR IssuedOn IS NULL OR ExpiresOn >= IssuedOn)
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_StaffCertificates_Expiry' AND object_id = OBJECT_ID(N'dbo.StaffCertificates'))
+CREATE INDEX IX_StaffCertificates_Expiry ON dbo.StaffCertificates (ExpiresOn) WHERE ExpiresOn IS NOT NULL;
+GO
+
+-- Chấm công: mỗi phân ca một dòng. LateMinutes > 0 khi vào ca trễ hơn 15 phút so với giờ bắt đầu ca.
+IF OBJECT_ID(N'dbo.Attendances', N'U') IS NULL
+CREATE TABLE dbo.Attendances (
+    Id                INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Attendances PRIMARY KEY,
+    ShiftAssignmentId INT           NOT NULL CONSTRAINT FK_Attendances_ShiftAssignments REFERENCES dbo.ShiftAssignments (Id)
+                                    CONSTRAINT UQ_Attendances_Assignment UNIQUE,
+    AccountId         INT           NOT NULL CONSTRAINT FK_Attendances_Accounts REFERENCES dbo.Accounts (Id),
+    CheckInAt         DATETIME2     NOT NULL,
+    CheckOutAt        DATETIME2     NULL,
+    LateMinutes       INT           NOT NULL CONSTRAINT DF_Attendances_Late DEFAULT (0),
+    Note              NVARCHAR(300) NULL,
+    EditedById        INT           NULL CONSTRAINT FK_Attendances_Editor REFERENCES dbo.Accounts (Id),
+    EditedAt          DATETIME2     NULL,
+    EditReason        NVARCHAR(300) NULL,
+    CONSTRAINT CK_Attendances_Times CHECK (CheckOutAt IS NULL OR CheckOutAt >= CheckInAt),
+    CONSTRAINT CK_Attendances_Late CHECK (LateMinutes >= 0)
+);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Attendances_Account' AND object_id = OBJECT_ID(N'dbo.Attendances'))
+CREATE INDEX IX_Attendances_Account ON dbo.Attendances (AccountId, CheckInAt DESC);
+GO
+
+-- AI-05: kênh "Assistant" riêng cho trợ lý nhân viên (kênh "Staff" là hỏi đáp báo cáo). DB tạo trước 17/11 cần sửa CHECK.
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_AiConversations_Channel' AND definition NOT LIKE N'%Assistant%')
+BEGIN
+    ALTER TABLE dbo.AiConversations DROP CONSTRAINT CK_AiConversations_Channel;
+    ALTER TABLE dbo.AiConversations ADD CONSTRAINT CK_AiConversations_Channel CHECK (Channel IN (N'Public', N'Family', N'Staff', N'Assistant'));
+END;
 GO
 
 /* ---- 9. MODULE VẬN HÀNH & TÀI CHÍNH — KẾT THÚC ---- */

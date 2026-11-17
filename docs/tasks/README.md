@@ -52,6 +52,7 @@ Task S3-V1 → S4-V2 của Viên đã merge thẳng vào `develop` ngày 16/11, 
 | [BL-V1](BL-V1-tai-khoan-anh-google.md) | Backlog: ảnh đại diện & ảnh cư dân, đăng nhập Google, mã mời gia đình | UC-07, 24, 02, 08 | Viên | Could | 9 | 16/11 | — | Chờ review |
 | [BL-V2](BL-V2-ho-so-luu-tru.md) | Backlog: giấy tờ & hợp đồng, tạm vắng, tái nhập viện, tiền cọc | UC-29, 30, 31, 33, 99 | Viên | Could | 10 | 16/11 | BL-V1 | Chờ review |
 | [BL-V3](BL-V3-phong-giuong.md) | Backlog: loại phòng & phụ thu, giữ giường, báo hỏng & sửa chữa | UC-36, 41, 42 | Viên | Could | 6 | 17/11 | BL-V2 | Chờ review |
+| [BL-V4](BL-V4-nhan-su.md) | Backlog: hồ sơ & chứng chỉ nhân viên, chấm công, hiệu suất, trang chủ cá nhân, trợ lý AI nhân viên | UC-43, 48, 126, 127, AI-05 | Viên | Could | 11 | 17/11 | S3-V2, S3-V4, S4-V1 | Chờ review |
 
 **Tổng điểm:** Viên 33 (S3) + 13 (S4) + 5 (S5) = 51 · Huy 33 (S3) + 10 (S4) + 5 (S5) = 48. Một điểm ≈ nửa ngày làm việc (đã gồm test và seed).
 

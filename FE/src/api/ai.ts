@@ -17,4 +17,8 @@ export const aiApi = {
   /** S4-V2 (AI-12): hỏi đáp báo cáo cho Admin/Kế toán (kênh Staff). */
   reportChat: (message: string) => apiClient.post<{ reply: string }>('/api/ai/staff/report-chat', { message }).then((r) => r.data.reply),
   reportHistory: () => apiClient.get<AiHistoryItem[]>('/api/ai/staff/report-chat/history').then((r) => r.data),
+
+  /** BL-V4 (AI-05): trợ lý công việc cho mọi nhân viên (kênh Assistant). */
+  assistantChat: (message: string) => apiClient.post<{ reply: string }>('/api/ai/staff/assistant/chat', { message }).then((r) => r.data.reply),
+  assistantHistory: () => apiClient.get<AiHistoryItem[]>('/api/ai/staff/assistant/history').then((r) => r.data),
 };

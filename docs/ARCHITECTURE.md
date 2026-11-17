@@ -344,6 +344,12 @@ Sprint 3+ (module):
 | Vận hành phòng (BL-V3) | `GET /api/room-types` (Staff), `POST·PUT /api/room-types` (AdminOnly). Phụ thu/ngày cộng vào hóa đơn tháng theo số ngày ở phòng loại đó (`RoomRules.SurchargeLines`); `GET /api/rooms` trả thêm loại phòng + giường đang giữ | Staff / AdminOnly |
 | | `GET·POST /api/bed-reservations`, `POST /{id}/release` (tối đa 7 ngày; giường đang giữ chỉ xếp cho cư dân nhập viện từ đúng yêu cầu tư vấn — `BedReservationGuard` trong transaction xếp giường) | FrontDesk |
 | | `GET·POST /api/maintenance-requests` (khóa giường trống khi `blocksBed`; mức Khẩn báo Admin), `POST /{id}/status {status, assignedTo, resolutionNote}` | Staff / AdminOnly |
+| Nhân sự (BL-V4) | `GET /api/staff-profiles`, `PUT /{accountId}`, `POST /{accountId}/certificates`, `PUT·DELETE /api/staff-certificates/{id}`, `GET /api/staff-certificates/expiring`, `POST /alerts/run` | AdminOnly |
+| | `GET /api/staff-profiles/{accountId}` (hồ sơ + CCCD: Admin hoặc chính nhân viên đó) | Staff |
+| | `GET /api/attendance/mine`, `POST /api/attendance/check-in·check-out {shiftAssignmentId}` (vào từ 30 phút trước ca, trễ > 15 phút = đi muộn) | Staff |
+| | `GET /api/attendance?from&to&accountId`, `PUT /api/attendance/{shiftAssignmentId}` (sửa công, bắt buộc lý do), `GET /api/reports/staff-performance` · `/export` | AdminOnly |
+| | `GET /api/staff-home` (việc hôm nay, ca, bàn giao/tin nhắn chưa đọc, chứng chỉ của tôi) | Staff |
+| | `POST /api/ai/staff/assistant/chat {message}`, `GET .../history` (kênh `Assistant`; rate limit `Chat`) | Staff |
 
 **OData chỉ dùng attribute routing** (`Program.cs` bỏ các convention theo tên controller): mỗi entity set cần một `ODataController` có `[Route("odata/TenEntitySet")]`. Controller REST trùng tên entity set (vd. `InvoicesController`) không còn bị OData bắt nhầm.
 

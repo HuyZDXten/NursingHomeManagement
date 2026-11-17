@@ -12,10 +12,11 @@ import { extractErrorMessage } from '../../api/client';
 import { aiApi } from '../../api/ai';
 import { reportsApi } from '../../api/reports';
 import { useAuth } from '../../auth/AuthContext';
-import { BILLING_STAFF, CARE_PLANNERS, FINANCE_STAFF, PRESCRIBERS, hasRole } from '../../auth/roles';
+import { ADMIN_ONLY, BILLING_STAFF, CARE_PLANNERS, FINANCE_STAFF, PRESCRIBERS, hasRole } from '../../auth/roles';
 import { ChatWidget } from '../../components/ChatWidget';
 import { PageTitle, StatusTag } from '../../components/Common';
 import { dateOnly, dayjs, money, monthOf, todayVn } from '../../utils/format';
+import { StaffPerformanceTab } from './StaffPerformanceTab';
 import type { AdherenceReport, IncidentReport, OccupancyReport, RevenueReport } from '../../types/operations';
 
 // Màu theo skill dataviz (đã chạy validate_palette.js, nền sáng):
@@ -40,7 +41,7 @@ const yearOptions = () => {
   return Array.from({ length: 5 }, (_, i) => ({ value: current - i, label: `Năm ${current - i}` }));
 };
 
-/** UC-122 công suất giường, UC-123 doanh thu & công nợ, UC-124 tuân thủ thuốc, UC-125 sự cố. Mỗi tab chỉ hiện với role được xem. */
+/** UC-122 công suất giường, UC-123 doanh thu & công nợ, UC-124 tuân thủ thuốc, UC-125 sự cố, UC-126 hiệu suất nhân viên. Mỗi tab chỉ hiện với role được xem. */
 export default function Reports() {
   const { user } = useAuth();
   const tabs = [
@@ -48,6 +49,7 @@ export default function Reports() {
     hasRole(user?.role, BILLING_STAFF) && { key: 'occupancy', label: 'Công suất giường', children: <OccupancyTab /> },
     hasRole(user?.role, PRESCRIBERS) && { key: 'adherence', label: 'Tuân thủ thuốc', children: <AdherenceTab /> },
     hasRole(user?.role, CARE_PLANNERS) && { key: 'incidents', label: 'Sự cố', children: <IncidentsTab /> },
+    hasRole(user?.role, ADMIN_ONLY) && { key: 'staff', label: 'Hiệu suất nhân viên', children: <StaffPerformanceTab /> },
   ].filter((tab) => !!tab);
 
   return (

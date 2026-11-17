@@ -33,6 +33,10 @@ public sealed partial class FakeAiChatProvider : IAiChatProvider
         (["công suất", "lấp đầy"], "occupancy"),
         (["tuân thủ", "uống thuốc", "bỏ liều"], "medication_adherence"),
         (["sự cố", "té ngã"], "incident_summary"),
+        // BL-V4 kênh trợ lý nhân viên
+        (["việc hôm nay", "công việc", "việc của tôi", "việc cần làm", "việc được giao", "việc gì", "hôm nay"], "my_tasks_today"),
+        (["ca kế", "ca tiếp", "ca trực", "lịch ca", "ca làm"], "my_next_shift"),
+        (["bàn giao"], "handover_inbox"),
         // S4-H1 kênh gia đình
         (["người thân", "danh sách người thân"], "list_my_residents"),
         (["nhật ký", "ăn uống", "hôm nay", "hôm qua"], "get_day_summary"),
